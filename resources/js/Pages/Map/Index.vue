@@ -75,17 +75,25 @@ function initMap() {
     <Head title="Map View" />
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Map View</h2>
+            <h2 class="font-semibold text-lg text-slate-800 leading-tight">Map View</h2>
         </template>
-        <div class="py-6">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white shadow-sm sm:rounded-lg p-4 mb-4">
-                    <div class="flex gap-4 flex-wrap">
-                        <select v-model="selectedProject" @change="loadGeoJson" class="rounded border-gray-300">
+
+        <div>
+            <!-- Filters -->
+            <div class="dict-card p-4 mb-4">
+                <div class="flex flex-wrap items-end gap-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Project</label>
+                        <select v-model="selectedProject" @change="loadGeoJson"
+                                class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">All Projects</option>
                             <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
                         </select>
-                        <select v-model="selectedStatus" @change="loadGeoJson" class="rounded border-gray-300">
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+                        <select v-model="selectedStatus" @change="loadGeoJson"
+                                class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">All Statuses</option>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
@@ -95,8 +103,10 @@ function initMap() {
                         </select>
                     </div>
                 </div>
-                <div ref="mapContainer" class="bg-white shadow-sm sm:rounded-lg" style="height: 600px;"></div>
             </div>
+
+            <!-- Map -->
+            <div ref="mapContainer" class="rounded-lg overflow-hidden shadow-sm border border-slate-200" style="height: 600px;"></div>
         </div>
     </AuthenticatedLayout>
 </template>
