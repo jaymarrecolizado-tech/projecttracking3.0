@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { IconBuilding, IconMap, IconChecklist } from '@tabler/icons-vue';
+import { IconBuilding, IconMap } from '@tabler/icons-vue';
 defineProps({ project: Object });
 </script>
 

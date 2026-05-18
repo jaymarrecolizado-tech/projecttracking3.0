@@ -3,8 +3,7 @@ import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import {
     IconDashboard, IconMap, IconFolder, IconBuilding, IconActivity,
-    IconChecklist, IconUpload, IconReport, IconMenu2, IconX,
-    IconBell, IconUser, IconLogout, IconSettings, IconChevronDown
+    IconChecklist, IconUpload, IconReport
 } from '@tabler/icons-vue'
 import ApplicationLogo from '@/Components/ApplicationLogo.vue'
 import Dropdown from '@/Components/Dropdown.vue'
