@@ -39,7 +39,7 @@ class ReportingService
             'total_sites' => Site::count(),
             'active_sites' => Site::where('status', 'active')->count(),
             'total_up_today' => SiteDailyStatus::where('status', 'UP')->whereDate('date', today())->count(),
-            'recent_imports' => \App\Models\FreewifiImportBatch::with('uploader:id,name')->latest()->take(5)->get(),
+            'recent_imports' => \App\Models\FreewifiImportBatch::with('importer:id,name')->latest()->take(5)->get(),
         ];
     }
 }

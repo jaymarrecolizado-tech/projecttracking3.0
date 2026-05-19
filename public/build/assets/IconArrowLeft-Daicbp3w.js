@@ -1,4 +1,4 @@
-import{f as e}from"./AuthenticatedLayout-DZfSx7BC.js";/**
+import{f as e}from"./AuthenticatedLayout-CFpFgCSd.js";/**
  * @license @tabler/icons-vue v3.44.0 - MIT
  *
  * This source code is licensed under the MIT license.

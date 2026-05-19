@@ -1,4 +1,4 @@
-import{f as h,c as y,_}from"./AuthenticatedLayout-DZfSx7BC.js";import{e as n,h as l,w as a,j as b,G as r,a as t,l as x,g as u,q as d,F as m,s as g,m as v,v as o,k as f,d as w}from"./app-BiQ_bfPp.js";import{I as k}from"./IconChevronRight-CAxrf52s.js";/**
+import{f as h,c as y,_}from"./AuthenticatedLayout-CFpFgCSd.js";import{e as n,h as l,w as a,j as b,G as r,a as t,l as x,g as u,q as d,F as m,s as g,m as v,v as o,k as f,d as w}from"./app-D9zr3_TE.js";import{I as k}from"./IconChevronRight-Co_uoDcZ.js";/**
  * @license @tabler/icons-vue v3.44.0 - MIT
  *
  * This source code is licensed under the MIT license.

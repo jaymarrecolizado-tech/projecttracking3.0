@@ -1,8 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { IconFileDescription, IconMapPin } from '@tabler/icons-vue';
+import { computed } from 'vue';
 defineProps({ projects: Array });
+const csrf = computed(() => usePage().props.csrf_token || document.querySelector('meta[name="csrf-token"]')?.content || '');
 </script>
 
 <template>
@@ -68,6 +70,3 @@ defineProps({ projects: Array });
         </div>
     </AuthenticatedLayout>
 </template>
-<script>
-export default { data() { return { csrf: document.querySelector('meta[name="csrf-token"]')?.content || '' } } }
-</script>

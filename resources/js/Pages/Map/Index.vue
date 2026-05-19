@@ -47,28 +47,16 @@ const loadGeoJson = async () => {
     geojsonLayer.value.addTo(map.value);
 };
 
-onMounted(async () => {
-    if (!window.L) {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.onload = initMap;
-        document.head.appendChild(script);
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-    } else {
-        initMap();
-    }
-});
-
-function initMap() {
-    map.value = L.map(mapContainer.value).setView([12.8797, 121.7740], 6);
+onMounted(() => {
+    // Leaflet is loaded globally via app.blade.php — initialize directly
+    map.value = L.map(mapContainer.value, { zoomControl: true }).setView([12.8797, 121.7740], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
     }).addTo(map.value);
-    loadGeoJson();
-}
+    // Fix tile rendering after DOM is fully painted
+    setTimeout(() => { map.value.invalidateSize(); loadGeoJson(); }, 200);
+});
 </script>
 
 <template>
