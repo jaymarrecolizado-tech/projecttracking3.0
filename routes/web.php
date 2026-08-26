@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccomplishmentController;
+use App\Http\Controllers\DailyOpsController;
 use App\Http\Controllers\DailyStatusController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceController;
@@ -49,6 +50,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/sites/{site}/daily-grid', [DailyStatusController::class, 'grid'])->name('sites.daily-grid');
     Route::post('/daily-statuses/batch', [DailyStatusController::class, 'batchStore'])->name('daily-statuses.batch')->middleware('can:daily.create');
+
+    Route::get('/daily-ops', [DailyOpsController::class, 'index'])->name('daily-ops.index');
+    Route::post('/daily-ops/batch', [DailyOpsController::class, 'batch'])->name('daily-ops.batch');
 
     Route::resource('accomplishments', AccomplishmentController::class)->only(['store', 'update', 'destroy'])->middleware('can:accomplishment.edit');
     Route::resource('accomplishments', AccomplishmentController::class)->only(['index', 'show']);

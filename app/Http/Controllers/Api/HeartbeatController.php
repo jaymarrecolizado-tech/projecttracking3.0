@@ -27,6 +27,16 @@ class HeartbeatController extends Controller
 
         $site = Site::where('ap_site_code', $validated['site_code'])->firstOrFail();
 
+        // Approved-and-locked records are authoritative — probes must not overwrite them.
+        $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', today())->first();
+        if ($existing && $existing->entry_status === 'LOCKED') {
+            return response()->json([
+                'ok' => false,
+                'error' => 'locked',
+                'message' => "Today's record for site {$site->ap_site_code} is locked.",
+            ], 409);
+        }
+
         $status = DB::transaction(function () use ($site, $validated) {
             $attributes = [
                 'status' => $validated['status'],

@@ -11,4 +11,6 @@ Artisan::command('inspire', function () {
 Schedule::command('reports:cleanup')->dailyAt('01:30');
 Schedule::command('imports:cleanup')->everyFifteenMinutes();
 Schedule::command('alerts:down')->everyFifteenMinutes();
+Schedule::command('statuses:remind')->dailyAt('07:00');
+Schedule::command('statuses:snapshot')->dailyAt('23:00');
 Schedule::command('warranty:digest')->weeklyOn(1, '07:00');

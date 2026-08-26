@@ -4,7 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import {
     IconDashboard, IconMap, IconFolder, IconBuilding, IconActivity,
     IconChecklist, IconUpload, IconReportAnalytics, IconRouter,
-    IconMenu2, IconX, IconLogout, IconUser, IconTool,
+    IconMenu2, IconX, IconLogout, IconUser, IconTool, IconCalendarCheck,
 } from '@tabler/icons-vue'
 import ToastStack from '@/Components/ToastStack.vue'
 
@@ -32,6 +32,7 @@ const navGroups = [
     {
         label: 'Monitoring',
         items: [
+            { label: 'Daily Ops', route: 'daily-ops.index', icon: IconCalendarCheck, pattern: 'daily-ops.*', permission: 'daily.view' },
             { label: 'Daily Statuses', route: 'daily-statuses.index', icon: IconActivity, pattern: 'daily-statuses.*' },
             { label: 'Accomplishments', route: 'accomplishments.index', icon: IconChecklist, pattern: 'accomplishments.*' },
             { label: 'Tickets', route: 'tickets.index', icon: IconTool, pattern: 'tickets.*', permission: 'tickets.manage' },
