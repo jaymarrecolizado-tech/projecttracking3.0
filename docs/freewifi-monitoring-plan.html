@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free WiFi Monitoring Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f5f8fa;
+    --surface: #ffffff;
+    --ink: #16242e;
+    --muted: #56707d;
+    --line: #d8e3e9;
+    --wash: #ecf3f6;
+    --accent: #0c6079;
+    --accent-soft: #e3eff3;
+    --ok: #177245;
+    --ok-soft: #e2f2e9;
+    --warn: #a05f0c;
+    --warn-soft: #f8eeda;
+    --down: #b3261e;
+    --down-soft: #f9e5e3;
+    --code-bg: #10222b;
+    --code-ink: #cfe3ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0c151a;
+      --surface: #121f27;
+      --ink: #dde9ee;
+      --muted: #85a0ac;
+      --line: #24363f;
+      --wash: #17262e;
+      --accent: #58bcd8;
+      --accent-soft: #14313c;
+      --ok: #46c98a;
+      --ok-soft: #12301f;
+      --warn: #e0a43e;
+      --warn-soft: #33270f;
+      --down: #ff7a6e;
+      --down-soft: #371714;
+      --code-bg: #0a161c;
+      --code-ink: #b9d4dd;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0c151a;
+    --surface: #121f27;
+    --ink: #dde9ee;
+    --muted: #85a0ac;
+    --line: #24363f;
+    --wash: #17262e;
+    --accent: #58bcd8;
+    --accent-soft: #14313c;
+    --ok: #46c98a;
+    --ok-soft: #12301f;
+    --warn: #e0a43e;
+    --warn-soft: #33270f;
+    --down: #ff7a6e;
+    --down-soft: #371714;
+    --code-bg: #0a161c;
+    --code-ink: #b9d4dd;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .tx-strip {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 10px 24px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .tx-strip .dot { color: var(--accent); }
+  [data-theme] .tx-strip { border-bottom: 1px solid var(--line); }
+
+  main {
+    max-width: 72ch;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  .wide { max-width: 100%; }
+
+  header.hero h1 {
+    font-family: "Archivo", "IBM Plex Sans", sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 5vw, 44px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  header.hero p.standfirst {
+    font-size: 18px;
+    color: var(--muted);
+    margin: 0 0 28px;
+    max-width: 60ch;
+  }
+  .meta-line {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 2px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+
+  h2 {
+    font-family: "Archivo", sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+    margin: 64px 0 6px;
+    text-wrap: balance;
+  }
+  h2 .ph {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.14em;
+    display: block;
+    margin-bottom: 6px;
+  }
+  h3 {
+    font-family: "Archivo", sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    margin: 36px 0 8px;
+  }
+  p { margin: 12px 0; }
+  ul, ol { padding-left: 22px; margin: 12px 0; }
+  li { margin: 5px 0; }
+  strong { font-weight: 600; }
+  code.inline {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.86em;
+    background: var(--wash);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+
+  section.breakout {
+    max-width: none;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: max(24px, calc(50vw - 560px));
+    padding-right: max(24px, calc(50vw - 560px));
+  }
+  .tablewrap { overflow-x: auto; margin: 20px 0 8px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 560px;
+  }
+  caption {
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 8px;
+  }
+  th {
+    text-align: left;
+    font-family: "Archivo", sans-serif;
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid var(--ink);
+    padding: 8px 12px 8px 0;
+    white-space: nowrap;
+  }
+  td {
+    border-bottom: 1px solid var(--line);
+    padding: 9px 12px 9px 0;
+    vertical-align: top;
+  }
+  td.num { font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: 1px solid var(--ink); }
+
+  .chip {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    padding: 2px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chip.keep { background: var(--ok-soft); color: var(--ok); }
+  .chip.simplify { background: var(--warn-soft); color: var(--warn); }
+  .chip.build { background: var(--accent-soft); color: var(--accent); }
+  .chip.crit { background: var(--down-soft); color: var(--down); }
+  .chip.sev-warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.sev-info { background: var(--accent-soft); color: var(--accent); }
+
+  pre.schema {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 20px 22px;
+    overflow-x: auto;
+    margin: 20px 0;
+    border-left: 3px solid var(--accent);
+  }
+  pre.schema .cm { opacity: 0.55; }
+  pre.schema .k { color: var(--accent); }
+  pre.schema .s { color: var(--ok); }
+
+  .vision-list { counter-reset: q; list-style: none; padding: 0; margin: 20px 0; }
+  .vision-list li {
+    counter-increment: q;
+    position: relative;
+    padding: 14px 18px 14px 58px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .vision-list li::before {
+    content: counter(q, decimal-leading-zero);
+    position: absolute;
+    left: 16px;
+    top: 14px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 15px;
+    color: var(--accent);
+  }
+
+  .callout {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    margin: 24px 0;
+  }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .qa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin: 24px 0;
+  }
+  .qa-cell {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .qa-cell .lbl {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .qa-cell .val { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 19px; }
+  .qa-cell .val small { display:block; font-family:"IBM Plex Sans",sans-serif; font-weight:400; font-size:12.5px; color:var(--muted); margin-top:3px; }
+
+  footer.colophon {
+    margin-top: 80px;
+    border-top: 2px solid var(--ink);
+    padding-top: 16px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+<div class="tx-strip">
+  <span><span class="dot">●</span>&nbsp; FREEWIFI-NOC · PROGRAM MONITORING PLATFORM</span>
+  <span>REV 2026-08 · DOC FWMP-01</span>
+</div>
+
+<main>
+  <header class="hero">
+    <h1>Free WiFi Monitoring<br>Platform Plan</h1>
+    <p class="standfirst">Repurposing <strong>projecttracking3.0 (DICT-MRIS v1.1)</strong> into the dedicated operations
+    platform for the Free WiFi program — deployed-device tracking with full specs, live health
+    monitoring, and reporting that answers to management.</p>
+  </header>
+
+  <div class="meta-line">
+    <span>Laravel 11 · Vue 3 · Inertia 2</span>
+    <span>Tailwind 3</span>
+    <span>SQLite → MySQL</span>
+    <span>Prepared 2026-08-25</span>
+  </div>
+
+  <div class="qa-grid wide">
+    <div class="qa-cell"><span class="lbl">Q1 · Is every site up?</span><span class="val">NOC wallboard<small>live site &amp; device status map</small></span></div>
+    <div class="qa-cell"><span class="lbl">Q2 · What's installed?</span><span class="val">Device registry<small>specs, serials, firmware per site</small></span></div>
+    <div class="qa-cell"><span class="lbl">Q3 · What broke?</span><span class="val">Alerts &amp; events<small>downtime cause, duration, notify trail</small></span></div>
+    <div class="qa-cell"><span class="lbl">Q4 · How's the program?</span><span class="val">SLA reports<small>uptime %, users served, per district</small></span></div>
+  </div>
+
+  <h2>Current state — what the app already does</h2>
+  <p>The existing build has a genuine Free WiFi foundation. Every piece below stays; the plan adds
+  the missing layer rather than replacing the stack.</p>
+
+  <section class="breakout wide">
+    <div class="tablewrap">
+      <table>
+        <caption>Existing modules · disposition</caption>
+        <thead><tr><th>Existing module</th><th>What it does today</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Project → Site hierarchy</strong></td><td>AP sites with nationwide ID, AP site code, geo-coords, province/municipality/barangay, ISP provider, last-mile tech, bandwidth CIR</td><td><span class="chip keep">KEEP</span></td></tr>
+          <tr><td><strong>SiteDailyStatus</strong></td><td>Per-day UP/DOWN/NO_DATA, unique users, bandwidth Mbps, uptime %, DRAFT→SUBMITTED→APPROVED→LOCKED workflow</td><td><span class="chip keep">KEEP</span></td></tr>
+          <tr><td><strong>Excel import batches</strong></td><td>Bulk site/status ingestion with error logs, queued processing</td><td><span class="chip keep">KEEP</span></td></tr>
+          <tr><td><strong>Leaflet map</strong></td><td>Sites plotted by project/status/region</td><td><span class="chip keep">KEEP</span></td></tr>
+          <tr><td><strong>PDF reports</strong></td><td>Project &amp; province reports via DomPDF</td><td><span class="chip keep">KEEP</span></td></tr>
+          <tr><td><strong>RBAC + audit log</strong></td><td>Roles, permissions, policies, AuditLog already wired</td><td><span class="chip keep">KEEP</span></td></tr>
+          <tr><td><strong>Milestones &amp; accomplishments</strong></td><td>Deployment progress tracking</td><td><span class="chip simplify">SIMPLIFY</span> → fold into Deployment module</td></tr>
+          <tr><td><strong>Device-level tracking</strong></td><td>— nothing exists —</td><td><span class="chip build">BUILD</span> · the core gap</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p>The gap in one sentence: the app can tell you a <em>site</em> was down yesterday because someone
+  typed it in — it cannot tell you <em>which router</em>, with <em>which serial</em>, stopped
+  <em>heartbeating at 02:14</em>, or that its battery voltage has been sliding for three nights.</p>
+
+  <h2><span class="ph">PHASE 1 · FOUNDATION</span>Device registry</h2>
+  <p>New domain: <strong>device catalog → devices → deployments</strong>. Spec sheets live on the model,
+  physical reality lives on the unit, assignment history lives between unit and site.</p>
+
+  <section class="breakout wide">
+<pre class="schema"><span class="cm">device_models — catalog of spec sheets</span>
+├─ id, manufacturer, model_name, model_number
+├─ type            <span class="k">enum:</span> outdoor_ap, router, switch, cpe, solar_panel,
+│                        charge_controller, battery, ups, poe_injector,
+│                        antenna, camera, other
+├─ wifi_standard   <span class="k">enum:</span> wifi4 … wifi7, none
+├─ specs           <span class="k">JSON:</span> { radio_bands, max_throughput_mbps, max_clients,
+│                          poe_standard, power_draw_w, ip_rating,
+│                          temp_range_c, antenna_gain_dbi, ports,
+│                          sim_slots, capacity_ah, wattage }
+└─ datasheet_url, photo_path, is_active
+
+<span class="cm">devices — each physical unit</span>
+├─ id, device_model_id FK
+├─ asset_tag       <span class="s">unique</span> — printed QR label
+├─ serial_number   <span class="s">unique</span>
+├─ mac_address     nullable, unique
+├─ firmware_version, notes
+├─ status          <span class="k">enum:</span> in_stock, deployed, under_repair, retired, lost
+├─ condition       <span class="k">enum:</span> new, good, degraded, faulty
+├─ purchase_order_no, supplier, unit_cost, purchased_at, warranty_until
+└─ timestamps, soft_deletes
+
+<span class="cm">device_deployments — assignment history over time</span>
+├─ id, device_id FK, site_id FK
+├─ role_at_site    <span class="k">enum:</span> primary_ap, backup_ap, backhaul, power, surveillance, other
+└─ installed_at, removed_at, installed_by, install_notes
+
+<span class="cm">maintenance_logs</span>
+├─ id, device_id nullable FK, site_id nullable FK
+├─ type            <span class="k">enum:</span> inspection, repair, firmware_upgrade, replacement,
+│                        cleaning, reboot
+└─ performed_by, performed_at, downtime_minutes, cost, findings, actions_taken, photos JSON</pre>
+  </section>
+
+  <h3>Phase 1 features</h3>
+  <ul>
+    <li><strong>Device CRUD</strong> with catalog-driven forms — specs auto-fill from the chosen model, overridable per unit.</li>
+    <li><strong>QR asset tags</strong> — printable labels encoding <code class="inline">asset_tag</code>; scanning opens the device page so a field tech gets full history on their phone.</li>
+    <li><strong>"Equipment" tab on each site</strong> — everything installed there, with roles and install dates.</li>
+    <li><strong>Inventory views</strong> — stock counts per type, deployed-vs-spares ratio, warranty-expiry report.</li>
+    <li><strong>Devices.xlsx import template</strong> — reuses the existing <code class="inline">FreewifiImportBatch</code> queue machinery.</li>
+  </ul>
+
+  <h2><span class="ph">PHASE 2 · LIVE HEALTH</span>Monitoring &amp; alerting</h2>
+  <p>Turn manual UP/DOWN entries into automated telemetry — while keeping human approval as the
+  override for reporting integrity.</p>
+
+  <h3>Ingestion path 1 — heartbeat API (ship first)</h3>
+  <p><code class="inline">POST /api/v1/heartbeat</code>, authenticated by a Sanctum token minted per site/device.
+  The router or CPE controller POSTs every five minutes; a missing heartbeat <em>is</em> the offline event.</p>
+
+  <section class="breakout wide">
+<pre class="schema"><span class="k">POST</span> /api/v1/heartbeat
+{
+  <span class="s">"site_code"</span>: "AP-XXX",
+  <span class="s">"device_serial"</span>: "...",
+  <span class="s">"uptime_s"</span>: 86400,
+  <span class="s">"firmware"</span>: "v2.1",
+  <span class="s">"cpu_pct"</span>: 12, <span class="s">"mem_pct"</span>: 41,
+  <span class="s">"wan_latency_ms"</span>: 23,
+  <span class="s">"clients_connected"</span>: 14,
+  <span class="s">"bw_rx_mbps"</span>: 18.4, <span class="s">"bw_tx_mbps"</span>: 6.2,
+  <span class="s">"power"</span>: { <span class="s">"source"</span>: "solar", <span class="s">"battery_v"</span>: 13.1, <span class="s">"solar_w"</span>: 45 }
+}</pre>
+  </section>
+
+  <h3>Ingestion path 2 — controller polling (when reachable)</h3>
+  <p>A scheduled Laravel command SNMP-GETs each site gateway (<code class="inline">sysUpTime</code>,
+  <code class="inline">ifHCInOctets</code>, <code class="inline">ifHCOutOctets</code>,
+  <code class="inline">hrProcessorLoad</code>) every five minutes and writes the same metric rows.
+  Both paths converge on identical storage, so dashboards don't care where the numbers came from.</p>
+
+  <section class="breakout wide">
+<pre class="schema"><span class="cm">device_metrics</span>      raw time-series — indexed (device_id, ts); pruned to hourly
+                    rollups after 90 days
+<span class="cm">site_status_events</span>  transitions UP→DOWN→UP — started_at, resolved_at,
+                    cause: heartbeat_lost | poll_failed | manual | planned_maintenance
+<span class="cm">alert_rules</span>         metric + operator + threshold + duration + severity + notify_roles
+<span class="cm">alerts</span>              fired instances — triggered_at, acknowledged_at/by,
+                    resolved_at, escalation_level</pre>
+  </section>
+
+  <h3>Alert rules — seeded defaults</h3>
+  <section class="breakout wide">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Condition</th><th>Holds for</th><th>Severity</th></tr></thead>
+        <tbody>
+          <tr><td>No heartbeat received</td><td>10 min</td><td><span class="chip crit">CRITICAL</span></td></tr>
+          <tr><td>Battery &lt; 11.8 V <span style="color:var(--muted)">(off-grid solar sites)</span></td><td>immediate</td><td><span class="chip crit">CRITICAL</span></td></tr>
+          <tr><td>WAN latency &gt; 150 ms</td><td>30 min</td><td><span class="chip sev-warn">WARNING</span></td></tr>
+          <tr><td>Bandwidth &gt; 85% of CIR</td><td>60 min</td><td><span class="chip sev-warn">WARNING</span></td></tr>
+          <tr><td>Firmware older than approved baseline</td><td>—</td><td><span class="chip sev-info">INFO</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <ul>
+    <li><strong>Notifications:</strong> email first; SMS through your existing <strong>jelite SMS API</strong> for critical alerts routed to field techs by territory; optional Telegram/Discord webhook for the NOC channel.</li>
+    <li><strong>NOC wallboard dashboard:</strong> live Online / Down / Degraded / No-data counters, the Philippine map recolored by real-time state, active-alert feed, longest-currently-down list. Inertia partial reloads every 60 s.</li>
+    <li><strong>Time-series charts</strong> per site and device — uptime, users, throughput, latency, battery voltage (Chart.js or uPlot).</li>
+    <li><strong>Nightly auto-fill of <code class="inline">site_daily_statuses</code></strong> from metrics; APPROVED/LOCKED stays as the human override.</li>
+  </ul>
+
+  <h2><span class="ph">PHASE 3 · OPERATIONS</span>Tickets, SLA &amp; field tools</h2>
+  <ul>
+    <li><strong>Lightweight maintenance tickets</strong> built in — issue → assign tech → resolve with photos and downtime minutes; feeds MTTR stats. Deep integration with pred-ticket-rag can come later.</li>
+    <li><strong>SLA reports</strong> — monthly availability per site/district/province vs target (≥97%), users served, data delivered, incident count, MTTR; extends the DomPDF pipeline.</li>
+    <li><strong>Firmware fleet view</strong> — which units run which versions, rollout progress.</li>
+    <li><strong>Power analytics</strong> for solar sites — overnight battery curves, days-to-failure projection.</li>
+    <li><strong>Field inspection form</strong> — mobile page: scan QR → checklist → photo upload → GPS confirm.</li>
+    <li><strong>Public transparency mini-portal</strong> (optional) — unauthenticated live map of active sites and headline stats.</li>
+  </ul>
+
+  <h2>Cross-cutting improvements</h2>
+  <section class="breakout wide">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Area</th><th>Now</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Database</strong></td><td>SQLite default</td><td>MySQL in prod for concurrent time-series inserts; SQLite stays for dev</td></tr>
+          <tr><td><strong>Queues</strong></td><td>database driver</td><td>keep — ensure <code class="inline">queue:work</code> runs as a service (deploy.sh)</td></tr>
+          <tr><td><strong>Scheduler</strong></td><td>unused</td><td><code class="inline">schedule:run</code> cron — heartbeat checks, rollups, digest emails</td></tr>
+          <tr><td><strong>Time-series volume</strong></td><td>n/a</td><td>90-day raw retention → hourly rollup table; charts read rollups</td></tr>
+          <tr><td><strong>Security</strong></td><td>Sanctum present</td><td>token-per-site heartbeats; rate-limited ingest; audit every device mutation</td></tr>
+          <tr><td><strong>Testing</strong></td><td>scaffold only</td><td>feature tests for ingestion, alert engine, rollups</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <h2>Roadmap &amp; effort</h2>
+  <section class="breakout wide">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Phase</th><th>Scope</th><th>Est. effort</th></tr></thead>
+        <tbody>
+          <tr><td class="num"><strong>P0</strong></td><td>Strip non-FreeWiFi programs (seeder ships 9: PNPKI, eGov, GovNet…) — single-purpose FreeWiFi project; env hardening (MySQL); demo seeders</td><td class="num">1–2 d</td></tr>
+          <tr><td class="num"><strong>P1</strong></td><td>Device registry + QR tags + imports + Equipment tab</td><td class="num">1.5–2 wk</td></tr>
+          <tr><td class="num"><strong>P2a</strong></td><td>Heartbeat API + metrics storage + offline detection</td><td class="num">1 wk</td></tr>
+          <tr><td class="num"><strong>P2b</strong></td><td>Alert engine + notifications + NOC dashboard + charts</td><td class="num">2 wk</td></tr>
+          <tr><td class="num"><strong>P2c</strong></td><td>SNMP polling + nightly rollups + auto daily-status fill</td><td class="num">1 wk</td></tr>
+          <tr><td class="num"><strong>P3</strong></td><td>Tickets, SLA reports, firmware fleet, power analytics, inspections</td><td class="num">2–3 wk</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="callout">
+    <p><strong>First-week quick wins:</strong> NOC-style dashboard counters computed from the existing
+    <code class="inline">site_daily_statuses</code>; an offline-alert prototype against the heartbeat API with one pilot
+    router; device tables with the Excel importer wired. Visible value before the heavy lifting starts.</p>
+  </div>
+
+  <footer class="colophon">
+    <span>FWMP-01 · FREE WIFI PROGRAM MONITORING PLAN</span>
+    <span>projecttracking3.0 → freewifi-noc</span>
+  </footer>
+</main>
+</body>
+</html>
