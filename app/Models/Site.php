@@ -21,15 +21,20 @@ class Site extends Model
     }
 
     protected $fillable = ['project_id', 'nationwide_id', 'ap_site_code', 'location_name',
-        'ap_site_name', 'site_type', 'barangay', 'municipality', 'province',
+        'ap_site_name', 'site_type', 'site_classification', 'barangay', 'municipality', 'province',
         'district', 'region', 'island_group', 'latitude', 'longitude',
-        'date_of_activation', 'status', 'isp_provider', 'last_mile_tech',
-        'bw_download_cir', 'metadata', 'created_by', 'updated_by'];
+        'date_of_activation', 'status', 'lifecycle_status', 'isp_provider', 'cms_provider',
+        'link_provider', 'source_of_bw', 'last_mile_tech', 'bw_download_cir',
+        'accepted', 'ap_brand', 'declaration_date', 'integrated_date', 'school_id',
+        'loc_id', 'prov_id', 'metadata', 'created_by', 'updated_by'];
 
     protected $casts = [
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'date_of_activation' => 'date',
+        'declaration_date' => 'date',
+        'integrated_date' => 'date',
+        'accepted' => 'boolean',
         'metadata' => 'array',
         'last_alerted_at' => 'datetime',
     ];

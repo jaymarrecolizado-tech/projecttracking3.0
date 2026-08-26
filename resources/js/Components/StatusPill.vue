@@ -10,6 +10,8 @@ const props = defineProps({
 const map = {
     UP: { dot: 'bg-green-500', text: 'text-green-700' },
     DOWN: { dot: 'bg-red-500', text: 'text-red-700' },
+    DOWN_SERVER: { dot: 'bg-red-400', text: 'text-red-700' },
+    NO_NMS: { dot: 'bg-amber-400', text: 'text-amber-700' },
     NO_DATA: { dot: 'bg-slate-400', text: 'text-slate-500' },
     active: { dot: 'bg-green-500', text: 'text-green-700' },
     inactive: { dot: 'bg-red-400', text: 'text-red-700' },

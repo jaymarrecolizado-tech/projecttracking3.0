@@ -34,6 +34,7 @@ class ProcessExcelImport implements ShouldQueue
         try {
             match ($this->type) {
                 'devices' => $importService->processDeviceImport($this->batch, $this->filePath, $this->actorId),
+                'region_workbook' => $importService->processRegionWorkbook($this->batch, $this->filePath, $this->actorId),
                 default => $importService->processImport($this->batch, $this->filePath),
             };
         } finally {

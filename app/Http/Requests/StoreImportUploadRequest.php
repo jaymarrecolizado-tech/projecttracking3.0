@@ -15,7 +15,7 @@ class StoreImportUploadRequest extends FormRequest
     {
         return [
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-            'type' => 'nullable|in:sites,devices',
+            'type' => 'nullable|in:sites,devices,region_workbook',
         ];
     }
 }

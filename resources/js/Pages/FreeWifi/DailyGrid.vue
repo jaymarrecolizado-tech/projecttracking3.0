@@ -40,10 +40,11 @@ defineProps({ site: Object, statuses: Object });
                 <span
                   class="px-2.5 py-1 rounded-full text-xs font-semibold" :class="{
                     'bg-green-100 text-green-700': status.status === 'UP',
-                    'bg-red-100 text-red-700': status.status === 'DOWN',
+                    'bg-red-100 text-red-700': status.status === 'DOWN' || status.status === 'DOWN_SERVER',
+                    'bg-amber-100 text-amber-700': status.status === 'NO_NMS',
                     'bg-slate-100 text-slate-500': status.status === 'NO_DATA',
                   }"
-                >{{ status.status }}</span>
+                >{{ status.status.replace('_', ' ') }}</span>
               </td>
               <td class="px-6 py-4 text-sm text-slate-700">{{ status.bandwidth_utilization_mbps }}</td>
               <td class="px-6 py-4 text-sm text-slate-700">{{ status.total_unique_users }}</td>

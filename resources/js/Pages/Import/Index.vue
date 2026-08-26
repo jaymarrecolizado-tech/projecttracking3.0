@@ -56,8 +56,9 @@ function submit() {
             id="import-type" v-model="form.type"
             class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
           >
-            <option value="sites">Sites & daily statuses</option>
-            <option value="devices">Devices (inventory)</option>
+                    <option value="region_workbook">Region status workbook (multi-sheet)</option>
+                    <option value="sites">Sites & daily statuses</option>
+                    <option value="devices">Devices (inventory)</option>
           </select>
           <div v-if="form.errors.type" class="text-xs text-red-600">{{ form.errors.type }}</div>
         </div>
