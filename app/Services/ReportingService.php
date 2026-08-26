@@ -1,11 +1,14 @@
 <?php
+
 namespace App\Services;
+
+use App\Models\FreewifiImportBatch;
 use App\Models\Project;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
-use App\Models\SiteAccomplishment;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;
+use Carbon\CarbonInterface;
+
 class ReportingService
 {
     public function generateProjectSummaryPdf(Project $project): \Barryvdh\DomPDF\PDF
@@ -18,20 +21,26 @@ class ReportingService
             'planned' => $sites->where('status', 'planned')->count(),
         ];
         if ($project->report_type === 'freewifi') {
-            $upCount = SiteDailyStatus::whereHas('site', fn($q) => $q->where('project_id', $project->id))
+            $upCount = SiteDailyStatus::whereHas('site', fn ($q) => $q->where('project_id', $project->id))
                 ->where('status', 'UP')->whereDate('date', today())->count();
             $stats['up_today'] = $upCount;
         }
+
         return Pdf::loadView('reports.project-summary', compact('project', 'sites', 'stats'));
     }
+
     public function generateProvinceReport(string $province, ?int $projectId = null): \Barryvdh\DomPDF\PDF
     {
         $query = Site::where('province', $province)->with('project');
-        if ($projectId) $query->where('project_id', $projectId);
+        if ($projectId) {
+            $query->where('project_id', $projectId);
+        }
         $sites = $query->get();
-        $grouped = $sites->groupBy(fn($s) => $s->municipality ?? 'Unknown');
+        $grouped = $sites->groupBy(fn ($s) => $s->municipality ?? 'Unknown');
+
         return Pdf::loadView('reports.province-summary', compact('province', 'sites', 'grouped'));
     }
+
     public function getDashboardStats(): array
     {
         return [
@@ -39,7 +48,70 @@ class ReportingService
             'total_sites' => Site::count(),
             'active_sites' => Site::where('status', 'active')->count(),
             'total_up_today' => SiteDailyStatus::where('status', 'UP')->whereDate('date', today())->count(),
-            'recent_imports' => \App\Models\FreewifiImportBatch::with('importer:id,name')->latest()->take(5)->get(),
+            'down_today' => SiteDailyStatus::where('status', 'DOWN')->whereDate('date', today())->count(),
+            'no_data_today' => max(
+                0,
+                Site::count() - SiteDailyStatus::whereIn('status', ['UP', 'DOWN'])->whereDate('date', today())->count(),
+            ),
+            'uptime_pct_7d' => $this->uptimePct(now()->subDays(6)->startOfDay(), now()->endOfDay()),
+            'trend' => $this->dailyTrend(14),
+            'recent_imports' => FreewifiImportBatch::with('importer:id,name')->latest()->take(5)->get(),
         ];
+    }
+
+    /** NOC wallboard payload — big numbers + who's down right now. */
+    public function getWallboardStats(): array
+    {
+        $downSites = Site::query()
+            ->whereHas('latestDailyStatus', fn ($q) => $q->where('status', 'DOWN'))
+            ->orderBy('location_name')
+            ->get(['id', 'location_name', 'municipality', 'province']);
+
+        return [
+            'total_sites' => Site::where('status', 'active')->count(),
+            'up_today' => SiteDailyStatus::where('status', 'UP')->whereDate('date', today())->count(),
+            'down_today' => SiteDailyStatus::where('status', 'DOWN')->whereDate('date', today())->count(),
+            'no_data_today' => max(
+                0,
+                Site::where('status', 'active')->count() - SiteDailyStatus::whereIn('status', ['UP', 'DOWN'])->whereDate('date', today())->count(),
+            ),
+            'uptime_pct_7d' => $this->uptimePct(now()->subDays(6)->startOfDay(), now()->endOfDay()),
+            'trend' => $this->dailyTrend(14),
+            'down_sites' => $downSites,
+            'generated_at' => now()->toDateTimeString(),
+        ];
+    }
+
+    private function dailyTrend(int $days): array
+    {
+        $start = today()->subDays($days - 1);
+
+        $rows = SiteDailyStatus::whereBetween('date', [$start, today()])
+            ->selectRaw("date,
+                SUM(CASE WHEN status = 'UP' THEN 1 ELSE 0 END) AS up_count,
+                SUM(CASE WHEN status = 'DOWN' THEN 1 ELSE 0 END) AS down_count")
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy(fn ($r) => $r->date->toDateString());
+
+        return collect(range(0, $days - 1))->map(function ($i) use ($rows, $start) {
+            $date = $start->copy()->addDays($i);
+            $row = $rows->get($date->toDateString());
+
+            return [
+                'date' => $date->format('M j'),
+                'up' => (int) ($row->up_count ?? 0),
+                'down' => (int) ($row->down_count ?? 0),
+            ];
+        })->values()->all();
+    }
+
+    private function uptimePct(CarbonInterface $from, CarbonInterface $to): float
+    {
+        $up = SiteDailyStatus::whereBetween('date', [$from, $to])->where('status', 'UP')->count();
+        $down = SiteDailyStatus::whereBetween('date', [$from, $to])->where('status', 'DOWN')->count();
+
+        return ($up + $down) > 0 ? round($up / ($up + $down) * 100, 1) : 0.0;
     }
 }
