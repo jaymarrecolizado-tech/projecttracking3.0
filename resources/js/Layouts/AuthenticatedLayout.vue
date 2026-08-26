@@ -5,6 +5,7 @@ import {
     IconDashboard, IconMap, IconFolder, IconBuilding, IconActivity,
     IconChecklist, IconUpload, IconReportAnalytics, IconRouter,
     IconMenu2, IconX, IconLogout, IconUser, IconTool, IconCalendarCheck,
+    IconUsersGroup,
 } from '@tabler/icons-vue'
 import ToastStack from '@/Components/ToastStack.vue'
 
@@ -43,6 +44,12 @@ const navGroups = [
         items: [
             { label: 'Import', route: 'import.index', icon: IconUpload, pattern: 'import.*' },
             { label: 'Reports', route: 'reports.index', icon: IconReportAnalytics, pattern: 'reports.*' },
+        ],
+    },
+    {
+        label: 'Administration',
+        items: [
+            { label: 'Users', route: 'users.index', icon: IconUsersGroup, pattern: 'users.*', permission: 'users.manage' },
         ],
     },
 ]

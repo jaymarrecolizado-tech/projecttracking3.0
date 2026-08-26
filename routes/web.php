@@ -12,6 +12,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
@@ -53,6 +54,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/daily-ops', [DailyOpsController::class, 'index'])->name('daily-ops.index');
     Route::post('/daily-ops/batch', [DailyOpsController::class, 'batch'])->name('daily-ops.batch');
+
+    // User administration
+    Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy'])
+        ->middleware('can:users.manage');
 
     Route::resource('accomplishments', AccomplishmentController::class)->only(['store', 'update', 'destroy'])->middleware('can:accomplishment.edit');
     Route::resource('accomplishments', AccomplishmentController::class)->only(['index', 'show']);

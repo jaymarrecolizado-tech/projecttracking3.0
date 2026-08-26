@@ -44,12 +44,13 @@ class AuthenticatedSessionController extends Controller
                 'provinces' => Site::whereNotNull('province')->distinct()->count('province'),
                 'upToday' => SiteDailyStatus::whereDate('date', today())->where('status', 'UP')->count(),
             ],
+            // Joined site columns ride on the model as dynamic attributes.
             'recent' => $recent->map(fn ($r) => [
-                'code' => $r->ap_site_code,
-                'name' => $r->location_name,
-                'municipality' => $r->municipality,
+                'code' => data_get($r, 'ap_site_code'),
+                'name' => data_get($r, 'location_name'),
+                'municipality' => data_get($r, 'municipality'),
                 'status' => $r->status,
-                'date' => $r->date ? \Carbon\Carbon::parse($r->date)->toDateString() : null,
+                'date' => $r->date->toDateString(),
             ]),
         ]);
     }
