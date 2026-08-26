@@ -1,41 +1,37 @@
-# Plan — Daily Site Status Updates
+# Plan — DICT FreeWiFi Monitor
 
-**Goal:** every active site gets an accurate daily `site_daily_statuses` record through two channels — automated heartbeat pushes and a fast manual **Daily Ops Board** — under the full DRAFT → SUBMITTED → APPROVED workflow. Silent sites are auto-marked `NO_DATA` at end of day.
+Living roadmap. Completed work stays listed for context; backlog at the bottom.
 
-**Status legend:** ☐ pending · 🔄 in progress · ✅ done
+## ✅ Shipped
 
----
+### Hardening (production baseline)
+- Scoped RBAC routes (create/edit/delete via policy methods), transactional writes, MySQL-safe SQL
+- Audit log redaction + payload caps, throttled auth routes, random dev credentials
+- Queued Excel imports (atomic per row) and queued PDF reports with tracked exports
+- Test suite (55 tests), CI (GitHub Actions), PHPStan L4, Pint, ESLint
 
-## Step 1 — Daily Ops API ✅
-- [x] `app/Http/Controllers/DailyOpsController.php`
-  - `GET /daily-ops` — date/project/province scoped payload; sites filtered by the user's project-scoped `daily.view`; includes each site's record for that date + reported/total counts
-  - `POST /daily-ops/batch` — transactional upserts; per-entry authorization (`daily.create` new / `daily.edit` edit / `daily.approve` for APPROVED rows); LOCKED rows rejected
-- [x] `app/Http/Requests/BulkDailyOpsRequest.php` — validation + `action` (`save_draft|submit|approve`)
-- [x] Routes registered in `routes/web.php`
+### Data platform
+- Region II workbook importer: multi-sheet classification (rosters → sites + MAC-addressed AP devices; month sheets → daily triplets), lifecycle mapping, project auto-creation, idempotent re-imports (`php scripts/import-region-workbook.php`)
+- Schema aligned with real data: site classification/providers/source-of-BW/lifecycle/acceptance/AP brand/declaration dates; NO_NMS + DOWN_SERVER statuses
+- 1,132 real sites · 253 AP devices · 14,270 day records loaded
 
-## Step 2 — Daily Ops Board UI ✅
-- [x] `resources/js/Pages/DailyOps/Index.vue`: date picker, project/province filters, municipality-grouped rows, UP/DOWN/NO NMS toggles, bandwidth/users/remarks inline, Save Draft / Submit / Approve buttons by permission, "mark remaining UP", live progress counter
-- [x] Sidebar nav entry (Monitoring group)
+### Daily status operations
+- **Daily Ops Board** (`/daily-ops`): date-scoped bulk entry, UP/DOWN/NO NMS toggles, DRAFT→SUBMITTED→APPROVED workflow, per-entry project-scoped permissions, LOCKED enforcement
+- **Heartbeat API** (`POST /api/heartbeat`, Sanctum tokens via Profile → Field Probe Tokens); rejects LOCKED records with 409
+- `statuses:remind` (07:00) encoder emails · `statuses:snapshot` (23:00) auto-NO_DATA
+- `alerts:down` (15 min) DOWN-episode email alerts
 
-## Step 3 — Scheduler ✅
-- [x] `statuses:remind` (07:00) — emails per-project encoders their unreported site count + link
-- [x] `statuses:snapshot` (23:00) — inserts `NO_DATA` DRAFT rows for active sites missing today's record (idempotent)
-- [x] Registered in `routes/console.php`
+### Visibility & ops
+- Dashboard trends + uptime %, NOC wallboard (auto-refresh), map with filters, Sites search/filters incl. "Down today"
+- Maintenance tickets, probe token management, DOWN alerts, warranty digest
+- DB backups (spatie/laravel-backup, 02:15 daily), report/import cleanup jobs
+- `nms:pull` command + `NmsClient` contract — bind an SNMP/REST client to go live
 
-## Step 4 — Heartbeat hardening ✅
-- [x] `POST /api/heartbeat` returns **409** instead of overwriting LOCKED rows
-
-## Step 5 — Tests ✅
-- [x] Ops board scopes sites to the encoder's assigned projects
-- [x] Submit flow sets `SUBMITTED` + `submitted_at`
-- [x] Approve requires `daily.approve` (encoder attempt skipped)
-- [x] LOCKED rejects manual edits *and* heartbeats (409)
-- [x] Snapshot idempotent, skips non-active sites
-- [x] Reminder mail sent to project encoders
-
-## Step 6 — Quality gates & commit ✅
-- [x] Pint · PHPStan · ESLint · vite build · full test suite
-- [x] Single feature commit
-
-## Backlog (not this pass)
-SMS notifications · `nms:pull` SNMP/CMS interface stub · DataTable shared component · Sites/Index search filters · DB backups · accessibility pass
+## 🔲 Backlog (priority order)
+1. **Deploy to Hostinger** — first real MySQL run: `mysqldump` on PATH for backups, `queue:restart` after deploy, cron `schedule:run`
+2. **SMS/Telegram alerts** — needs a gateway choice (ClickSend/Twilio/Telegram bot); hook into `alerts:down`
+3. **`device_metrics` time-series** — heartbeat currently stores one row/day; add high-frequency table + charts (docs Phase 2)
+4. **DataTable shared component** — extract from Sites/Devices/DailyGrid tables
+5. **Accessibility** — remaining: focus trap in mobile drawer, aria-live on ops counter, table captions
+6. **User management UI** — `users.manage` permission exists but no admin screen for users/role assignment
+7. **2FA for admin accounts** — Laravel Fortify or TOTP package

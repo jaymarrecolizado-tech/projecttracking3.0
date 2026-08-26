@@ -165,10 +165,11 @@ function markRemainingUp() {
             </span>
           </template>
           <template v-else>
-            <div class="flex rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex rounded-lg overflow-hidden border border-slate-200" role="group" :aria-label="`Set status for ${row.location_name}`">
               <button
                 type="button" class="px-3 py-1.5 text-xs font-semibold transition-colors inline-flex items-center gap-1"
                 :class="rowState(row).status === 'UP' ? 'bg-green-600 text-white' : 'bg-white text-slate-500 hover:bg-green-50'"
+                :aria-pressed="rowState(row).status === 'UP'"
                 @click="toggle(row.site_id, 'UP')"
               >
                 UP
@@ -176,6 +177,7 @@ function markRemainingUp() {
               <button
                 type="button" class="px-3 py-1.5 text-xs font-semibold transition-colors border-x border-slate-200 inline-flex items-center gap-1"
                 :class="rowState(row).status === 'DOWN' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-red-50'"
+                :aria-pressed="rowState(row).status === 'DOWN'"
                 @click="toggle(row.site_id, 'DOWN')"
               >
                 <IconCircleX v-if="rowState(row).status === 'DOWN'" class="w-3.5 h-3.5" /> DOWN
@@ -183,6 +185,7 @@ function markRemainingUp() {
               <button
                 type="button" class="px-3 py-1.5 text-xs font-semibold transition-colors"
                 :class="rowState(row).status === 'NO_NMS' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-amber-50'"
+                :aria-pressed="rowState(row).status === 'NO_NMS'"
                 @click="toggle(row.site_id, 'NO_NMS')"
               >
                 NO NMS

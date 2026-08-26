@@ -64,8 +64,11 @@ watch(sidebarOpen, (val) => {
 
 <template>
   <div class="flex min-h-screen bg-slate-50">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[600] focus:top-2 focus:left-2 focus:bg-white focus:text-blue-700 focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg">
+      Skip to content
+    </a>
     <!-- Desktop Sidebar -->
-    <aside class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-sidebar bg-gradient-to-b from-blue-800 to-blue-900 text-white z-30">
+    <aside class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-sidebar bg-gradient-to-b from-blue-800 to-blue-900 text-white z-30" aria-label="Primary navigation">
       <!-- Logo -->
       <div class="px-4 py-5 border-b border-blue-700/50">
         <div class="flex items-center gap-3">
@@ -128,8 +131,8 @@ watch(sidebarOpen, (val) => {
 
     <!-- Mobile Sidebar Overlay -->
     <div v-if="sidebarOpen" class="fixed inset-0 z-[500] lg:hidden">
-      <div class="fixed inset-0 bg-black/50" @click="sidebarOpen = false"></div>
-      <div class="fixed inset-y-0 left-0 w-sidebar bg-gradient-to-b from-blue-800 to-blue-900 text-white flex flex-col">
+      <div class="fixed inset-0 bg-black/50" aria-hidden="true" @click="sidebarOpen = false"></div>
+      <div class="fixed inset-y-0 left-0 w-sidebar bg-gradient-to-b from-blue-800 to-blue-900 text-white flex flex-col" role="dialog" aria-modal="true" aria-label="Navigation menu">
         <!-- Mobile Logo + Close -->
         <div class="px-4 py-5 border-b border-blue-700/50 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -141,7 +144,7 @@ watch(sidebarOpen, (val) => {
               <div class="text-[11px] text-blue-300 leading-tight">Device Operations</div>
             </div>
           </div>
-          <button class="text-blue-200 hover:text-white" @click="sidebarOpen = false">
+          <button class="text-blue-200 hover:text-white" aria-label="Close navigation menu" @click="sidebarOpen = false">
             <IconX class="w-6 h-6" />
           </button>
         </div>
@@ -199,14 +202,14 @@ watch(sidebarOpen, (val) => {
     <div class="flex-1 lg:ml-sidebar">
       <!-- Top Bar -->
       <header class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-200 h-16 flex items-center px-4 sm:px-6">
-        <button class="lg:hidden mr-3 text-slate-500 hover:text-slate-700" @click="sidebarOpen = true">
+        <button class="lg:hidden mr-3 text-slate-500 hover:text-slate-700" aria-label="Open navigation menu" :aria-expanded="sidebarOpen" @click="sidebarOpen = true">
           <IconMenu2 class="w-6 h-6" />
         </button>
         <slot name="header"></slot>
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 sm:p-6">
+      <main id="main-content" class="p-4 sm:p-6">
         <slot></slot>
       </main>
     </div>

@@ -43,22 +43,28 @@ async function copyToken() {
       <p class="text-sm font-medium text-emerald-800 mb-2">Token created — copy it now, it will not be shown again:</p>
       <div class="flex items-center gap-2">
         <code class="flex-1 text-xs bg-white border border-emerald-200 rounded px-3 py-2 font-mono break-all">{{ plainTextToken }}</code>
-        <button type="button" @click="copyToken"
-          class="px-3 py-2 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+        <button
+          type="button" class="px-3 py-2 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+          @click="copyToken"
+        >
           {{ copied ? 'Copied!' : 'Copy' }}
         </button>
       </div>
     </div>
 
-    <form @submit.prevent="create" class="flex items-end gap-2 max-w-xl">
+    <form class="flex items-end gap-2 max-w-xl" @submit.prevent="create">
       <div class="flex-1">
         <label for="token-name" class="block text-sm font-medium text-gray-700 mb-1">Token name</label>
-        <input id="token-name" v-model="form.name" type="text" placeholder="e.g. Barangay Hall probe"
-          class="w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-200" />
+        <input
+          id="token-name" v-model="form.name" type="text" placeholder="e.g. Barangay Hall probe"
+          class="w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-200"
+        />
         <InputError :message="form.errors.name" class="mt-1" />
       </div>
-      <button type="submit" :disabled="form.processing"
-        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition">
+      <button
+        type="submit" :disabled="form.processing"
+        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition"
+      >
         <IconKey class="w-4 h-4" /> Create token
       </button>
     </form>
@@ -69,8 +75,10 @@ async function copyToken() {
           <div class="text-sm font-medium text-gray-700">{{ token.name }}</div>
           <div class="text-xs text-gray-400">created {{ new Date(token.created_at).toLocaleDateString() }}</div>
         </div>
-        <button type="button" @click="revoke(token.id)"
-          class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800">
+        <button
+          type="button" class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800"
+          @click="revoke(token.id)"
+        >
           <IconTrash class="w-3.5 h-3.5" /> Revoke
         </button>
       </li>

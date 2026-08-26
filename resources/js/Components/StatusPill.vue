@@ -24,8 +24,13 @@ const style = computed(() => map[props.status] ?? { dot: 'bg-slate-400', text: '
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1.5" :class="[style.text, size === 'sm' ? 'text-xs' : 'text-sm']">
-    <span class="rounded-full shrink-0" :class="[style.dot, size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2']"></span>
+  <span
+    class="inline-flex items-center gap-1.5"
+    :class="[style.text, size === 'sm' ? 'text-xs' : 'text-sm']"
+    role="status"
+    :aria-label="`Status: ${status.replace('_', ' ')}`"
+  >
+    <span class="rounded-full shrink-0" :class="[style.dot, size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2']" aria-hidden="true"></span>
     <span class="font-medium">{{ status.replace('_', ' ') }}</span>
   </span>
 </template>

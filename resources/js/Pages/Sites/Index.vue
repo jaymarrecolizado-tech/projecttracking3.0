@@ -62,37 +62,47 @@ const statusStyles = {
           <label for="site-search" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Search</label>
           <div class="relative">
             <IconSearch class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input id="site-search" v-model="form.search" type="text" placeholder="Name, site code, municipality, barangay…"
-              class="w-full rounded-lg border-slate-300 text-sm pl-9 focus:border-blue-500 focus:ring-blue-200" />
+            <input
+              id="site-search" v-model="form.search" type="text" placeholder="Name, site code, municipality, barangay…"
+              class="w-full rounded-lg border-slate-300 text-sm pl-9 focus:border-blue-500 focus:ring-blue-200"
+            />
           </div>
         </div>
         <div v-if="!project">
           <label for="site-project" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Project</label>
-          <select id="site-project" v-model="form.project_id" @change="apply"
-            class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200 max-w-[200px]">
+          <select
+            id="site-project" v-model="form.project_id" class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200 max-w-[200px]"
+            @change="apply"
+          >
             <option value="">All Projects</option>
             <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>
         <div>
           <label for="site-status" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status</label>
-          <select id="site-status" v-model="form.status" @change="apply"
-            class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200">
+          <select
+            id="site-status" v-model="form.status" class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200"
+            @change="apply"
+          >
             <option value="">All</option>
             <option v-for="label in ['active', 'inactive', 'planned', 'maintenance', 'decommissioned']" :key="label" :value="label">{{ label }}</option>
           </select>
         </div>
         <div>
           <label for="site-province" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Province</label>
-          <select id="site-province" v-model="form.province" @change="apply"
-            class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200 max-w-[180px]">
+          <select
+            id="site-province" v-model="form.province" class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200 max-w-[180px]"
+            @change="apply"
+          >
             <option value="">All</option>
             <option v-for="prov in provinces" :key="prov" :value="prov">{{ prov }}</option>
           </select>
         </div>
         <label class="inline-flex items-center gap-2 text-sm text-slate-600 pb-1.5 cursor-pointer">
-          <input type="checkbox" v-model="form.today" true-value="down" false-value=""
-            class="rounded border-slate-300 text-blue-600 focus:ring-blue-200" />
+          <input
+            v-model="form.today" type="checkbox" true-value="down" false-value=""
+            class="rounded border-slate-300 text-blue-600 focus:ring-blue-200"
+          />
           Down today
         </label>
       </div>
@@ -125,12 +135,14 @@ const statusStyles = {
               <td class="px-6 py-4 text-sm">
                 <span class="inline-flex items-center gap-2">
                   <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="statusStyles[site.status] || 'bg-slate-100 text-slate-500'">{{ site.status }}</span>
-                  <span v-if="site.latest_daily_status" class="text-[11px] font-medium" :class="{
-                    'text-green-600': site.latest_daily_status.status === 'UP',
-                    'text-red-600': ['DOWN', 'DOWN_SERVER'].includes(site.latest_daily_status.status),
-                    'text-amber-600': site.latest_daily_status.status === 'NO_NMS',
-                    'text-slate-400': site.latest_daily_status.status === 'NO_DATA',
-                  }">{{ site.latest_daily_status.status.replace('_', ' ') }}</span>
+                  <span
+                    v-if="site.latest_daily_status" class="text-[11px] font-medium" :class="{
+                      'text-green-600': site.latest_daily_status.status === 'UP',
+                      'text-red-600': ['DOWN', 'DOWN_SERVER'].includes(site.latest_daily_status.status),
+                      'text-amber-600': site.latest_daily_status.status === 'NO_NMS',
+                      'text-slate-400': site.latest_daily_status.status === 'NO_DATA',
+                    }"
+                  >{{ site.latest_daily_status.status.replace('_', ' ') }}</span>
                 </span>
               </td>
               <td class="px-6 py-4 text-sm">
@@ -154,13 +166,13 @@ const statusStyles = {
         :is="link.url ? 'button' : 'span'"
         v-for="(link, i) in sites.links"
         :key="i"
-        @click="link.url && router.get(link.url, {}, { preserveState: true })"
         class="min-w-[2.25rem] text-center px-2 py-1.5 text-sm rounded-lg"
         :class="link.active
-            ? 'bg-blue-600 text-white font-medium'
-            : link.url
-                ? 'dict-card text-slate-600 hover:bg-slate-100 cursor-pointer'
-                : 'text-slate-300'"
+          ? 'bg-blue-600 text-white font-medium'
+          : link.url
+            ? 'dict-card text-slate-600 hover:bg-slate-100 cursor-pointer'
+            : 'text-slate-300'"
+        @click="link.url && router.get(link.url, {}, { preserveState: true })"
         v-html="link.label"
       />
     </div>
