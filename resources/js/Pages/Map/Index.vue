@@ -41,7 +41,17 @@ const loadGeoJson = async () => {
                     ${p.bandwidth ? `Bandwidth: ${p.bandwidth} Mbps<br>` : ''}
                     ${p.users ? `Users: ${p.users}<br>` : ''}
                 </div>
-            `);
+            `, { sticky: true });
+            // Hover previews the same details; click pins the popup (touch-friendly).
+            layer.on('mouseover', () => layer.openPopup());
+            layer.on('mouseout', () => {
+                if (!layer.isPopupOpen() || !layer._clickPinned) layer.closePopup();
+            });
+            layer.on('click', () => {
+                layer._clickPinned = true;
+                layer.openPopup();
+            });
+            layer.getPopup().on('remove', () => (layer._clickPinned = false));
         }
     });
     geojsonLayer.value.addTo(map.value);
