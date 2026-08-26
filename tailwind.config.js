@@ -15,7 +15,8 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
-            width: {
+            // `spacing` (not `width`) so both w-sidebar AND ml-sidebar utilities generate.
+            spacing: {
                 'sidebar': '16rem',
             },
         },

@@ -78,20 +78,25 @@ class DemoContentSeeder extends Seeder
             for ($d = 7; $d >= 1; $d--) {
                 $date = Carbon::today()->subDays($d);
                 $isDown = $downDay === $d || ($name === "People's Park Gazebo" && $d === 3);
-                SiteDailyStatus::updateOrCreate(
-                    ['site_id' => $site->id, 'date' => $date->toDateString()],
-                    [
-                        'status' => $isDown ? 'DOWN' : 'UP',
-                        'bandwidth_utilization_mbps' => $isDown ? 0 : round($site->bw_download_cir * (0.35 + (($site->id * $d) % 40) / 100), 1),
-                        'total_unique_users' => $isDown ? 0 : 80 + (($site->id * 37 + $d * 53) % 420),
-                        'uptime_percent' => $isDown ? 62.5 : 99.2,
-                        'created_by' => $admin?->id,
-                        'submitted_at' => now(),
-                        'entry_status' => 'APPROVED',
-                        'approved_by' => $admin?->id,
-                        'approved_at' => now(),
-                    ]
-                );
+                $attributes = [
+                    'status' => $isDown ? 'DOWN' : 'UP',
+                    'bandwidth_utilization_mbps' => $isDown ? 0 : round($site->bw_download_cir * (0.35 + (($site->id * $d) % 40) / 100), 1),
+                    'total_unique_users' => $isDown ? 0 : 80 + (($site->id * 37 + $d * 53) % 420),
+                    'uptime_percent' => $isDown ? 62.5 : 99.2,
+                    'created_by' => $admin?->id,
+                    'submitted_at' => now(),
+                    'entry_status' => 'APPROVED',
+                    'approved_by' => $admin?->id,
+                    'approved_at' => now(),
+                ];
+                // whereDate sidesteps the date-cast binding mismatch that makes
+                // updateOrCreate double-insert against Y-m-d stored values.
+                $status = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', $date)->first();
+                if ($status) {
+                    $status->fill($attributes)->save();
+                } else {
+                    SiteDailyStatus::create($attributes + ['site_id' => $site->id, 'date' => $date->toDateString()]);
+                }
             }
         }
 
