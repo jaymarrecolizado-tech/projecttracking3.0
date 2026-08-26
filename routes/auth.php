@@ -61,10 +61,14 @@ Route::middleware('auth')->group(function () {
 });
 
 // Profile routes
+use App\Http\Controllers\ProbeTokenController;
 use App\Http\Controllers\ProfileController;
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::post('/profile/probe-tokens', [ProbeTokenController::class, 'store'])->name('probe-tokens.store');
+    Route::delete('/profile/probe-tokens/{tokenId}', [ProbeTokenController::class, 'destroy'])->name('probe-tokens.destroy');
 });

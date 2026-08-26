@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
+import ProbeTokens from './Partials/ProbeTokens.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head } from '@inertiajs/vue3';
@@ -11,6 +12,14 @@ defineProps({
     },
     status: {
         type: String,
+    },
+    tokens: {
+        type: Array,
+        default: () => [],
+    },
+    plainTextToken: {
+        type: String,
+        default: '',
     },
 });
 </script>
@@ -43,6 +52,12 @@ defineProps({
           class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
         >
           <UpdatePasswordForm class="max-w-xl" />
+        </div>
+
+        <div
+          class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
+        >
+          <ProbeTokens :tokens="tokens" :plain-text-token="plainTextToken" class="max-w-xl" />
         </div>
 
         <div
