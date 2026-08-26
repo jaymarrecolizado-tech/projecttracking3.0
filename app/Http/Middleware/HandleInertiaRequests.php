@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -34,11 +35,21 @@ class HandleInertiaRequests extends Middleware
         if ($user) {
             // Load roles and permissions to pluck all unique permission names
             $user->loadMissing('roles.permissions');
-            $permissions = $user->roles->flatMap->permissions->pluck('name')->unique()->values()->toArray();
+            $permissions = $user->roles
+                ->flatMap(fn (Role $role) => $role->permissions)
+                ->pluck('name')
+                ->unique()
+                ->values()
+                ->toArray();
         }
 
         return [
             ...parent::share($request),
+            'csrf_token' => csrf_token(),
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'auth' => [
                 'user' => $user,
                 'permissions' => $permissions,

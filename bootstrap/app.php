@@ -1,8 +1,15 @@
 <?php
 
+use App\Http\Middleware\AuditLogMiddleware;
+use App\Http\Middleware\EnsureUserHasPermission;
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\HandleCors;
+use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,25 +20,28 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
 
         $middleware->web(append: [
-            \App\Http\Middleware\AuditLogMiddleware::class,
+            AuditLogMiddleware::class,
         ]);
 
         $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
+            HandleCors::class,
         ]);
 
         $middleware->throttleApi('api');
 
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
-            'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
+            'role' => EnsureUserHasRole::class,
+            'permission' => EnsureUserHasPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Error monitoring activates only when a DSN is configured (see .env.example).
+        if ((bool) env('SENTRY_ENABLED', false) && env('SENTRY_LARAVEL_DSN')) {
+            Integration::handleThrowable($exceptions);
+        }
     })->create();
