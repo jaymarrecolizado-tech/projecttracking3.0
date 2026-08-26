@@ -90,7 +90,7 @@
     </table>
 
     <div class="footer">
-        DICT-MRIS Multi-Project Reporting & Information System — Confidential
+        FreeWiFi Monitor — Device Operations — Confidential
     </div>
 </body>
 </html>

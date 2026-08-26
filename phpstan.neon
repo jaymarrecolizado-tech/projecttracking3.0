@@ -1,0 +1,10 @@
+includes: []
+parameters:
+    level: 4
+    paths:
+        - app/
+        - database/migrations/
+        - routes/
+    excludePaths:
+        analyseAndScan:
+            - storage

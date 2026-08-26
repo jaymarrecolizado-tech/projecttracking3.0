@@ -1,9 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
 
-const props = defineProps({ projects: Array });
+defineProps({ projects: Array });
 
 const mapContainer = ref(null);
 const map = ref(null);
@@ -60,41 +60,45 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Map View" />
-    <AuthenticatedLayout>
-        <template #header>
-            <h2 class="font-semibold text-lg text-slate-800 leading-tight">Map View</h2>
-        </template>
+  <Head title="Map View" />
+  <AuthenticatedLayout>
+    <template #header>
+      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Map View</h2>
+    </template>
 
-        <div>
-            <!-- Filters -->
-            <div class="dict-card p-4 mb-4">
-                <div class="flex flex-wrap items-end gap-4">
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Project</label>
-                        <select v-model="selectedProject" @change="loadGeoJson"
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Projects</option>
-                            <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-                        </select>
-                    </div>
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-                        <select v-model="selectedStatus" @change="loadGeoJson"
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                            <option value="planned">Planned</option>
-                            <option value="decommissioned">Decommissioned</option>
-                            <option value="maintenance">Maintenance</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Map -->
-            <div ref="mapContainer" class="rounded-lg overflow-hidden shadow-sm border border-slate-200" style="height: 600px;"></div>
+    <div>
+      <!-- Filters -->
+      <div class="dict-card p-4 mb-4">
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Project</label>
+            <select
+              v-model="selectedProject" class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+              @change="loadGeoJson"
+            >
+              <option value="">All Projects</option>
+              <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+          <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+            <select
+              v-model="selectedStatus" class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+              @change="loadGeoJson"
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="planned">Planned</option>
+              <option value="decommissioned">Decommissioned</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
         </div>
-    </AuthenticatedLayout>
+      </div>
+
+      <!-- Map -->
+      <div ref="mapContainer" class="rounded-lg overflow-hidden shadow-sm border border-slate-200" style="height: 600px;"></div>
+    </div>
+  </AuthenticatedLayout>
 </template>
