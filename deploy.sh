@@ -8,6 +8,11 @@ echo "🚀 Starting Valkyrie Deployment Protocol..."
 # Ensure we are in the script's directory
 cd "$(dirname "$0")"
 
+# 0. Preflight — the 02:15 spatie/laravel-backup dump shells out to mysqldump.
+if ! command -v mysqldump >/dev/null 2>&1; then
+    echo "⚠️  mysqldump is not on PATH — nightly DB backups will fail until it is available."
+fi
+
 # 1. Pull latest code (Uncomment if using Git)
 # echo "📥 Pulling latest code..."
 # git pull origin main
