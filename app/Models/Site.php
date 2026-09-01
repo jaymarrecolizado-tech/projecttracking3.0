@@ -26,7 +26,7 @@ class Site extends Model
         'date_of_activation', 'status', 'lifecycle_status', 'isp_provider', 'cms_provider',
         'link_provider', 'source_of_bw', 'last_mile_tech', 'bw_download_cir',
         'accepted', 'ap_brand', 'declaration_date', 'integrated_date', 'school_id',
-        'loc_id', 'prov_id', 'metadata', 'created_by', 'updated_by'];
+        'loc_id', 'prov_id', 'metadata', 'created_by', 'updated_by', 'last_alerted_at'];
 
     protected $casts = [
         'latitude' => 'decimal:7',
