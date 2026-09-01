@@ -1,98 +1,95 @@
 # Plan — DICT FreeWiFi Monitor
 
-Living roadmap. Completed work stays listed for context; backlog at the bottom.
+Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = not built, or built locally but not on production.
 
-## ✅ Shipped
-
-### Hardening (production baseline)
-- Scoped RBAC routes (create/edit/delete via policy methods), transactional writes, MySQL-safe SQL
-- Audit log redaction + payload caps, throttled auth routes, random dev credentials
-- Queued Excel imports (atomic per row) and queued PDF reports with tracked exports
-- Test suite (55 tests), CI (GitHub Actions), PHPStan L4, Pint, ESLint
-
-### Data platform
-- Region II workbook importer: multi-sheet classification (rosters → sites + MAC-addressed AP devices; month sheets → daily triplets), lifecycle mapping, project auto-creation, idempotent re-imports (`php scripts/import-region-workbook.php`)
-- Schema aligned with real data: site classification/providers/source-of-BW/lifecycle/acceptance/AP brand/declaration dates; NO_NMS + DOWN_SERVER statuses
-- 1,132 real sites · 253 AP devices · 14,270 day records loaded
-
-### Daily status operations
-- **Daily Ops Board** (`/daily-ops`): date-scoped bulk entry, UP/DOWN/NO NMS toggles, DRAFT→SUBMITTED→APPROVED workflow, per-entry project-scoped permissions, LOCKED enforcement
-- **Heartbeat API** (`POST /api/heartbeat`, Sanctum tokens via Profile → Field Probe Tokens); rejects LOCKED records with 409
-- `statuses:remind` (07:00) encoder emails · `statuses:snapshot` (23:00) auto-NO_DATA
-- `alerts:down` (15 min) DOWN-episode email alerts
-
-### Visibility & ops
-- Dashboard trends + uptime %, NOC wallboard (auto-refresh), map with filters, Sites search/filters incl. "Down today"
-- Maintenance tickets, probe token management, DOWN alerts, warranty digest
-- DB backups (spatie/laravel-backup, 02:15 daily), report/import cleanup jobs
-- `nms:pull` command + `NmsClient` contract — bind an SNMP/REST client to go live
-
-### User administration
-- Create/edit users with role assignment and project scoping, deactivation enforced at login (`user:make` command)
-
-### Branding & UX polish
-- FPIAP rebrand across login, sidebar, wallboard, device labels, PDF report footers, mail subjects, APP_NAME
-- Sites/Projects row-click navigation; Projects "New Project" button removed (projects are import/command-managed)
-- Fixed silent camelCase/snake_case payload mismatches on Sites pages (`latest_daily_status`, `active_deployments`) with null-safe rendering
-- Relative route URLs via Ziggy (`config/ziggy.php`) + `ASSET_URL` support for deploy behind a CDN/tunnel
-- Feature tests for Projects/Sites pages
-
-### Security & hardening (2026-09)
-- **2FA (TOTP)** for privileged accounts: RFC 6238 engine (`App\Support\Totp`), QR enrollment on Profile (`users.manage` gated), login challenge screen (`/two-factor-challenge`, throttled 5/min), disable requires a current code; secret hidden from all serialization. Suite: 80 tests.
-- **Telegram DOWN alerts** alongside email — `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`, free channel, no gateway contract; email stays the backbone. Fixed a silent dedupe bug (`sites.last_alerted_at` was not fillable → alerts re-sent every 15 min per episode).
-- **device_metrics time-series** (docs §Phase 2): heartbeat accepts the full telemetry payload (uptime/cpu/mem/latency/clients/throughput/power/firmware), writes one row per beat; 48h sparklines on the device page; `metrics:prune` retention command (03:00 daily).
-- **Deploy prep**: `docs/DEPLOY.md` runbook, `deploy.sh` mysqldump preflight, `ASSET_URL` documented.
-- **DataTable** shared component (Sites/Devices/DailyGrid) and **accessibility** pass: mobile drawer focus trap + Escape + focus restore, aria-live ops counter, sr-only table captions.
-
-### Map geo filters + Site Type coverage (2026-09)
-
-Verified 2026-09-01: **implemented in the local repo; not on production** (`fpiapr2.dictr2.cloud` still has the old map — no `SiteCoverageService`, no `storage/app/geo`).
-
-#### Implemented (local)
-
-| Item | Where |
-|---|---|
-| `legislative_districts` + `sites:backfill-districts` | 1,132/1,132 local sites have a district; unknown LGUs stay NULL |
-| `config/site_types.php` labels | PES, PHS, LGU-BRGY, … |
-| Cascading dropdowns: Province → District → Municipality → Barangay + Project + Site Type | `GeoFilterFields.vue` on Map and Reports; `/map/filter-options` |
-| URL state for map filters | `?province=&district=&municipality=&barangay=` |
-| Deployed-device markers (default), clustered, colored by site daily status; All-sites toggle | `/map/geojson?deployed_only=1`, `useLeafletMap.js` |
-| Province + municipality polygons, highlight, fit bounds, click-to-filter | `storage/app/geo/provinces.geojson`, `municipalities.geojson`, `/map/boundaries` |
-| Site Type coverage panel (registered vs actual vs devices) | `SiteCoverageService`, `/map/coverage`, `MapStatsPanel.vue` |
-| Site Type Coverage PDF | `POST /reports/site-type`, Reports page card |
-| Tests | `LegislativeDistrictBackfillTest`, `MapGeoJsonTest`, `SiteCoverageTest` |
-
-#### Remaining (local code complete — as of 2026-09-01)
-
-| Item | Status |
-|---|---|
-| **Deploy this slice to production** | Still open — needs the server: migrate, `LegislativeDistrictSeeder` + `AlertRuleSeeder`, `sites:backfill-districts`, `storage/app/geo` ships with the repo, Vite build to **both** web root `build/` and `fpiap-app/public/build`. Do not `route:cache`. |
-| **District polygons** | DONE — `districts.geojson`, 12 districts dissolved from municipality polygons via the `legislative_districts` lookup. |
-| **Barangay polygons** | DONE — `barangays.geojson`, 2,197 barangays (OCHA COD-AB ADM4 subset, simplified). |
-| **Click-to-filter for district / barangay** | DONE — full drill chain: province > district > municipality > barangay, click applies the matching filter. |
-| **3 LGUs without polygons** | DONE — `Cagaban`/`Cauayan` alias polygons; `Uyugan` dissolved from its OCHA barangays. All 95 LGUs now highlight. |
-| **Site status dropdown on the map** | DONE — restored on the map controls beside the deployed-devices toggle. |
-| **Name/PSGC matching** | Open — municipality/barangay features now carry `psgc` codes; attach them to sites at the next import (`loc_id`/`prov_id` free). |
-
-Out of scope until a later region import: nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
+**Production (`fpiapr2.dictr2.cloud`):** still the older deploy. Missing 2FA, map geo/coverage, geo files, Phase 2 alert engine. Shipping the local tree is backlog #1.
 
 ---
 
-### Barangay coverage report (2026-09-01)
+## Done
 
-- **Barangay Coverage — Installed vs Total**: barangays with at least one registered Free WiFi site vs the total barangays per municipality/province, with % remaining to install. `BarangayCoverageService` + `/map/barangay-coverage` + queued **PDF** (`/reports/barangay-coverage`, card on Reports page). Live on real data: **402 of 2,262 barangays covered (17.8%), 1,860 remaining**; Tuguegarao City 12/49 (24.5%).
-- `barangay_references` reference table + `barangays:sync-reference` — totals are correctable to the PSA figure (2,311): the boundary layer matches PSA exactly for the big LGUs (Tuguegarao 49, Ilagan 91, Cauayan 65, Santiago 37, Batanes 29) but the OCHA snapshot leaves Region II **49 barangays short** overall; add missing rows to the table and percentages update immediately (upsert-only — manual rows survive re-syncs).
-- Normalizer (`App\Support\NameNormalizer`) unifies "Ilagan City" / "City of Ilagan" / "Basco (Capital)" spellings between sites, PSA and boundary data.
+### Hardening (production baseline)
+- [x] Scoped RBAC (`can:` + policies), transactional writes, MySQL-safe SQL
+- [x] Audit log redaction + payload caps, throttled auth routes, random `setup.ps1` admin password
+- [x] Queued Excel imports (atomic per row) and queued PDF reports with tracked exports
+- [x] CI: GitHub Actions, PHPStan L4, Pint, ESLint, PHPUnit — **111 tests**
 
-## ✅ Shipped (2026-09-01, this slice)
+### Data platform
+- [x] Region II workbook importer (`php scripts/import-region-workbook.php`)
+- [x] Schema aligned with workbook (classification, providers, lifecycle, NO_NMS / DOWN_SERVER)
+- [x] Local data loaded: 1,132 sites · 253 AP devices · 14,270 day records
+- [x] `config/site_types.php` labels (PES, PHS, LGU-BRGY, …)
+- [x] `App\Support\NameNormalizer` (Ilagan City / City of Ilagan / Basco Capital)
 
-- **Boundary layers complete**: `districts.geojson` (12 dissolved districts), `barangays.geojson` (2,197, OCHA COD-AB ADM4 subset), and all 95 LGUs with polygons — `Cagaban`/`Cauayan` aliases, `Uyugan` dissolved from its barangays. Full province > district > municipality > barangay click-to-filter; site-status control back on the map.
-- **Phase 2 monitoring** (docs §4.2-4.3): `site_status_events` (one open episode per site; heartbeat closes `heartbeat_lost` episodes), `alert_rules` + `alerts` with the `alerts:evaluate` engine (every 5 min) — seeded defaults: offline >10 min, latency >150 ms for 30 min, battery <11.8 V, bandwidth >85% of CIR; notify via rule-role email + Telegram (warning/critical); auto-resolve on recovery. `device_metric_hourlies` + `metrics:aggregate` (hourly). Suite: 106 tests.
+### Daily status operations
+- [x] Daily Ops Board (`/daily-ops`)
+- [x] Heartbeat API (`POST /api/heartbeat`, Sanctum probe tokens); 409 on LOCKED
+- [x] `statuses:remind` (07:00) · `statuses:snapshot` (23:00 NO_DATA) · `alerts:down` (15 min)
 
-## 🔲 Backlog (priority order)
-1. **Ship everything to production** (`fpiapr2.dictr2.cloud`) — migrate, seeders, `sites:backfill-districts`, Vite to both web roots, `cache:clear`; runbook `docs/DEPLOY.md`
-2. **Alerts UI** — list/acknowledge alerts and manage rules (tables + engine done; `acknowledged_at/by`, `escalation_level` columns ready)
-3. **PSA barangay reconciliation** — source the official PSA 2,311 list and add the ~49 missing barangays to `barangay_references` (upsert-only; percentages update immediately)
-4. **PSGC join for sites** — attach `adm*_pcode` to sites at the next import so name matching goes away
-5. **Controller polling** — bind a real SNMP/REST client to `nms:pull` when sites are NOC-reachable
-6. **SMS gateway** — if Telegram alone is insufficient (ClickSend/Twilio) — hook next to the Telegram service
+### Visibility & ops
+- [x] Dashboard trends + uptime % · NOC wallboard (30s reload, counters, down list, 14-day bars)
+- [x] Sites search/filters including “Down today”
+- [x] Maintenance tickets · probe tokens · warranty digest
+- [x] Spatie backups (02:15) · report/import cleanup jobs
+- [x] `nms:pull` command + `NmsClient` contract (no live SNMP/REST bind yet — see backlog)
+
+### User administration
+- [x] Create/edit users, role + project scope, deactivation at login, `user:make`
+
+### Branding & UX
+- [x] FPIAP rebrand (login, sidebar, wallboard, labels, PDF footers, mail, `APP_NAME`)
+- [x] Sites/Projects row-click; Projects create button removed
+- [x] `latest_daily_status` / `active_deployments` payload casing
+- [x] Ziggy relative routes + `ASSET_URL`
+- [x] DataTable (Sites / Devices / DailyGrid)
+- [x] A11y: mobile drawer focus trap + Escape + restore, aria-live ops counter, sr-only captions
+
+### Security & monitoring (2026-09)
+- [x] 2FA TOTP (`App\Support\Totp`), Profile QR (`users.manage`), `/two-factor-challenge`
+- [x] Telegram DOWN alerts (`TELEGRAM_*`) alongside email; `last_alerted_at` fillable
+- [x] `device_metrics` time-series + 48h sparklines + `metrics:prune` (03:00)
+- [x] `device_metric_hourlies` + `metrics:aggregate` (hourly)
+- [x] `site_status_events` (heartbeat opens/closes `heartbeat_lost`)
+- [x] `alert_rules` + `alerts` + `alerts:evaluate` (every 5 min); seeded: offline >10 min, latency >150 ms / 30 min, battery <11.8 V, bandwidth >85% CIR; email + Telegram; auto-resolve
+- [x] `docs/DEPLOY.md` + `deploy.sh` mysqldump preflight
+
+### Map geo filters + Site Type coverage (2026-09) — local only
+- [x] `legislative_districts` + `sites:backfill-districts` (1,132/1,132 local sites)
+- [x] Cascading filters: Province → District → Municipality → Barangay + Project + Site Type + site status
+- [x] URL state; `/map/filter-options`
+- [x] Deployed-device markers (default, clustered, daily-status color) + All-sites toggle
+- [x] Polygons in `storage/app/geo/`: provinces, municipalities, `districts.geojson` (12), `barangays.geojson` (2,197)
+- [x] Highlight + fit bounds + click-to-filter: province → district → municipality → barangay
+- [x] LGU holes closed: Cagaban/Cauayan aliases, Uyugan from OCHA barangays (95 LGUs)
+- [x] Site Type coverage panel + queued PDF (`/map/coverage`, `/reports/site-type`)
+- [x] Tests: `LegislativeDistrictBackfillTest`, `MapGeoJsonTest`, `SiteCoverageTest`
+
+### Barangay coverage (2026-09)
+- [x] Installed vs total barangays (`BarangayCoverageService`, `/map/barangay-coverage`, `/reports/barangay-coverage`)
+- [x] `barangay_references` + `barangays:sync-reference` (upsert-only)
+
+Out of scope (not started, not promised this slice): nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
+
+---
+
+## Open (backlog)
+
+1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate, `LegislativeDistrictSeeder` + `AlertRuleSeeder`, `sites:backfill-districts`, `storage/app/geo`, Vite to **both** web root `build/` and `fpiap-app/public/build`, `cache:clear` / `view:clear`. Do not `route:cache`.
+2. **Alerts UI** — list / acknowledge / manage rules (tables + engine done; `acknowledged_at/by`, `escalation_level` unused in UI).
+3. **PSA barangay list** — add ~49 missing rows to `barangay_references` so totals match PSA 2,311.
+4. **PSGC on sites** — write `adm*_pcode` into `loc_id` / `prov_id` on the next import; optional: fill `sites.district` from `legislative_districts` when the workbook has no District column.
+5. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull`.
+6. **Firmware-age alert rule** — docs §4.3 “firmware older than latest-approved” (not in `AlertRuleSeeder`).
+7. **Wallboard extras** — live site map + active-alerts feed (counters/down list already there).
+8. **Daily status from metrics** — `statuses:snapshot` still inserts `NO_DATA`; not a metrics rollup into APPROVED daily rows.
+9. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
+10. **Phase 3 ops** (docs): SLA PDF vs target, firmware fleet view, solar power analytics, field inspection form, public unauthenticated map.
+
+---
+
+## Deploy notes (when shipping #1)
+
+- Copy app + `storage/app/geo` (not into the nginx document root as PHP).
+- Sync Vite `public/build` to the domain folder **and** `fpiap-app/public`.
+- Duplicate route name `dashboard` — never `php artisan route:cache`.
+- Runbook: `docs/DEPLOY.md`.

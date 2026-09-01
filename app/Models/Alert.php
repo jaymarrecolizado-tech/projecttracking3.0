@@ -35,6 +35,12 @@ class Alert extends Model
         return $this->belongsTo(Device::class);
     }
 
+    /** @return BelongsTo<User, $this> */
+    public function acknowledger(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'acknowledged_by');
+    }
+
     public function isOpen(): bool
     {
         return $this->resolved_at === null;

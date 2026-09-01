@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccomplishmentController;
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\DailyOpsController;
 use App\Http\Controllers\DailyStatusController;
 use App\Http\Controllers\DashboardController;
@@ -58,6 +59,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/daily-ops', [DailyOpsController::class, 'index'])->name('daily-ops.index');
     Route::post('/daily-ops/batch', [DailyOpsController::class, 'batch'])->name('daily-ops.batch');
+
+    // Alerts console — audience matches the notification recipients.
+    Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index')->middleware('can:daily.approve');
+    Route::post('/alerts/{alert}/acknowledge', [AlertController::class, 'acknowledge'])->name('alerts.acknowledge')->middleware('can:daily.approve');
+    Route::post('/alerts/{alert}/resolve', [AlertController::class, 'resolve'])->name('alerts.resolve')->middleware('can:daily.approve');
+    Route::post('/alert-rules', [AlertController::class, 'storeRule'])->name('alert-rules.store')->middleware('can:users.manage');
+    Route::put('/alert-rules/{rule}', [AlertController::class, 'updateRule'])->name('alert-rules.update')->middleware('can:users.manage');
+    Route::delete('/alert-rules/{rule}', [AlertController::class, 'destroyRule'])->name('alert-rules.destroy')->middleware('can:users.manage');
 
     // User administration
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy'])

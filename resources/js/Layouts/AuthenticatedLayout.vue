@@ -5,7 +5,7 @@ import {
     IconDashboard, IconMap, IconFolder, IconBuilding, IconActivity,
     IconChecklist, IconUpload, IconReportAnalytics, IconRouter,
     IconMenu2, IconX, IconLogout, IconUser, IconTool, IconCalendarCheck,
-    IconUsersGroup,
+    IconUsersGroup, IconAlertTriangle,
 } from '@tabler/icons-vue'
 import ToastStack from '@/Components/ToastStack.vue'
 
@@ -33,6 +33,7 @@ const navGroups = [
     {
         label: 'Monitoring',
         items: [
+            { label: 'Alerts', route: 'alerts.index', icon: IconAlertTriangle, pattern: 'alerts.*', permission: 'daily.approve' },
             { label: 'Daily Ops', route: 'daily-ops.index', icon: IconCalendarCheck, pattern: 'daily-ops.*', permission: 'daily.view' },
             { label: 'Daily Statuses', route: 'daily-statuses.index', icon: IconActivity, pattern: 'daily-statuses.*' },
             { label: 'Accomplishments', route: 'accomplishments.index', icon: IconChecklist, pattern: 'accomplishments.*' },
