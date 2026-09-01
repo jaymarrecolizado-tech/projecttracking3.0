@@ -125,6 +125,46 @@ class AlertRuleEngineTest extends TestCase
         $this->assertGreaterThan(10, $alert->context['observed']);
     }
 
+    public function test_firmware_outdated_rule_compares_approved_list(): void
+    {
+        Mail::shouldReceive('raw')->once()->andReturnNull();
+        config()->set('monitoring.approved_firmware', ['v2.1']);
+
+        $site = $this->site();
+        $admin = User::factory()->create();
+        $admin->roles()->attach(1);
+        AlertRule::create([
+            'name' => 'Firmware outdated', 'metric' => 'firmware_outdated', 'operator' => '>=',
+            'threshold' => 1, 'duration_minutes' => 0, 'severity' => 'info',
+            'notify_roles' => ['users.manage'], 'is_active' => true,
+        ]);
+
+        $this->metric($site, ['firmware' => 'v1.0', 'ts' => now()]);
+        $this->artisan('alerts:evaluate')->expectsOutputToContain('1 fired');
+        $this->assertSame(1, Alert::count());
+
+        // Approved firmware recovers the alert.
+        Mail::shouldReceive('raw')->never();
+        $this->metric($site, ['firmware' => 'v2.1', 'ts' => now()]);
+        $this->artisan('alerts:evaluate');
+        $this->assertSame(1, Alert::whereNotNull('resolved_at')->count());
+    }
+
+    public function test_firmware_rule_is_inert_without_approved_list(): void
+    {
+        config()->set('monitoring.approved_firmware', []);
+        $site = $this->site();
+        AlertRule::create([
+            'name' => 'Firmware outdated', 'metric' => 'firmware_outdated', 'operator' => '>=',
+            'threshold' => 1, 'duration_minutes' => 0, 'severity' => 'info',
+            'notify_roles' => [], 'is_active' => true,
+        ]);
+
+        $this->metric($site, ['firmware' => 'v1.0', 'ts' => now()]);
+        $this->artisan('alerts:evaluate');
+        $this->assertSame(0, Alert::count());
+    }
+
     public function test_bandwidth_rule_uses_cir_percentage(): void
     {
         Mail::shouldReceive('raw')->once()->andReturnNull();

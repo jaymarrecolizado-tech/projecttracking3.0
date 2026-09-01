@@ -42,6 +42,15 @@ class AlertRuleSeeder extends Seeder
                 'notify_roles' => ['daily.approve'],
             ],
             [
+                'name' => 'Firmware outdated',
+                'metric' => 'firmware_outdated',
+                'operator' => '>=',
+                'threshold' => 1,
+                'duration_minutes' => 0,
+                'severity' => 'info',
+                'notify_roles' => ['users.manage'],
+            ],
+            [
                 'name' => 'Bandwidth congestion',
                 'metric' => 'bandwidth_pct',
                 'operator' => '>',

@@ -65,7 +65,7 @@ const chart = computed(() => {
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 flex-1 min-h-0">
       <!-- 14-day trend -->
       <div class="lg:col-span-1">
         <h2 class="text-sm uppercase tracking-widest text-slate-400 mb-4">14-Day Trend</h2>
@@ -84,6 +84,34 @@ const chart = computed(() => {
         <div class="flex gap-6 mt-2 text-xs text-slate-400">
           <span><span class="inline-block w-2 h-2 bg-emerald-400 mr-1"></span>UP</span>
           <span><span class="inline-block w-2 h-2 bg-red-400 mr-1"></span>DOWN</span>
+        </div>
+      </div>
+
+      <!-- Active alerts -->
+      <div class="lg:col-span-1 min-w-0">
+        <h2 class="text-sm uppercase tracking-widest text-slate-400 mb-4">
+          Active Alerts — {{ stats.active_alerts?.length ?? 0 }}
+        </h2>
+        <div v-if="stats.active_alerts?.length" class="space-y-3 overflow-y-auto max-h-[50vh] pr-1">
+          <div
+            v-for="alert in stats.active_alerts" :key="alert.id"
+            class="rounded-lg border px-4 py-3"
+            :class="alert.severity === 'critical' ? 'border-red-900/50 bg-red-950/30' : alert.severity === 'warning' ? 'border-amber-900/50 bg-amber-950/30' : 'border-slate-700 bg-slate-900/40'"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold uppercase tracking-wide" :class="alert.severity === 'critical' ? 'text-red-400' : alert.severity === 'warning' ? 'text-amber-400' : 'text-blue-400'">
+                {{ alert.severity }}
+              </span>
+              <span class="text-[11px] text-slate-500">{{ new Date(alert.triggered_at).toLocaleTimeString() }}</span>
+            </div>
+            <div class="mt-1 text-sm font-medium truncate">{{ alert.site }}</div>
+            <div class="text-xs text-slate-400 truncate">
+              {{ alert.rule }}<span v-if="alert.observed !== null && alert.observed !== undefined"> · {{ alert.observed }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-6 py-6 text-center">
+          <div class="text-sm font-semibold text-emerald-400">No active alerts</div>
         </div>
       </div>
 

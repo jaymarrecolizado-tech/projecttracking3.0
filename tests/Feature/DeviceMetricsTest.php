@@ -116,6 +116,25 @@ class DeviceMetricsTest extends TestCase
             ])->assertStatus(422);
     }
 
+    public function test_status_snapshot_derives_up_from_heartbeats(): void
+    {
+        $site = $this->site();
+
+        // One site has telemetry today but no keyed-in daily row; a second
+        // active site stays fully silent.
+        DeviceMetric::create(['site_id' => $site->id, 'ts' => now(), 'latency_ms' => 21]);
+
+        $silent = Site::create([
+            'project_id' => $site->project_id, 'location_name' => 'Silent Site',
+            'latitude' => 14.6, 'longitude' => 120.9, 'status' => 'active',
+        ]);
+
+        $this->artisan('statuses:snapshot')->expectsOutputToContain('1 UP (from heartbeats), 1 NO_DATA');
+
+        $this->assertSame('UP', SiteDailyStatus::where('site_id', $site->id)->whereDate('date', today())->sole()->status);
+        $this->assertSame('NO_DATA', SiteDailyStatus::where('site_id', $silent->id)->whereDate('date', today())->sole()->status);
+    }
+
     public function test_metrics_prune_deletes_only_rows_past_retention(): void
     {
         $site = $this->site();

@@ -56,6 +56,10 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] `site_status_events` (heartbeat opens/closes `heartbeat_lost`)
 - [x] `alert_rules` + `alerts` + `alerts:evaluate` (every 5 min); seeded: offline >10 min, latency >150 ms / 30 min, battery <11.8 V, bandwidth >85% CIR; email + Telegram; auto-resolve
 - [x] `docs/DEPLOY.md` + `deploy.sh` mysqldump preflight
+- [x] Firmware-age rule (`firmware_outdated` vs `APPROVED_FIRMWARE` config; info severity)
+- [x] Wallboard active-alerts feed (severity-colored, latest 8)
+- [x] `statuses:snapshot` derives `UP` from heartbeats before falling back to `NO_DATA`
+- [x] `sites:attach-psgc` — barangay/province PSGC into `loc_id`/`prov_id`, municipality PSGC into metadata (1,083/1,128 barangay-recorded sites matched)
 
 ### Map geo filters + Site Type coverage (2026-09) — local only
 - [x] `legislative_districts` + `sites:backfill-districts` (1,132/1,132 local sites)
@@ -80,13 +84,9 @@ Out of scope (not started, not promised this slice): nationwide shapefiles, live
 ## Open (backlog)
 
 1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate, `LegislativeDistrictSeeder` + `AlertRuleSeeder`, `sites:backfill-districts`, `storage/app/geo`, Vite to **both** web root `build/` and `fpiap-app/public/build`, `cache:clear` / `view:clear`. Do not `route:cache`.
-2. **PSGC on sites** — write `adm*_pcode` into `loc_id` / `prov_id` on the next import; optional: fill `sites.district` from `legislative_districts` when the workbook has no District column.
-5. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull`.
-6. **Firmware-age alert rule** — docs §4.3 “firmware older than latest-approved” (not in `AlertRuleSeeder`).
-7. **Wallboard extras** — live site map + active-alerts feed (counters/down list already there).
-8. **Daily status from metrics** — `statuses:snapshot` still inserts `NO_DATA`; not a metrics rollup into APPROVED daily rows.
-9. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
-10. **Phase 3 ops** (docs): SLA PDF vs target, firmware fleet view, solar power analytics, field inspection form, public unauthenticated map.
+3. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway).
+4. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
+5. **Phase 3 ops** (docs): SLA PDF vs target, firmware fleet view, solar power analytics, field inspection form, public unauthenticated map.
 
 ---
 

@@ -167,6 +167,28 @@ class BarangayCoverageTest extends TestCase
         $this->assertNotNull(BarangayReference::where('name', 'Renamed Pob.')->first());
     }
 
+    public function test_attach_psgc_stamps_site_codes(): void
+    {
+        $this->artisan('barangays:sync-reference');
+
+        // Pick a real reference barangay and build a site on it.
+        $reference = BarangayReference::whereNotNull('psgc')->first();
+        $this->site([
+            'province' => $reference->province,
+            'municipality' => $reference->municipality,
+            'barangay' => '  '.ucwords(strtolower($reference->name)).'  ', // messy spelling must still match
+        ]);
+        $this->site(['barangay' => null, 'location_name' => 'No Brgy']);
+        $this->site(['barangay' => 'Not A Real Barangay', 'location_name' => 'Unknown Brgy']);
+
+        $this->artisan('sites:attach-psgc')->expectsOutputToContain('Matched 1 site(s)');
+
+        $matched = Site::whereNotNull('loc_id')->first();
+        $this->assertSame($reference->psgc, $matched->loc_id);
+        $this->assertSame(substr($reference->psgc, 0, 5).'00000', $matched->prov_id);
+        $this->assertSame(substr($reference->psgc, 0, 9).'0', $matched->metadata['municipality_psgc']);
+    }
+
     public function test_sync_command_upserts_without_deleting_manual_rows(): void
     {
         BarangayReference::create([

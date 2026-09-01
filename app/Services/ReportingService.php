@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Alert;
 use App\Models\FreewifiImportBatch;
 use App\Models\Project;
 use App\Models\Site;
@@ -114,6 +115,20 @@ class ReportingService
             'uptime_pct_7d' => $this->uptimePct(now()->subDays(6)->startOfDay(), now()->endOfDay()),
             'trend' => $this->dailyTrend(14),
             'down_sites' => $downSites,
+            'active_alerts' => Alert::query()
+                ->whereNull('resolved_at')
+                ->with(['rule:id,name,severity', 'site:id,location_name'])
+                ->orderByDesc('triggered_at')
+                ->take(8)
+                ->get(['id', 'rule_id', 'site_id', 'triggered_at', 'context'])
+                ->map(fn ($alert) => [
+                    'id' => $alert->id,
+                    'severity' => $alert->rule->severity ?? 'info',
+                    'rule' => $alert->rule?->name,
+                    'site' => $alert->site?->location_name,
+                    'observed' => data_get($alert->context, 'observed'),
+                    'triggered_at' => $alert->triggered_at->toDateTimeString(),
+                ]),
             'generated_at' => now()->toDateTimeString(),
         ];
     }

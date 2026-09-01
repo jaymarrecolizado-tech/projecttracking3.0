@@ -115,6 +115,20 @@ class AlertsUiTest extends TestCase
         $this->assertDatabaseMissing('alert_rules', ['id' => $rule->id]);
     }
 
+    public function test_wallboard_carries_active_alerts_feed(): void
+    {
+        $this->alert(['name' => 'Critical offline rule', 'severity' => 'critical']);
+        $viewer = User::factory()->create();
+        $viewer->roles()->attach(4);
+
+        $this->actingAs($viewer)->get('/wallboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Wallboard')
+                ->has('stats.active_alerts', 1)
+                ->where('stats.active_alerts.0.severity', 'critical'));
+    }
+
     public function test_active_alerts_feed_counts_on_index(): void
     {
         $approver = User::factory()->create();

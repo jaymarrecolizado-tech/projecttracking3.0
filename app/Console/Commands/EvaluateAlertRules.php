@@ -106,6 +106,22 @@ class EvaluateAlertRules extends Command
             return $minutes === null ? [] : [['ts' => now(), 'value' => (float) $minutes]];
         }
 
+        if ($rule->metric === 'firmware_outdated') {
+            $approved = config('monitoring.approved_firmware');
+            if ($approved === [] || $approved === null) {
+                return [];
+            }
+
+            $latest = DeviceMetric::where('site_id', $site->id)->orderByDesc('ts')->first(['firmware']);
+            if (! $latest || ! $latest->firmware) {
+                return [];
+            }
+
+            $outdated = ! in_array($latest->firmware, (array) $approved, true);
+
+            return [['ts' => now(), 'value' => $outdated ? 1.0 : 0.0]];
+        }
+
         if ($rule->metric === 'bandwidth_pct') {
             $cir = (float) $site->bw_download_cir;
             if ($cir <= 0) {

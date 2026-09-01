@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DeviceMetric;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
 use Carbon\Carbon;
@@ -25,19 +26,28 @@ class StatusesSnapshot extends Command
                 ->whereDoesntHave('dailyStatuses', fn ($q) => $q->whereDate('date', $date))
                 ->get(['id']);
 
+            $noData = 0;
+            $fromMetrics = 0;
             foreach ($sites as $site) {
+                // Sites that heartbeat today but were never keyed in get UP
+                // from telemetry instead of a misleading NO_DATA (docs §4.3).
+                $heartbeat = DeviceMetric::where('site_id', $site->id)
+                    ->whereDate('ts', $date)
+                    ->exists();
+
                 SiteDailyStatus::create([
                     'site_id' => $site->id,
                     'date' => $date->toDateString(),
-                    'status' => 'NO_DATA',
+                    'status' => $heartbeat ? 'UP' : 'NO_DATA',
                     'entry_status' => 'DRAFT',
                 ]);
+                $heartbeat ? $fromMetrics++ : $noData++;
             }
 
-            return $sites->count();
+            return "{$fromMetrics} UP (from heartbeats), {$noData} NO_DATA";
         });
 
-        $this->info("Snapshot: {$created} NO_DATA record(s) inserted for ".$date->toDateString().'.');
+        $this->info('Snapshot for '.$date->toDateString().": {$created}.");
 
         return self::SUCCESS;
     }
