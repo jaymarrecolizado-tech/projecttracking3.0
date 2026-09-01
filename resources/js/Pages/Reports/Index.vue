@@ -1,12 +1,15 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import GeoFilterFields from '@/Components/GeoFilterFields.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin } from '@tabler/icons-vue';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconTable } from '@tabler/icons-vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
     projects: Array,
     exports: Array,
+    siteTypes: { type: Array, default: () => [] },
+    initialOptions: { type: Object, default: () => ({ provinces: [], districts: [], municipalities: [], barangays: [] }) },
 });
 
 const provinceForm = useForm({
@@ -16,6 +19,34 @@ const provinceForm = useForm({
 
 function submitProject(project) {
     router.post(route('reports.project', project.id), {}, { preserveScroll: true });
+}
+
+const coverageForm = useForm({
+    project_id: '',
+    province: '',
+    district: '',
+    municipality: '',
+    barangay: '',
+});
+
+const coverageOptions = ref(props.initialOptions);
+
+function onCoverageFilters(next) {
+    Object.assign(coverageForm, next);
+    const params = new URLSearchParams();
+    if (next.province) params.set('province', next.province);
+    if (next.district) params.set('district', next.district);
+    if (next.municipality) params.set('municipality', next.municipality);
+    fetch(`/map/filter-options?${params}`)
+        .then((r) => r.json())
+        .then((json) => (coverageOptions.value = json));
+}
+
+function submitCoverage() {
+    coverageForm.post(route('reports.site-type'), {
+        preserveScroll: true,
+        onSuccess: () => coverageForm.reset(),
+    });
 }
 
 function submitProvince() {
@@ -124,6 +155,40 @@ const statusStyles = {
             >
               <IconLoader2 v-if="provinceForm.processing" class="w-4 h-4 animate-spin" />
               {{ provinceForm.processing ? 'Submitting…' : 'Generate PDF' }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Site Type Coverage Report -->
+      <div class="dict-card overflow-hidden lg:col-span-2">
+        <div class="bg-gradient-to-r from-orange-50 to-orange-100/50 px-6 py-4 border-b border-orange-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+              <IconTable class="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-800">Site Type Coverage — Actual vs Registered</h3>
+              <p class="text-sm text-slate-500">Per site type: registered sites, sites with deployed devices, and the gap</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-6">
+          <form @submit.prevent="submitCoverage">
+            <GeoFilterFields
+              :projects="projects"
+              :site-types="siteTypes"
+              :options="coverageOptions"
+              :filters="coverageForm.data()"
+              :show-site-type="false"
+              @update:filters="onCoverageFilters"
+            />
+            <button
+              type="submit" :disabled="coverageForm.processing"
+              class="mt-4 inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-60"
+            >
+              <IconLoader2 v-if="coverageForm.processing" class="w-4 h-4 animate-spin" />
+              {{ coverageForm.processing ? 'Submitting…' : 'Generate PDF' }}
             </button>
           </form>
         </div>

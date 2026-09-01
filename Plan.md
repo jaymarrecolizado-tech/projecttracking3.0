@@ -35,9 +35,28 @@ Living roadmap. Completed work stays listed for context; backlog at the bottom.
 - Sites/Projects row-click navigation; Projects "New Project" button removed (projects are import/command-managed)
 - Fixed silent camelCase/snake_case payload mismatches on Sites pages (`latest_daily_status`, `active_deployments`) with null-safe rendering
 - Relative route URLs via Ziggy (`config/ziggy.php`) + `ASSET_URL` support for deploy behind a CDN/tunnel
-- Feature tests for Projects/Sites pages (suite now 65 tests)
+- Feature tests for Projects/Sites pages
 
-## Next implementation — Map geo filters, area highlight, click-to-filter, Site Type actual vs registered
+### Security & hardening (2026-09)
+- **2FA (TOTP)** for privileged accounts: RFC 6238 engine (`App\Support\Totp`), QR enrollment on Profile (`users.manage` gated), login challenge screen (`/two-factor-challenge`, throttled 5/min), disable requires a current code; secret hidden from all serialization. Suite: 80 tests.
+- **Telegram DOWN alerts** alongside email — `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`, free channel, no gateway contract; email stays the backbone. Fixed a silent dedupe bug (`sites.last_alerted_at` was not fillable → alerts re-sent every 15 min per episode).
+- **device_metrics time-series** (docs §Phase 2): heartbeat accepts the full telemetry payload (uptime/cpu/mem/latency/clients/throughput/power/firmware), writes one row per beat; 48h sparklines on the device page; `metrics:prune` retention command (03:00 daily).
+- **Deploy prep**: `docs/DEPLOY.md` runbook, `deploy.sh` mysqldump preflight, `ASSET_URL` documented.
+- **DataTable** shared component (Sites/Devices/DailyGrid) and **accessibility** pass: mobile drawer focus trap + Escape + focus restore, aria-live ops counter, sr-only table captions.
+
+### Map geo filters + Site Type coverage (2026-09, spec below)
+- `legislative_districts` lookup (19th Congress, Region II, alias rows for workbook spellings) + `sites:backfill-districts` — **1,132/1,132 sites** now carry a district; unknown LGUs stay NULL by design.
+- Cascading geo filters (Province → District → Municipality → Barangay, plus project/site type) on Map View with URL state; `/map/filter-options` narrows children from site data.
+- **Deployed-device layer**: one clustered marker per active deployment, colored by site daily status, popups linking to device + site; "All sites" toggle keeps the old layer.
+- **Boundary polygons** (geoBoundaries gbOpen, CC BY 3.0 IGO — Region II subset committed under `storage/app/geo/`): highlight + click-to-filter with drill-down province → municipality → barangay. 3 LGUs have no polygon (see geo README); missing files degrade to empty collections.
+- **Site Type coverage**: `SiteCoverageService` powers `/map/coverage` panel (registered vs actual vs devices, per type) and the queued **Site Type Coverage PDF** (`/reports/site-type`, card on the Reports page). Appendix lists deployed sites when ≤ 200.
+- Split map page: `GeoFilterFields.vue` (shared with Reports), `MapStatsPanel.vue`, `useLeafletMap.js`. Suite: 95 tests.
+
+## Implemented — Map geo filters, area highlight, click-to-filter, Site Type actual vs registered
+
+> Shipped 2026-09 per the plan below; deviations: boundaries cover provinces + municipalities only
+> (districts/barangays polygons pending an open data source — the endpoint degrades gracefully), and
+> Telegram was chosen as the alert channel in the earlier backlog item.
 
 **Goal.** On Map View, filter **deployed devices** (not only sites) by Province → Congressional district → Municipality → Barangay. The selected area is highlighted on the map. Clicking an area applies that filter. Reports (on-map panel + PDF) show **actual (sites with a deployed device) vs registered site count**, broken down by **Site Type**.
 
@@ -231,10 +250,9 @@ Ship A→D first if boundaries lag (markers + filters still useful). Do not bloc
 ---
 
 ## 🔲 Backlog (priority order)
-1. **Map geo filters + highlight + Site Type coverage** — section above
-2. **Deploy to Hostinger** — first real MySQL run: `mysqldump` on PATH for backups, `queue:restart` after deploy, cron `schedule:run`
-3. **SMS/Telegram alerts** — needs a gateway choice (ClickSend/Twilio/Telegram bot); hook into `alerts:down`
-4. **`device_metrics` time-series** — heartbeat currently stores one row/day; add high-frequency table + charts (docs Phase 2)
-5. **DataTable shared component** — extract from Sites/Devices/DailyGrid tables
-6. **Accessibility** — remaining: focus trap in mobile drawer, aria-live on ops counter, table captions
+1. **Deploy to Hostinger** — first real MySQL run (runbook: `docs/DEPLOY.md`); `mysqldump` on PATH for backups, `queue:restart` after deploy, cron `schedule:run`
+2. **Remaining boundary layers** — district + barangay polygons (no open source yet), and the 3 LGUs missing polygons (see `storage/app/geo/README.md`)
+3. **docs §Phase 2 leftovers** — `site_status_events` (UP/DOWN transitions), `alert_rules`/`alerts` tables, controller polling via `nms:pull`
+4. **SMS gateway** — if Telegram alone is insufficient (ClickSend/Twilio) — hook next to `App\Services\Telegram`
+5. **device_metrics aggregates** — hourly rollups if the raw table grows past comfort before `metrics:prune` kicks in
 7. **2FA for admin accounts** — Laravel Fortify or TOTP package

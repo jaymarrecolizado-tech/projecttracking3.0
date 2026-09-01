@@ -41,6 +41,31 @@ class ReportingService
         return Pdf::loadView('reports.province-summary', compact('province', 'sites', 'grouped'));
     }
 
+    /** Site Type coverage (actual vs registered) — same data as /map/coverage. */
+    public function generateSiteTypeCoverageReport(array $filters): \Barryvdh\DomPDF\PDF
+    {
+        $coverage = app(SiteCoverageService::class)->coverage($filters);
+        $sites = collect();
+        if (($coverage['totals']['actual'] ?? 0) <= 200) {
+            $query = Site::query()->whereHas('activeDeployments')->with(['project:id,code,name', 'activeDeployments.device:id,asset_tag']);
+            foreach (['province', 'district', 'municipality', 'barangay'] as $column) {
+                if (! empty($filters[$column])) {
+                    $query->where("sites.{$column}", $filters[$column]);
+                }
+            }
+            if (! empty($filters['project_id'])) {
+                $query->where('sites.project_id', $filters['project_id']);
+            }
+            $sites = $query->orderBy('site_type')->orderBy('location_name')->get();
+        }
+
+        return Pdf::loadView('reports.site-type-coverage', [
+            'coverage' => $coverage,
+            'sites' => $sites,
+            'filters' => $coverage['filters'],
+        ]);
+    }
+
     public function getDashboardStats(): array
     {
         return [

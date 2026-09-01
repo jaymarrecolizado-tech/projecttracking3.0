@@ -1,72 +1,157 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import GeoFilterFields from '@/Components/GeoFilterFields.vue';
+import { Head, router } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import MapStatsPanel from './MapStatsPanel.vue';
+import { useLeafletMap } from './useLeafletMap';
 
-defineProps({ projects: Array });
+const props = defineProps({
+    projects: Array,
+    siteTypes: Array,
+    initialOptions: Object,
+    filters: { type: Object, default: () => ({}) },
+});
+
+const filters = reactive({
+    project_id: props.filters?.project_id ?? '',
+    province: props.filters?.province ?? '',
+    district: props.filters?.district ?? '',
+    municipality: props.filters?.municipality ?? '',
+    barangay: props.filters?.barangay ?? '',
+    site_type: props.filters?.site_type ?? '',
+    deployed_only: props.filters?.deployed_only ?? '1',
+});
+
+const options = ref(props.initialOptions);
+const coverage = ref(null);
+const busy = ref(false);
 
 const mapContainer = ref(null);
-const map = ref(null);
-const geojsonLayer = ref(null);
-const selectedProject = ref('');
-const selectedStatus = ref('');
+const leaflet = useLeafletMap(mapContainer);
 
-const loadGeoJson = async () => {
+const typeLabel = computed(() =>
+    Object.fromEntries((props.siteTypes ?? []).map((t) => [t.code, t.label])));
+
+// Polygon drill level follows the deepest chosen filter (Plan §Map 5).
+function boundaryScope() {
+    if (filters.municipality) {
+        return { level: 'barangay', params: { province: filters.province, municipality: filters.municipality }, selected: filters.barangay };
+    }
+    if (filters.province) {
+        return { level: 'municipality', params: { province: filters.province, district: filters.district }, selected: filters.municipality };
+    }
+    return { level: 'province', params: {}, selected: filters.province };
+}
+
+function apiParams(extra = {}) {
     const params = new URLSearchParams();
-    if (selectedProject.value) params.append('project_id', selectedProject.value);
-    if (selectedStatus.value) params.append('status', selectedStatus.value);
-    const response = await fetch(`/map/geojson?${params}`);
-    const data = await response.json();
-    if (geojsonLayer.value) map.value.removeLayer(geojsonLayer.value);
-    geojsonLayer.value = L.geoJSON(data, {
-        pointToLayer: (feature, latlng) => {
-            const color = feature.properties.marker_color || '#64748b';
-            return L.circleMarker(latlng, {
-                radius: 8, fillColor: color, color: '#fff',
-                weight: 2, opacity: 1, fillOpacity: 0.8
-            });
-        },
-        onEachFeature: (feature, layer) => {
-            const p = feature.properties;
-            layer.bindPopup(`
-                <div class="text-sm">
-                    <strong>${p.location_name}</strong><br>
-                    Project: ${p.project_name}<br>
-                    Status: <span class="font-semibold">${p.status}</span><br>
-                    ${p.barangay ? `Barangay: ${p.barangay}<br>` : ''}
-                    ${p.municipality ? `Municipality: ${p.municipality}<br>` : ''}
-                    ${p.province ? `Province: ${p.province}<br>` : ''}
-                    ${p.region ? `Region: ${p.region}<br>` : ''}
-                    ${p.daily_status ? `Daily Status: ${p.daily_status}<br>` : ''}
-                    ${p.bandwidth ? `Bandwidth: ${p.bandwidth} Mbps<br>` : ''}
-                    ${p.users ? `Users: ${p.users}<br>` : ''}
-                </div>
-            `, { sticky: true });
-            // Hover previews the same details; click pins the popup (touch-friendly).
-            layer.on('mouseover', () => layer.openPopup());
-            layer.on('mouseout', () => {
-                if (!layer.isPopupOpen() || !layer._clickPinned) layer.closePopup();
-            });
-            layer.on('click', () => {
-                layer._clickPinned = true;
-                layer.openPopup();
-            });
-            layer.getPopup().on('remove', () => (layer._clickPinned = false));
+    for (const key of ['project_id', 'province', 'district', 'municipality', 'barangay', 'site_type']) {
+        if (filters[key]) {
+            params.set(key, filters[key]);
         }
+    }
+    for (const [key, value] of Object.entries(extra)) {
+        params.set(key, value);
+    }
+    return params;
+}
+
+async function fetchJson(url, params) {
+    const response = await fetch(`${url}?${params}`);
+    return response.json();
+}
+
+async function refresh({ syncUrl = false } = {}) {
+    busy.value = true;
+    try {
+        if (syncUrl) {
+            router.get(route('map.index'), { ...filters }, { preserveState: true, replace: true });
+        }
+        const geo = apiParams({ deployed_only: filters.deployed_only });
+
+        const [markerData, boundaryData, coverageData] = await Promise.all([
+            fetchJson('/map/geojson', geo),
+            fetchJson('/map/boundaries', apiParams({ level: boundaryScope().level, ...boundaryScope().params })),
+            fetchJson('/map/coverage', apiParams()),
+        ]);
+
+        leaflet.renderMarkers(markerData, { typeLabel: typeLabel.value });
+
+        const scope = boundaryScope();
+        leaflet.renderBoundaries(boundaryData, {
+            level: scope.level,
+            selectedName: scope.selected,
+            onPick: (name) => pickBoundary(scope.level, name),
+        });
+        leaflet.fitToBoundaries();
+
+        coverage.value = coverageData;
+    } finally {
+        busy.value = false;
+    }
+}
+
+function pickBoundary(level, name) {
+    if (level === 'province') {
+        apply({ province: name });
+    } else if (level === 'municipality') {
+        apply({ municipality: name });
+    } else {
+        apply({ barangay: name });
+    }
+}
+
+function apply(patch, { syncUrl = true } = {}) {
+    Object.assign(filters, patch);
+    refresh({ syncUrl });
+}
+
+async function loadOptionsForParents() {
+    const params = new URLSearchParams();
+    if (filters.province) {
+        params.set('province', filters.province);
+    }
+    if (filters.district) {
+        params.set('district', filters.district);
+    }
+    if (filters.municipality) {
+        params.set('municipality', filters.municipality);
+    }
+    options.value = await fetchJson('/map/filter-options', params);
+}
+
+function onFiltersChange(next) {
+    Object.assign(filters, next);
+    loadOptionsForParents();
+    refresh({ syncUrl: true });
+}
+
+function clearFilters() {
+    apply({ province: '', district: '', municipality: '', barangay: '', site_type: '', project_id: '' });
+    loadOptionsForParents();
+}
+
+function toggleDeployedOnly() {
+    apply({ deployed_only: filters.deployed_only === '1' ? '' : '1' });
+}
+
+function generatePdf() {
+    router.post(route('reports.site-type'), {
+        project_id: filters.project_id || null,
+        province: filters.province || null,
+        district: filters.district || null,
+        municipality: filters.municipality || null,
+        barangay: filters.barangay || null,
     });
-    geojsonLayer.value.addTo(map.value);
-};
+}
 
 onMounted(() => {
-    // Leaflet is loaded globally via app.blade.php — initialize directly
-    map.value = L.map(mapContainer.value, { zoomControl: true }).setView([12.8797, 121.7740], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 18,
-    }).addTo(map.value);
-    // Fix tile rendering after DOM is fully painted
-    setTimeout(() => { map.value.invalidateSize(); loadGeoJson(); }, 200);
+    leaflet.init();
+    setTimeout(() => refresh(), 100);
 });
+
+onBeforeUnmount(() => leaflet.destroy());
 </script>
 
 <template>
@@ -76,39 +161,42 @@ onMounted(() => {
       <h2 class="font-semibold text-lg text-slate-800 leading-tight">Map View</h2>
     </template>
 
-    <div>
-      <!-- Filters -->
-      <div class="dict-card p-4 mb-4">
-        <div class="flex flex-wrap items-end gap-4">
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Project</label>
-            <select
-              v-model="selectedProject" class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
-              @change="loadGeoJson"
+    <div class="space-y-4">
+      <!-- Geo filters (cascading) -->
+      <div class="dict-card p-4">
+        <GeoFilterFields
+          :projects="projects"
+          :site-types="siteTypes"
+          :options="options"
+          :filters="filters"
+          @update:filters="onFiltersChange"
+        >
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-sm text-slate-600 select-none">
+              <input
+                type="checkbox"
+                class="rounded border-slate-300 text-blue-600 focus:ring-blue-200"
+                :checked="filters.deployed_only === '1'"
+                @change="toggleDeployedOnly"
+              />
+              Deployed devices
+            </label>
+            <button
+              type="button"
+              class="text-sm text-slate-500 hover:text-slate-700 underline"
+              @click="clearFilters"
             >
-              <option value="">All Projects</option>
-              <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
+              Clear filters
+            </button>
+            <span v-if="busy" class="text-xs text-slate-400" aria-live="polite">Updating…</span>
           </div>
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
-            <select
-              v-model="selectedStatus" class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
-              @change="loadGeoJson"
-            >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="planned">Planned</option>
-              <option value="decommissioned">Decommissioned</option>
-              <option value="maintenance">Maintenance</option>
-            </select>
-          </div>
-        </div>
+        </GeoFilterFields>
       </div>
 
       <!-- Map -->
       <div ref="mapContainer" class="rounded-lg overflow-hidden shadow-sm border border-slate-200" style="height: 600px;"></div>
+
+      <MapStatsPanel :coverage="coverage" @generate-pdf="generatePdf" />
     </div>
   </AuthenticatedLayout>
 </template>

@@ -44,6 +44,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/map', [MapController::class, 'index'])->name('map.index');
     Route::get('/map/geojson', [MapController::class, 'geojson'])->name('map.geojson');
+    Route::get('/map/filter-options', [MapController::class, 'filterOptions'])->name('map.filter-options');
+    Route::get('/map/boundaries', [MapController::class, 'boundaries'])->name('map.boundaries');
+    Route::get('/map/coverage', [MapController::class, 'coverage'])->name('map.coverage');
 
     Route::get('/projects/{project}/sites', [SiteController::class, 'byProject'])->name('projects.sites');
     Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index'])->name('projects.milestones');
@@ -70,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::post('/reports/project/{project}', [ReportController::class, 'projectPdf'])->name('reports.project');
     Route::post('/reports/province', [ReportController::class, 'provincePdf'])->name('reports.province');
+    Route::post('/reports/site-type', [ReportController::class, 'siteTypePdf'])->name('reports.site-type');
     Route::get('/reports/exports/{export}/download', [ReportController::class, 'download'])->name('reports.download');
 
     // Maintenance tickets — plan §Phase 3 (SLA groundwork)

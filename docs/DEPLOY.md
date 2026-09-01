@@ -68,3 +68,12 @@ new code after every deploy. If supervisor is not available, a fallback cron
 3. Daily Ops board loads with today's date; submit a batch entry.
 4. `php artisan tinker --execute="echo config('app.name');"` shows the FPIAP name.
 5. `php artisan backup:run` once manually — verifies `mysqldump` end-to-end.
+
+## 6. Map boundary polygons
+
+Region II boundary GeoJSON ships with the repo in `storage/app/geo/`
+(provinces + municipalities subset; source and coverage caveats in
+`storage/app/geo/README.md`). They are served through the authenticated
+`/map/boundaries` endpoint with a 12h cache. After deploys that touch them:
+`php artisan cache:clear`. New regions require adding the corresponding
+subsets to those files — do not place full-nation shapefiles there.
