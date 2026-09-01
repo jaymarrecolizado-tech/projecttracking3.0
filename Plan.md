@@ -78,6 +78,12 @@ Out of scope until a later region import: nationwide shapefiles, live GPS/NMS co
 
 ---
 
+### Barangay coverage report (2026-09-01)
+
+- **Barangay Coverage — Installed vs Total**: barangays with at least one registered Free WiFi site vs the total barangays per municipality/province, with % remaining to install. `BarangayCoverageService` + `/map/barangay-coverage` + queued **PDF** (`/reports/barangay-coverage`, card on Reports page). Live on real data: **402 of 2,262 barangays covered (17.8%), 1,860 remaining**; Tuguegarao City 12/49 (24.5%).
+- `barangay_references` reference table + `barangays:sync-reference` — totals are correctable to the PSA figure (2,311): the boundary layer matches PSA exactly for the big LGUs (Tuguegarao 49, Ilagan 91, Cauayan 65, Santiago 37, Batanes 29) but the OCHA snapshot leaves Region II **49 barangays short** overall; add missing rows to the table and percentages update immediately (upsert-only — manual rows survive re-syncs).
+- Normalizer (`App\Support\NameNormalizer`) unifies "Ilagan City" / "City of Ilagan" / "Basco (Capital)" spellings between sites, PSA and boundary data.
+
 ## ✅ Shipped (2026-09-01, this slice)
 
 - **Boundary layers complete**: `districts.geojson` (12 dissolved districts), `barangays.geojson` (2,197, OCHA COD-AB ADM4 subset), and all 95 LGUs with polygons — `Cagaban`/`Cauayan` aliases, `Uyugan` dissolved from its barangays. Full province > district > municipality > barangay click-to-filter; site-status control back on the map.
@@ -86,6 +92,7 @@ Out of scope until a later region import: nationwide shapefiles, live GPS/NMS co
 ## 🔲 Backlog (priority order)
 1. **Ship everything to production** (`fpiapr2.dictr2.cloud`) — migrate, seeders, `sites:backfill-districts`, Vite to both web roots, `cache:clear`; runbook `docs/DEPLOY.md`
 2. **Alerts UI** — list/acknowledge alerts and manage rules (tables + engine done; `acknowledged_at/by`, `escalation_level` columns ready)
-3. **PSGC join for sites** — attach `adm*_pcode` to sites at the next import so name matching goes away
-4. **Controller polling** — bind a real SNMP/REST client to `nms:pull` when sites are NOC-reachable
-5. **SMS gateway** — if Telegram alone is insufficient (ClickSend/Twilio) — hook next to the Telegram service
+3. **PSA barangay reconciliation** — source the official PSA 2,311 list and add the ~49 missing barangays to `barangay_references` (upsert-only; percentages update immediately)
+4. **PSGC join for sites** — attach `adm*_pcode` to sites at the next import so name matching goes away
+5. **Controller polling** — bind a real SNMP/REST client to `nms:pull` when sites are NOC-reachable
+6. **SMS gateway** — if Telegram alone is insufficient (ClickSend/Twilio) — hook next to the Telegram service

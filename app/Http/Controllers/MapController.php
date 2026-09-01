@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Services\BarangayCoverageService;
 use App\Services\GeoBoundaryService;
 use App\Services\GeoFilterOptions;
 use App\Services\GeoJsonService;
@@ -57,6 +58,13 @@ class MapController extends Controller
     public function coverage(Request $request, SiteCoverageService $service)
     {
         $filters = $request->only(['project_id', 'province', 'district', 'municipality', 'barangay']);
+
+        return response()->json($service->coverage($filters));
+    }
+
+    public function barangayCoverage(Request $request, BarangayCoverageService $service)
+    {
+        $filters = $request->only(['project_id', 'province', 'district', 'municipality']);
 
         return response()->json($service->coverage($filters));
     }

@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import GeoFilterFields from '@/Components/GeoFilterFields.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconTable } from '@tabler/icons-vue';
+import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconTable, IconTarget } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
@@ -46,6 +46,33 @@ function submitCoverage() {
     coverageForm.post(route('reports.site-type'), {
         preserveScroll: true,
         onSuccess: () => coverageForm.reset(),
+    });
+}
+
+const barangayForm = useForm({
+    project_id: '',
+    province: '',
+    district: '',
+    municipality: '',
+});
+
+const barangayOptions = ref(props.initialOptions);
+
+function onBarangayFilters(next) {
+    Object.assign(barangayForm, next);
+    const params = new URLSearchParams();
+    if (next.province) params.set('province', next.province);
+    if (next.district) params.set('district', next.district);
+    if (next.municipality) params.set('municipality', next.municipality);
+    fetch(`/map/filter-options?${params}`)
+        .then((r) => r.json())
+        .then((json) => (barangayOptions.value = json));
+}
+
+function submitBarangayCoverage() {
+    barangayForm.post(route('reports.barangay-coverage'), {
+        preserveScroll: true,
+        onSuccess: () => barangayForm.reset(),
     });
 }
 
@@ -155,6 +182,40 @@ const statusStyles = {
             >
               <IconLoader2 v-if="provinceForm.processing" class="w-4 h-4 animate-spin" />
               {{ provinceForm.processing ? 'Submitting…' : 'Generate PDF' }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Barangay Coverage Report -->
+      <div class="dict-card overflow-hidden lg:col-span-2">
+        <div class="bg-gradient-to-r from-teal-50 to-teal-100/50 px-6 py-4 border-b border-teal-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
+              <IconTarget class="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-800">Barangay Coverage — Installed vs Total</h3>
+              <p class="text-sm text-slate-500">Barangays with Free WiFi vs total barangays, and what remains to install</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-6">
+          <form @submit.prevent="submitBarangayCoverage">
+            <GeoFilterFields
+              :projects="projects"
+              :site-types="siteTypes"
+              :options="barangayOptions"
+              :filters="barangayForm.data()"
+              :show-site-type="false"
+              @update:filters="onBarangayFilters"
+            />
+            <button
+              type="submit" :disabled="barangayForm.processing"
+              class="mt-4 inline-flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition disabled:opacity-60"
+            >
+              <IconLoader2 v-if="barangayForm.processing" class="w-4 h-4 animate-spin" />
+              {{ barangayForm.processing ? 'Submitting…' : 'Generate PDF' }}
             </button>
           </form>
         </div>

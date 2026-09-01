@@ -38,6 +38,9 @@ class GenerateReport implements ShouldQueue
                 'site_type' => $reportingService->generateSiteTypeCoverageReport(
                     $this->export->params['filters'] ?? [],
                 ),
+                'barangay_coverage' => $reportingService->generateBarangayCoverageReport(
+                    $this->export->params['filters'] ?? [],
+                ),
                 default => throw new InvalidArgumentException("Unknown report type '{$this->export->type}'."),
             };
 

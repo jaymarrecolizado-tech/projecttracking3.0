@@ -84,6 +84,28 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
+    public function barangayCoveragePdf(Request $request)
+    {
+        $validated = $request->validate([
+            'project_id' => 'nullable|integer|exists:projects,id',
+            'province' => 'nullable|string|max:100',
+            'district' => 'nullable|string|max:100',
+            'municipality' => 'nullable|string|max:100',
+        ]);
+        $filters = collect($validated)->filter()->all();
+        $scope = $filters['province'] ?? 'region-ii';
+
+        $export = ReportExport::create([
+            'user_id' => $request->user()->id,
+            'type' => 'barangay_coverage',
+            'params' => ['filters' => $filters],
+            'download_name' => "barangay-coverage-{$scope}.pdf",
+        ]);
+        GenerateReport::dispatch($export);
+
+        return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
+    }
+
     public function download(Request $request, ReportExport $export)
     {
         abort_unless(

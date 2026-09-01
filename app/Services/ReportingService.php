@@ -66,6 +66,17 @@ class ReportingService
         ]);
     }
 
+    /** Barangay coverage (installed/existing vs total) — same data as /map/barangay-coverage. */
+    public function generateBarangayCoverageReport(array $filters): \Barryvdh\DomPDF\PDF
+    {
+        $coverage = app(BarangayCoverageService::class)->coverage($filters);
+
+        return Pdf::loadView('reports.barangay-coverage', [
+            'coverage' => $coverage,
+            'filters' => $coverage['filters'],
+        ]);
+    }
+
     public function getDashboardStats(): array
     {
         return [
