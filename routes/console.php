@@ -16,3 +16,4 @@ Schedule::command('statuses:snapshot')->dailyAt('23:00');
 Schedule::command('warranty:digest')->weeklyOn(1, '07:00');
 Schedule::command('backup:clean')->dailyAt('02:00');
 Schedule::command('backup:run')->dailyAt('02:15');
+Schedule::command('metrics:prune')->dailyAt('03:00');

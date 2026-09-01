@@ -47,6 +47,12 @@ class Device extends Model
         return $this->hasMany(MaintenanceLog::class);
     }
 
+    /** @return HasMany<DeviceMetric, $this> */
+    public function metrics(): HasMany
+    {
+        return $this->hasMany(DeviceMetric::class);
+    }
+
     public function scopeInStock(Builder $q): Builder
     {
         return $q->where('status', 'in_stock');

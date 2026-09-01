@@ -1,9 +1,15 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import MetricSparkline from '@/Components/MetricSparkline.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { IconRouter } from '@tabler/icons-vue';
 
-defineProps({ device: Object });
+const props = defineProps({ device: Object });
+
+// Reshape loaded metrics into sparkline point arrays.
+const series = (key) => (props.device.metrics ?? [])
+    .filter((m) => m[key] !== null && m[key] !== undefined)
+    .map((m) => ({ ts: m.ts, value: m[key] }));
 
 const statusPill = {
     deployed: 'bg-green-100 text-green-700',
@@ -81,6 +87,23 @@ const statusPill = {
         </template>
         <p v-else class="text-sm text-slate-500">Not currently assigned to a site.</p>
       </div>
+    </div>
+
+    <!-- Telemetry (48h) -->
+    <div class="dict-card p-6 mt-6">
+      <div class="flex items-baseline justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-800">Telemetry — last 48h</h3>
+        <span class="text-xs text-slate-400">{{ device.metrics?.length ?? 0 }} samples</span>
+      </div>
+      <div v-if="device.metrics?.length" class="grid sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        <MetricSparkline label="WAN latency" unit="ms" color="#2563eb" :points="series('latency_ms')" />
+        <MetricSparkline label="Clients" color="#7c3aed" :points="series('clients')" />
+        <MetricSparkline label="Throughput RX" unit=" Mbps" color="#059669" :points="series('rx_mbps')" />
+        <MetricSparkline label="Battery" unit=" V" color="#d97706" :points="series('battery_v')" />
+      </div>
+      <p v-else class="text-sm text-slate-500">
+        No telemetry received yet. Field probes POST to <code class="font-mono text-xs">/api/heartbeat</code> with this device's serial to start the time-series.
+      </p>
     </div>
 
     <!-- Deployment history -->
