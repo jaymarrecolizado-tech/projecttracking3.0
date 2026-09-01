@@ -15,6 +15,7 @@ const props = defineProps({
 
 const filters = reactive({
     project_id: props.filters?.project_id ?? '',
+    status: props.filters?.status ?? '',
     province: props.filters?.province ?? '',
     district: props.filters?.district ?? '',
     municipality: props.filters?.municipality ?? '',
@@ -33,20 +34,25 @@ const leaflet = useLeafletMap(mapContainer);
 const typeLabel = computed(() =>
     Object.fromEntries((props.siteTypes ?? []).map((t) => [t.code, t.label])));
 
-// Polygon drill level follows the deepest chosen filter (Plan §Map 5).
+// Polygon drill level follows the deepest chosen filter: province →
+// district → municipality → barangay. `filter` is the key a polygon click
+// sets at that tier.
 function boundaryScope() {
     if (filters.municipality) {
-        return { level: 'barangay', params: { province: filters.province, municipality: filters.municipality }, selected: filters.barangay };
+        return { level: 'barangay', params: { province: filters.province, district: filters.district, municipality: filters.municipality }, selected: filters.barangay, filter: 'barangay' };
+    }
+    if (filters.district) {
+        return { level: 'municipality', params: { province: filters.province, district: filters.district }, selected: filters.municipality, filter: 'municipality' };
     }
     if (filters.province) {
-        return { level: 'municipality', params: { province: filters.province, district: filters.district }, selected: filters.municipality };
+        return { level: 'district', params: { province: filters.province }, selected: filters.district, filter: 'district' };
     }
-    return { level: 'province', params: {}, selected: filters.province };
+    return { level: 'province', params: {}, selected: filters.province, filter: 'province' };
 }
 
 function apiParams(extra = {}) {
     const params = new URLSearchParams();
-    for (const key of ['project_id', 'province', 'district', 'municipality', 'barangay', 'site_type']) {
+    for (const key of ['project_id', 'status', 'province', 'district', 'municipality', 'barangay', 'site_type']) {
         if (filters[key]) {
             params.set(key, filters[key]);
         }
@@ -93,13 +99,7 @@ async function refresh({ syncUrl = false } = {}) {
 }
 
 function pickBoundary(level, name) {
-    if (level === 'province') {
-        apply({ province: name });
-    } else if (level === 'municipality') {
-        apply({ municipality: name });
-    } else {
-        apply({ barangay: name });
-    }
+    apply({ [level]: name });
 }
 
 function apply(patch, { syncUrl = true } = {}) {
@@ -172,6 +172,18 @@ onBeforeUnmount(() => leaflet.destroy());
           @update:filters="onFiltersChange"
         >
           <div class="flex items-center gap-3">
+            <select
+              :value="filters.status"
+              class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+              @change="apply({ status: $event.target.value })"
+            >
+              <option value="">All Site Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="planned">Planned</option>
+              <option value="decommissioned">Decommissioned</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
             <label class="flex items-center gap-2 text-sm text-slate-600 select-none">
               <input
                 type="checkbox"

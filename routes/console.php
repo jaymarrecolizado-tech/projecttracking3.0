@@ -17,3 +17,5 @@ Schedule::command('warranty:digest')->weeklyOn(1, '07:00');
 Schedule::command('backup:clean')->dailyAt('02:00');
 Schedule::command('backup:run')->dailyAt('02:15');
 Schedule::command('metrics:prune')->dailyAt('03:00');
+Schedule::command('metrics:aggregate')->hourlyAt(10);
+Schedule::command('alerts:evaluate')->everyFiveMinutes();

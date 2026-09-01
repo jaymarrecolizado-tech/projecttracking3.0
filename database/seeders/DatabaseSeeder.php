@@ -9,6 +9,7 @@ class DatabaseSeeder extends Seeder
             ProjectSeeder::class,
             RolePermissionSeeder::class,
             LegislativeDistrictSeeder::class,
+            AlertRuleSeeder::class,
         ]);
     }
 }

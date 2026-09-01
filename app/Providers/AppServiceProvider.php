@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\Site;
 use App\Models\SiteAccomplishment;
+use App\Models\SiteDailyStatus;
 use App\Observers\AccomplishmentObserver;
 use App\Observers\SiteObserver;
+use App\Observers\SiteStatusEventObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(100);
         Site::observe(SiteObserver::class);
         SiteAccomplishment::observe(AccomplishmentObserver::class);
+        SiteDailyStatus::observe(SiteStatusEventObserver::class);
         Vite::prefetch(concurrency: 3);
 
         // Used by $middleware->throttleApi('api') in bootstrap/app.php.

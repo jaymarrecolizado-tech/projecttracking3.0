@@ -119,13 +119,32 @@ class MapGeoJsonTest extends TestCase
         $this->assertTrue($parents->every(fn ($parent) => $parent === 'Cagayan'));
     }
 
-    public function test_missing_boundary_level_degrades_to_empty_collection(): void
+    public function test_barangay_boundaries_clip_to_municipality(): void
     {
         $json = $this->actingAs(User::factory()->create())
-            ->getJson('/map/boundaries?level=barangay')->json();
+            ->getJson('/map/boundaries?level=barangay&municipality=Aparri')->json();
+        $parents = collect($json['features'])->pluck('properties.municipality')->unique();
 
-        $this->assertSame('FeatureCollection', $json['type']);
-        $this->assertSame([], $json['features']);
+        $this->assertGreaterThan(0, $json['features']);
+        $this->assertTrue($parents->every(fn ($muni) => $muni === 'Aparri'));
+    }
+
+    public function test_district_boundaries_clip_to_province(): void
+    {
+        $json = $this->actingAs(User::factory()->create())
+            ->getJson('/map/boundaries?level=district&province=Cagayan')->json();
+
+        $names = collect($json['features'])->pluck('properties.name')->unique();
+        $this->assertCount(3, $names);
+        $this->assertContains('3rd District', $names);
+    }
+
+    public function test_unknown_boundary_level_falls_back_to_province(): void
+    {
+        $json = $this->actingAs(User::factory()->create())
+            ->getJson('/map/boundaries?level=region')->json();
+
+        $this->assertGreaterThan(0, $json['features']);
     }
 
     public function test_filter_options_cascade_from_province(): void

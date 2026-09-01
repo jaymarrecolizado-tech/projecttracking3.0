@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\DeviceMetric;
 use App\Models\Site;
+use App\Models\SiteStatusEvent;
 use App\Models\SiteDailyStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,6 +72,12 @@ class HeartbeatController extends Controller
             }
 
             $this->recordMetric($site, $validated);
+
+            // A returning beat closes any "heartbeat lost" episode (docs §4.3).
+            SiteStatusEvent::where('site_id', $site->id)
+                ->whereNull('resolved_at')
+                ->where('cause', 'heartbeat_lost')
+                ->update(['resolved_at' => now()]);
 
             // A heartbeat implies the deployment is live.
             if ($site->status === 'planned') {
