@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,13 @@ Route::middleware('guest')->group(function () {
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('two-factor-challenge', [TwoFactorChallengeController::class, 'create'])
+        ->name('two-factor.challenge');
+
+    Route::post('two-factor-challenge', [TwoFactorChallengeController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.challenge.store');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
@@ -63,6 +71,7 @@ Route::middleware('auth')->group(function () {
 // Profile routes
 use App\Http\Controllers\ProbeTokenController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TwoFactorSettingController;
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -71,4 +80,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/profile/probe-tokens', [ProbeTokenController::class, 'store'])->name('probe-tokens.store');
     Route::delete('/profile/probe-tokens/{tokenId}', [ProbeTokenController::class, 'destroy'])->name('probe-tokens.destroy');
+
+    // TOTP enrollment — privileged accounts only (users.manage).
+    Route::post('/profile/two-factor', [TwoFactorSettingController::class, 'store'])->name('two-factor.enable')->middleware('can:users.manage');
+    Route::post('/profile/two-factor/confirm', [TwoFactorSettingController::class, 'confirm'])->name('two-factor.confirm')->middleware('can:users.manage');
+    Route::delete('/profile/two-factor', [TwoFactorSettingController::class, 'destroy'])->name('two-factor.disable')->middleware('can:users.manage');
 });

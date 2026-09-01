@@ -5,6 +5,7 @@ namespace App\Http\Requests\Auth;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -61,6 +62,16 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        // Credentials are valid but the account has TOTP enabled — park the
+        // user id in the session and finish sign-in on the challenge screen.
+        if (Auth::user()->hasTwoFactorEnabled()) {
+            $pending = ['user_id' => Auth::id(), 'remember' => $this->boolean('remember')];
+            Auth::guard('web')->logout();
+            $this->session()->put('two_factor_pending', $pending);
+
+            throw new HttpResponseException(redirect()->route('two-factor.challenge'));
+        }
     }
 
     /**

@@ -14,7 +14,8 @@ class User extends Authenticatable
 
     protected $fillable = ['name', 'email', 'password', 'is_active', 'last_login_at'];
 
-    protected $hidden = ['password', 'remember_token'];
+    // two_factor_secret never leaves the backend (also shared via Inertia auth.user).
+    protected $hidden = ['password', 'remember_token', 'two_factor_secret'];
 
     protected $casts = ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'last_login_at' => 'datetime'];
 
@@ -52,5 +53,10 @@ class User extends Authenticatable
     public function hasRole(string $roleName): bool
     {
         return $this->roles->contains('name', $roleName);
+    }
+
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_enabled_at !== null && $this->two_factor_secret !== null;
     }
 }

@@ -78,6 +78,10 @@ class DeviceController extends Controller
                 ->latest('installed_at'),
             'maintenanceLogs' => fn ($q) => $q->with(['performer:id,name', 'site:id,location_name'])
                 ->latest('performed_at')->take(20),
+            // Recent telemetry for the 48h sparklines (docs §Phase 2).
+            'metrics' => fn ($q) => $q->where('ts', '>=', now()->subHours(48))
+                ->orderBy('ts')
+                ->get(['id', 'device_id', 'ts', 'latency_ms', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'solar_w']),
         ]);
 
         return Inertia::render('Devices/Show', ['device' => $device]);

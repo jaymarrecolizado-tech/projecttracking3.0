@@ -23,6 +23,10 @@ class ProfileController extends Controller
             'status' => session('status'),
             'tokens' => $request->user()->tokens()->get(['id', 'name', 'last_used_at', 'created_at']),
             'plainTextToken' => session('plainTextToken'),
+            'twoFactor' => [
+                'enabled' => $request->user()->hasTwoFactorEnabled(),
+                'setup' => session('two_factor_setup'),
+            ],
         ]);
     }
 
