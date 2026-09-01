@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DataTable from '@/Components/DataTable.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { IconChevronRight, IconRouter, IconSearch } from '@tabler/icons-vue';
 
@@ -87,8 +88,8 @@ const typeLabels = {
       </div>
     </div>
 
-    <div class="dict-card overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
+    <DataTable caption="Device registry with asset tag, model, serial, assigned site and status">
+      <template #header>
         <h3 class="text-lg font-semibold text-slate-800">Device Registry</h3>
         <form class="relative w-full max-w-xs" @submit.prevent="applyFilters()">
           <IconSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -97,22 +98,17 @@ const typeLabels = {
             class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border-slate-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
           />
         </form>
-      </div>
+      </template>
 
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="dict-table-header">
-              <th class="px-6 py-3">Asset Tag</th>
-              <th class="px-6 py-3">Model</th>
-              <th class="px-6 py-3">Type</th>
-              <th class="px-6 py-3">Serial No.</th>
-              <th class="px-6 py-3">Assigned Site</th>
-              <th class="px-6 py-3">Status</th>
-              <th class="px-6 py-3"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
+      <template #head>
+            <th class="px-6 py-3">Asset Tag</th>
+            <th class="px-6 py-3">Model</th>
+            <th class="px-6 py-3">Type</th>
+            <th class="px-6 py-3">Serial No.</th>
+            <th class="px-6 py-3">Assigned Site</th>
+            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3"><span class="sr-only">Actions</span></th>
+      </template>
             <tr v-for="device in devices.data" :key="device.id" class="hover:bg-slate-50/50 transition-colors">
               <td class="px-6 py-4 text-sm font-mono font-semibold text-slate-700">{{ device.asset_tag }}</td>
               <td class="px-6 py-4 text-sm text-slate-700">
@@ -138,22 +134,20 @@ const typeLabels = {
                 </Link>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+      <template #footer>
+        <div v-if="!devices.data?.length" class="px-6 py-12 text-center">
+          <IconRouter class="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p class="text-sm text-slate-500">No devices found.</p>
+        </div>
 
-      <div v-if="!devices.data?.length" class="px-6 py-12 text-center">
-        <IconRouter class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p class="text-sm text-slate-500">No devices found.</p>
-      </div>
-
-      <div v-if="devices.last_page > 1" class="px-6 py-4 border-t border-slate-200 flex gap-1">
-        <Link
-          v-for="link in devices.links" :key="link.label" :href="link.url || '#'" class="px-3 py-1.5 text-sm rounded-md border border-slate-200"
-          :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-slate-50'"
-          v-html="link.label"
-        />
-      </div>
-    </div>
+        <div v-if="devices.last_page > 1" class="px-6 py-4 border-t border-slate-200 flex gap-1">
+          <Link
+            v-for="link in devices.links" :key="link.label" :href="link.url || '#'" class="px-3 py-1.5 text-sm rounded-md border border-slate-200"
+            :class="link.active ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-slate-50'"
+            v-html="link.label"
+          />
+        </div>
+      </template>
+    </DataTable>
   </AuthenticatedLayout>
 </template>

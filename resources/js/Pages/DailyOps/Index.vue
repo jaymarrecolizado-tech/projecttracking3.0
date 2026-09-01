@@ -109,8 +109,9 @@ function markRemainingUp() {
 
     <!-- Action bar -->
     <div class="dict-card p-4 mb-4 sticky top-16 z-10 flex flex-wrap items-center gap-3">
-      <span class="text-sm font-medium text-slate-600 tabular-nums">
+      <span class="text-sm font-medium text-slate-600 tabular-nums" aria-live="polite">
         Reported <span class="text-emerald-600 font-bold">{{ reportedCount }}</span> / {{ counts.total }}
+        <span class="sr-only">sites reported today</span>
       </span>
       <button
         type="button" class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg px-3 py-1.5 transition"

@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DataTable from '@/Components/DataTable.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { IconChevronRight, IconBuilding, IconSearch, IconArrowLeft } from '@tabler/icons-vue';
 import { watch } from 'vue';
@@ -108,20 +109,15 @@ const statusStyles = {
       </div>
     </div>
 
-    <div class="dict-card overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="dict-table-header">
-              <th class="px-6 py-3">Location</th>
-              <th class="px-6 py-3">Project</th>
-              <th class="px-6 py-3">Municipality</th>
-              <th class="px-6 py-3">Province</th>
-              <th class="px-6 py-3">Status</th>
-              <th class="px-6 py-3"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
+    <DataTable caption="Sites listed with project, municipality, province and current status">
+      <template #head>
+            <th class="px-6 py-3">Location</th>
+            <th class="px-6 py-3">Project</th>
+            <th class="px-6 py-3">Municipality</th>
+            <th class="px-6 py-3">Province</th>
+            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3"><span class="sr-only">Actions</span></th>
+      </template>
             <tr
               v-for="site in sites.data" :key="site.id"
               class="hover:bg-slate-50/50 transition-colors cursor-pointer"
@@ -159,15 +155,13 @@ const statusStyles = {
                 </Link>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="!sites.data?.length" class="px-6 py-12 text-center">
-        <IconBuilding class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p class="text-sm text-slate-500">No sites match these filters.</p>
-      </div>
-    </div>
+      <template #footer>
+        <div v-if="!sites.data?.length" class="px-6 py-12 text-center">
+          <IconBuilding class="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p class="text-sm text-slate-500">No sites match these filters.</p>
+        </div>
+      </template>
+    </DataTable>
 
     <div v-if="sites.links" class="mt-4 flex gap-1 flex-wrap">
       <component

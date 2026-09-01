@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import DataTable from '@/Components/DataTable.vue';
 import { Head } from '@inertiajs/vue3';
 import { IconActivity } from '@tabler/icons-vue';
 defineProps({ site: Object, statuses: Object });
@@ -14,26 +15,21 @@ defineProps({ site: Object, statuses: Object });
       </h2>
     </template>
 
-    <div class="dict-card overflow-hidden">
-      <div class="px-6 py-4 border-b border-slate-200">
+    <DataTable caption="Daily status records with date, status, bandwidth, users, uptime and entry workflow state">
+      <template #header>
         <h3 class="text-lg font-semibold text-slate-800">
           {{ site ? site.location_name : 'Daily Statuses' }}
         </h3>
-      </div>
+      </template>
 
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="dict-table-header">
-              <th class="px-6 py-3">Date</th>
-              <th class="px-6 py-3">Status</th>
-              <th class="px-6 py-3">Bandwidth (Mbps)</th>
-              <th class="px-6 py-3">Users</th>
-              <th class="px-6 py-3">Uptime %</th>
-              <th class="px-6 py-3">Entry Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
+      <template #head>
+            <th class="px-6 py-3">Date</th>
+            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3">Bandwidth (Mbps)</th>
+            <th class="px-6 py-3">Users</th>
+            <th class="px-6 py-3">Uptime %</th>
+            <th class="px-6 py-3">Entry Status</th>
+      </template>
             <tr v-for="status in statuses?.data || statuses" :key="status.id" class="hover:bg-slate-50/50 transition-colors">
               <td class="px-6 py-4 text-sm font-medium text-slate-700">{{ status.date }}</td>
               <td class="px-6 py-4 text-sm">
@@ -60,14 +56,12 @@ defineProps({ site: Object, statuses: Object });
                 >{{ status.entry_status }}</span>
               </td>
             </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="!(statuses?.data || statuses)?.length" class="px-6 py-12 text-center">
-        <IconActivity class="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p class="text-sm text-slate-500">No daily statuses found.</p>
-      </div>
-    </div>
+      <template #footer>
+        <div v-if="!(statuses?.data || statuses)?.length" class="px-6 py-12 text-center">
+          <IconActivity class="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p class="text-sm text-slate-500">No daily statuses found.</p>
+        </div>
+      </template>
+    </DataTable>
   </AuthenticatedLayout>
 </template>

@@ -95,6 +95,7 @@ defineProps({ site: Object });
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
+            <caption class="sr-only">Equipment currently deployed at this site</caption>
             <thead>
               <tr class="dict-table-header">
                 <th class="px-6 py-3">Asset Tag</th>

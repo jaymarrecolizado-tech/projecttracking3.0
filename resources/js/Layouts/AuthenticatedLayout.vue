@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import {
     IconDashboard, IconMap, IconFolder, IconBuilding, IconActivity,
@@ -64,8 +64,41 @@ const visibleGroups = computed(() =>
         .filter((group) => group.items.length > 0),
 )
 
+// Drawer is a modal dialog: trap Tab inside, close on Escape, and return
+// focus to the hamburger button when it closes.
+const mobileDialog = ref(null)
+const menuButton = ref(null)
+
+function drawerFocusables(el) {
+    return [...el.querySelectorAll('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+}
+
+function onDrawerKeydown(e) {
+    if (e.key === 'Escape') {
+        sidebarOpen.value = false
+        return
+    }
+    if (e.key !== 'Tab') return
+    const items = drawerFocusables(mobileDialog.value)
+    if (!items.length) return
+    const first = items[0]
+    const last = items[items.length - 1]
+    if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+    }
+}
+
 watch(sidebarOpen, (val) => {
     document.body.style.overflow = val ? 'hidden' : ''
+    if (val) {
+        nextTick(() => drawerFocusables(mobileDialog.value)[0]?.focus())
+    } else {
+        menuButton.value?.focus()
+    }
 })
 </script>
 
@@ -139,7 +172,7 @@ watch(sidebarOpen, (val) => {
     <!-- Mobile Sidebar Overlay -->
     <div v-if="sidebarOpen" class="fixed inset-0 z-[500] lg:hidden">
       <div class="fixed inset-0 bg-black/50" aria-hidden="true" @click="sidebarOpen = false"></div>
-      <div class="fixed inset-y-0 left-0 w-sidebar bg-gradient-to-b from-blue-800 to-blue-900 text-white flex flex-col" role="dialog" aria-modal="true" aria-label="Navigation menu">
+      <div ref="mobileDialog" class="fixed inset-y-0 left-0 w-sidebar bg-gradient-to-b from-blue-800 to-blue-900 text-white flex flex-col" role="dialog" aria-modal="true" aria-label="Navigation menu" @keydown="onDrawerKeydown">
         <!-- Mobile Logo + Close -->
         <div class="px-4 py-5 border-b border-blue-700/50 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -209,7 +242,7 @@ watch(sidebarOpen, (val) => {
     <div class="flex-1 lg:ml-sidebar">
       <!-- Top Bar -->
       <header class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-200 h-16 flex items-center px-4 sm:px-6">
-        <button class="lg:hidden mr-3 text-slate-500 hover:text-slate-700" aria-label="Open navigation menu" :aria-expanded="sidebarOpen" @click="sidebarOpen = true">
+        <button ref="menuButton" class="lg:hidden mr-3 text-slate-500 hover:text-slate-700" aria-label="Open navigation menu" :aria-expanded="sidebarOpen" @click="sidebarOpen = true">
           <IconMenu2 class="w-6 h-6" />
         </button>
         <slot name="header"></slot>

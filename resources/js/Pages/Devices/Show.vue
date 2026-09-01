@@ -113,6 +113,7 @@ const statusPill = {
       </div>
       <div class="overflow-x-auto">
         <table class="w-full">
+          <caption class="sr-only">Deployment history — sites, roles and dates</caption>
           <thead>
             <tr class="dict-table-header">
               <th class="px-6 py-3">Site</th>
