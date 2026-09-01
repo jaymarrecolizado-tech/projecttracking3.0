@@ -83,8 +83,8 @@ watch(sidebarOpen, (val) => {
             <span class="text-blue-800 font-extrabold text-sm">FW</span>
           </div>
           <div>
-            <div class="font-bold text-white text-sm leading-tight">FreeWiFi Monitor</div>
-            <div class="text-[11px] text-blue-300 leading-tight">Device Operations</div>
+            <div class="font-bold text-white text-[13px] leading-tight">Free Public Internet Access Program</div>
+            <div class="text-[11px] text-blue-300 leading-tight"><span class="uppercase tracking-wide">FPIAP</span> · FreeWiFi · Device Operations</div>
           </div>
         </div>
       </div>
@@ -144,11 +144,11 @@ watch(sidebarOpen, (val) => {
         <div class="px-4 py-5 border-b border-blue-700/50 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 bg-white rounded-lg flex items-center justify-center shrink-0">
-              <span class="text-blue-800 font-extrabold text-sm">D</span>
+              <span class="text-blue-800 font-extrabold text-sm">FW</span>
             </div>
             <div>
-              <div class="font-bold text-white text-sm leading-tight">FreeWiFi Monitor</div>
-              <div class="text-[11px] text-blue-300 leading-tight">Device Operations</div>
+              <div class="font-bold text-white text-[13px] leading-tight">Free Public Internet Access Program</div>
+              <div class="text-[11px] text-blue-300 leading-tight"><span class="uppercase tracking-wide">FPIAP</span> · FreeWiFi · Device Operations</div>
             </div>
           </div>
           <button class="text-blue-200 hover:text-white" aria-label="Close navigation menu" @click="sidebarOpen = false">

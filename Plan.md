@@ -27,11 +27,20 @@ Living roadmap. Completed work stays listed for context; backlog at the bottom.
 - DB backups (spatie/laravel-backup, 02:15 daily), report/import cleanup jobs
 - `nms:pull` command + `NmsClient` contract — bind an SNMP/REST client to go live
 
+### User administration
+- Create/edit users with role assignment and project scoping, deactivation enforced at login (`user:make` command)
+
+### Branding & UX polish
+- FPIAP rebrand across login, sidebar, wallboard, device labels, PDF report footers, mail subjects, APP_NAME
+- Sites/Projects row-click navigation; Projects "New Project" button removed (projects are import/command-managed)
+- Fixed silent camelCase/snake_case payload mismatches on Sites pages (`latest_daily_status`, `active_deployments`) with null-safe rendering
+- Relative route URLs via Ziggy (`config/ziggy.php`) + `ASSET_URL` support for deploy behind a CDN/tunnel
+- Feature tests for Projects/Sites pages (suite now 65 tests)
+
 ## 🔲 Backlog (priority order)
 1. **Deploy to Hostinger** — first real MySQL run: `mysqldump` on PATH for backups, `queue:restart` after deploy, cron `schedule:run`
 2. **SMS/Telegram alerts** — needs a gateway choice (ClickSend/Twilio/Telegram bot); hook into `alerts:down`
 3. **`device_metrics` time-series** — heartbeat currently stores one row/day; add high-frequency table + charts (docs Phase 2)
 4. **DataTable shared component** — extract from Sites/Devices/DailyGrid tables
 5. **Accessibility** — remaining: focus trap in mobile drawer, aria-live on ops counter, table captions
-6. **User management UI** — `users.manage` permission exists but no admin screen for users/role assignment
-7. **2FA for admin accounts** — Laravel Fortify or TOTP package
+6. **2FA for admin accounts** — Laravel Fortify or TOTP package

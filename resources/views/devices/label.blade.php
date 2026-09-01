@@ -48,7 +48,7 @@
                     <div class="tag">{{ $label['device']->asset_tag }}</div>
                     <div class="model">{{ $label['device']->deviceModel->manufacturer }} {{ $label['device']->deviceModel->model_name }}</div>
                     <div class="serial">S/N {{ $label['device']->serial_number }}</div>
-                    <div class="brand">FreeWiFi for All · scan for device info</div>
+                    <div class="brand">FPIAP · FreeWiFi · scan for device info</div>
                 </div>
             </div>
         @endforeach

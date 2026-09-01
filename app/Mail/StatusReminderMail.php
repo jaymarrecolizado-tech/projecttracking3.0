@@ -23,7 +23,7 @@ class StatusReminderMail extends Mailable
         $total = array_sum($this->perProject);
 
         return new Envelope(
-            subject: "[FreeWiFi Monitor] {$total} sites awaiting {$this->reportDate} report",
+            subject: "[FPIAP · FreeWiFi] {$total} sites awaiting {$this->reportDate} report",
         );
     }
 

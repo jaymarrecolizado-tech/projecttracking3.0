@@ -60,8 +60,8 @@ const dotFor = {
                         <span class="text-[#0F1B2D] font-extrabold text-base tracking-tight">FW</span>
                     </div>
                     <div>
-                        <div class="font-bold text-[15px] leading-tight tracking-tight">FreeWiFi Monitor</div>
-                        <div class="text-[11px] text-slate-400 uppercase tracking-[0.14em] mt-0.5">DICT · Device Operations</div>
+                        <div class="font-bold text-[15px] leading-tight tracking-tight">Free Public Internet Access Program <span class="text-slate-400">(FPIAP)</span></div>
+                        <div class="text-[11px] text-slate-400 uppercase tracking-[0.14em] mt-0.5">FreeWiFi · Device Operations</div>
                     </div>
                 </div>
             </div>
@@ -73,7 +73,7 @@ const dotFor = {
                     <span class="text-slate-400">accounted for — every day.</span>
                 </h1>
                 <p class="mt-5 text-[15px] leading-relaxed text-slate-400 max-w-md">
-                    The operations console for the Free WiFi for All program: daily site uptime,
+                    The operations console for the FPIAP FreeWiFi program: daily site uptime,
                     field equipment, and reports for every barangay we connect.
                 </p>
 
@@ -118,7 +118,7 @@ const dotFor = {
                 </div>
                 <div class="border-t border-white/10 pt-5 text-xs text-slate-500 flex items-center justify-between">
                     <span>Department of Information and Communications Technology</span>
-                    <span class="hidden xl:inline">Free WiFi for All · Broadband ng Masa</span>
+                    <span class="hidden xl:inline">Free Public Internet Access Program · FreeWiFi · Broadband ng Masa</span>
                 </div>
             </div>
         </div>
@@ -132,8 +132,8 @@ const dotFor = {
                         <span class="text-white font-extrabold text-sm">FW</span>
                     </div>
                     <div>
-                        <div class="font-bold text-slate-900 text-sm leading-tight">FreeWiFi Monitor</div>
-                        <div class="text-[11px] text-slate-500 uppercase tracking-[0.14em]">DICT · Device Operations</div>
+                        <div class="font-bold text-slate-900 text-sm leading-tight">Free Public Internet Access Program</div>
+                        <div class="text-[11px] text-slate-500 uppercase tracking-[0.14em]">FPIAP · FreeWiFi · Device Operations</div>
                     </div>
                 </div>
 

@@ -105,21 +105,21 @@ defineProps({ site: Object });
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="deployment in site.activeDeployments" :key="deployment.id" class="hover:bg-slate-50/50">
-                <td class="px-6 py-4 text-sm font-mono font-semibold text-slate-700">{{ deployment.device.asset_tag }}</td>
+              <tr v-for="deployment in site.active_deployments" :key="deployment.id" class="hover:bg-slate-50/50">
+                <td class="px-6 py-4 text-sm font-mono font-semibold text-slate-700">{{ deployment.device?.asset_tag }}</td>
                 <td class="px-6 py-4 text-sm text-slate-700">
-                  {{ deployment.device.device_model.manufacturer }} {{ deployment.device.device_model.model_name }}
+                  {{ deployment.device?.device_model?.manufacturer }} {{ deployment.device?.device_model?.model_name }}
                 </td>
-                <td class="px-6 py-4 text-sm capitalize text-slate-600">{{ deployment.role_at_site.replaceAll('_', ' ') }}</td>
-                <td class="px-6 py-4 text-sm text-slate-600">{{ new Date(deployment.installed_at).toLocaleDateString() }}</td>
+                <td class="px-6 py-4 text-sm capitalize text-slate-600">{{ deployment.role_at_site?.replaceAll('_', ' ') }}</td>
+                <td class="px-6 py-4 text-sm text-slate-600">{{ deployment.installed_at ? new Date(deployment.installed_at).toLocaleDateString() : '—' }}</td>
                 <td class="px-6 py-4 text-sm">
-                  <Link :href="route('devices.show', deployment.device.id)" class="text-blue-600 hover:text-blue-800 font-medium">View</Link>
+                  <Link v-if="deployment.device" :href="route('devices.show', deployment.device.id)" class="text-blue-600 hover:text-blue-800 font-medium">View</Link>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div v-if="!site.activeDeployments?.length" class="px-6 py-10 text-center">
+        <div v-if="!site.active_deployments?.length" class="px-6 py-10 text-center">
           <p class="text-sm text-slate-500">No equipment registered at this site yet.</p>
         </div>
       </div>

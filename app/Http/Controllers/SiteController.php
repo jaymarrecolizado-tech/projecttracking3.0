@@ -14,7 +14,7 @@ class SiteController extends Controller
     public function index(Request $request)
     {
         $sites = Site::query()
-            ->with(['project:id,code,name,marker_color', 'latestDailyStatus:id,site_id,status,date'])
+            ->with(['project:id,code,name,marker_color', 'latestDailyStatus'])
             ->when($request->input('search'), fn ($q, $v) => $q->where(fn ($w) => $w
                 ->where('location_name', 'like', "%{$v}%")
                 ->orWhere('ap_site_code', 'like', "%{$v}%")
@@ -31,7 +31,7 @@ class SiteController extends Controller
 
         return Inertia::render('Sites/Index', [
             'sites' => $sites,
-            'filters' => $request->only(['search', 'project_id', 'status', 'province', 'today']),
+            'filters' => $this->filterPayload($request),
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'provinces' => Site::whereNotNull('province')->distinct()->orderBy('province')->pluck('province'),
         ]);
@@ -68,10 +68,10 @@ class SiteController extends Controller
         return redirect()->route('sites.index');
     }
 
-    public function byProject(Project $project)
+    public function byProject(Request $request, Project $project)
     {
         $sites = $project->sites()
-            ->with(['latestDailyStatus:id,site_id,status,date'])
+            ->with(['latestDailyStatus'])
             ->orderBy('location_name')
             ->paginate(20)
             ->withQueryString();
@@ -79,9 +79,20 @@ class SiteController extends Controller
         return Inertia::render('Sites/Index', [
             'sites' => $sites,
             'project' => $project,
-            'filters' => [],
+            'filters' => $this->filterPayload($request),
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'provinces' => Site::whereNotNull('province')->distinct()->orderBy('province')->pluck('province'),
         ]);
+    }
+
+    private function filterPayload(Request $request): array
+    {
+        return [
+            'search' => $request->input('search'),
+            'project_id' => $request->input('project_id'),
+            'status' => $request->input('status'),
+            'province' => $request->input('province'),
+            'today' => $request->input('today'),
+        ];
     }
 }

@@ -36,7 +36,7 @@ const chart = computed(() => {
       <div>
         <h1 class="text-2xl font-bold tracking-tight">FreeWiFi Network Status</h1>
         <p class="text-sm text-slate-400 mt-0.5">
-          NOC Wallboard · refreshes every 30s · last update {{ new Date(stats.generated_at).toLocaleTimeString() }}
+          FPIAP · NOC Wallboard · refreshes every 30s · last update {{ new Date(stats.generated_at).toLocaleTimeString() }}
         </p>
       </div>
       <div class="text-right">

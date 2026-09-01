@@ -43,7 +43,7 @@
     @endforeach
 
     <div class="footer">
-        FreeWiFi Monitor — Device Operations — Confidential
+        Free Public Internet Access Program (FPIAP) — FreeWiFi Device Operations — Confidential
     </div>
 </body>
 </html>

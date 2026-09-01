@@ -21,7 +21,7 @@ class DispatchDownAlerts extends Command
     public function handle(): int
     {
         $downSites = Site::query()
-            ->with(['project:id,name,code', 'latestDailyStatus:id,site_id,date,status'])
+            ->with(['project:id,name,code', 'latestDailyStatus'])
             ->whereHas('latestDailyStatus', fn ($q) => $q->where('status', 'DOWN'))
             ->get(['id', 'location_name', 'municipality', 'province', 'project_id', 'last_alerted_at']);
 

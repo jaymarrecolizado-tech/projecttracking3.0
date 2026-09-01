@@ -34,7 +34,7 @@ class WarrantyDigest extends Command
             Mail::raw(
                 "Warranty digest: {$expiring->count()} device(s) expire within {$days} days.\n\n".
                 $expiring->map(fn ($d) => "- {$d->asset_tag}: expires {$d->warranty_until->toDateString()}")->implode("\n"),
-                fn ($m) => $m->to($email)->subject("[FreeWiFi Monitor] Warranty digest — {$expiring->count()} devices"),
+                fn ($m) => $m->to($email)->subject("[FPIAP · FreeWiFi] Warranty digest — {$expiring->count()} devices"),
             );
             $this->info("Digest mailed to {$email}.");
         }

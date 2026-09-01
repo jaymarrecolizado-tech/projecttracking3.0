@@ -7,17 +7,17 @@ import { watch } from 'vue';
 const props = defineProps({
     sites: Object,
     project: Object,
-    filters: Object,
+    filters: { type: Object, default: () => ({}) },
     projects: Array,
     provinces: Array,
 });
 
 const form = useForm({
-    search: props.filters.search ?? '',
-    project_id: props.filters.project_id ?? '',
-    status: props.filters.status ?? '',
-    province: props.filters.province ?? '',
-    today: props.filters.today ?? '',
+    search: props.filters?.search ?? '',
+    project_id: props.filters?.project_id ?? '',
+    status: props.filters?.status ?? '',
+    province: props.filters?.province ?? '',
+    today: props.filters?.today ?? '',
 });
 
 let debounce = null;
@@ -122,7 +122,11 @@ const statusStyles = {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="site in sites.data" :key="site.id" class="hover:bg-slate-50/50 transition-colors">
+            <tr
+              v-for="site in sites.data" :key="site.id"
+              class="hover:bg-slate-50/50 transition-colors cursor-pointer"
+              @click="router.visit(route('sites.show', site.id))"
+            >
               <td class="px-6 py-4 text-sm font-medium text-slate-700">
                 {{ site.location_name }}
                 <span v-if="site.ap_site_code" class="block text-[11px] text-slate-400 font-mono">{{ site.ap_site_code }}</span>
@@ -146,7 +150,11 @@ const statusStyles = {
                 </span>
               </td>
               <td class="px-6 py-4 text-sm">
-                <Link :href="route('sites.show', site.id)" class="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1">
+                <Link
+                  :href="route('sites.show', site.id)"
+                  class="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1"
+                  @click.stop
+                >
                   View <IconChevronRight class="w-4 h-4" />
                 </Link>
               </td>
