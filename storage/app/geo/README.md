@@ -26,15 +26,21 @@ keys the boundary filter clips by: `province`, `district`, `municipality`
 
 ## Barangay totals vs PSA
 
-The layer holds **2,262 barangays** for Region II's 92 LGUs. Spot checks match
-PSA exactly where it matters most — Tuguegarao City 49, Ilagan City 91,
-Cauayan City 65, City of Santiago 37, Batanes 29 — but the layer total is
-**49 short of the PSA figure of 2,311**, because the OCHA COD-AB snapshot
-(2025-02) predates some barangay renamings/ratifications. The authoritative
-counts for the barangay coverage report live in the `barangay_references`
-table (`php artisan barangays:sync-reference` rebuilds it from this layer;
-upsert-only, so manually added PSA rows are never deleted). Add the missing
-barangays there and the coverage percentages update immediately.
+The boundary layer holds **2,262 barangays** (OCHA COD-AB snapshot) and is
+used for polygons only. The authoritative count for the coverage report is
+the **PSGC list — 2,311 barangays for Region II, exactly the PSA figure** —
+loaded into `barangay_references` via:
+
+```
+php artisan barangays:sync-reference    # bootstrap from the boundary layer
+php artisan barangays:import-psgc <psgc-flat.json>   # reconcile to official PSGC
+```
+
+The PSGC export is a flat JSON array of `{psgc_id, name, muni, prov}` (the
+July 2026 publication mirror of bendlikeabamboo/barangay-data-repository was
+used). The import is upsert-only — manual corrections survive re-imports —
+and now also stamps each barangay with its `psgc` code. Per province:
+Batanes 29 · Cagayan 820 · Isabela 1,055 · Nueva Vizcaya 275 · Quirino 132.
 
 ## Known caveats
 

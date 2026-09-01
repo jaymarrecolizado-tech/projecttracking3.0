@@ -23,6 +23,11 @@ class NameNormalizer
         $name = preg_replace('/^city of /i', '', trim((string) $name));
         $name = trim((string) preg_replace('/\bcity$/i', '', trim((string) $name)));
 
-        return trim((string) preg_replace('/[^a-z0-9 ]+/', '', strtolower($name)));
+        $name = strtolower($name);
+        // Expand saint abbreviations so "Sta. Ana" == "Santa Ana" (PSGC style).
+        $name = (string) preg_replace('/\bsta\b/', 'santa', $name);
+        $name = (string) preg_replace('/\bsto\b/', 'santo', $name);
+
+        return trim((string) preg_replace('/[^a-z0-9 ]+/', '', $name));
     }
 }

@@ -137,6 +137,36 @@ class BarangayCoverageTest extends TestCase
         Storage::disk('local')->assertExists($export->filename);
     }
 
+    public function test_psgc_import_is_authoritative_and_sets_psgc_codes(): void
+    {
+        // Bootstrap from the boundary layer, then let PSGC reconcile.
+        $this->artisan('barangays:sync-reference');
+
+        // Two real Aparri barangays from the layer + one newer PSGC-only name.
+        $existing = BarangayReference::where('municipality', 'Aparri')->limit(2)->get();
+        $fixture = sys_get_temp_dir().'/psgc-test-'.uniqid().'.json';
+        file_put_contents($fixture, json_encode(array_merge(
+            $existing->map(fn ($r, $i) => [
+                'psgc_id' => '020500800'.($i + 1), 'name' => $r->name,
+                'muni' => 'Aparri', 'prov' => 'Cagayan',
+            ])->values()->all(),
+            [['psgc_id' => '0205008003', 'name' => 'Renamed Pob.', 'muni' => 'Aparri', 'prov' => 'Cagayan']],
+        )));
+
+        $before = BarangayReference::count();
+        $this->artisan('barangays:import-psgc', ['file' => $fixture])
+            ->expectsOutputToContain('PSGC row(s)');
+
+        unlink($fixture);
+
+        // Existing rows refresh in place; only the PSGC-only rename is new.
+        $this->assertSame($before + 1, BarangayReference::count());
+        foreach ($existing as $i => $reference) {
+            $this->assertSame('020500800'.($i + 1), $reference->fresh()->psgc);
+        }
+        $this->assertNotNull(BarangayReference::where('name', 'Renamed Pob.')->first());
+    }
+
     public function test_sync_command_upserts_without_deleting_manual_rows(): void
     {
         BarangayReference::create([

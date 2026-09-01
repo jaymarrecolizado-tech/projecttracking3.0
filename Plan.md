@@ -44,6 +44,10 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] DataTable (Sites / Devices / DailyGrid)
 - [x] A11y: mobile drawer focus trap + Escape + restore, aria-live ops counter, sr-only captions
 
+### Alerts console (2026-09)
+- [x] `/alerts`: active/resolved lists with severity filter, acknowledge + resolve actions (`daily.approve`), live counters
+- [x] Rules CRUD on the same page (`users.manage`)
+
 ### Security & monitoring (2026-09)
 - [x] 2FA TOTP (`App\Support\Totp`), Profile QR (`users.manage`), `/two-factor-challenge`
 - [x] Telegram DOWN alerts (`TELEGRAM_*`) alongside email; `last_alerted_at` fillable
@@ -67,6 +71,7 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 ### Barangay coverage (2026-09)
 - [x] Installed vs total barangays (`BarangayCoverageService`, `/map/barangay-coverage`, `/reports/barangay-coverage`)
 - [x] `barangay_references` + `barangays:sync-reference` (upsert-only)
+- [x] **PSGC reconciliation: 2,311 barangays — exact PSA match** (`barangays:import-psgc`, 2026-07 publication; per province: Batanes 29 · Cagayan 820 · Isabela 1,055 · NV 275 · Quirino 132; every barangay stamped with its PSGC code)
 
 Out of scope (not started, not promised this slice): nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
 
@@ -75,9 +80,7 @@ Out of scope (not started, not promised this slice): nationwide shapefiles, live
 ## Open (backlog)
 
 1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate, `LegislativeDistrictSeeder` + `AlertRuleSeeder`, `sites:backfill-districts`, `storage/app/geo`, Vite to **both** web root `build/` and `fpiap-app/public/build`, `cache:clear` / `view:clear`. Do not `route:cache`.
-2. **Alerts UI** — list / acknowledge / manage rules (tables + engine done; `acknowledged_at/by`, `escalation_level` unused in UI).
-3. **PSA barangay list** — add ~49 missing rows to `barangay_references` so totals match PSA 2,311.
-4. **PSGC on sites** — write `adm*_pcode` into `loc_id` / `prov_id` on the next import; optional: fill `sites.district` from `legislative_districts` when the workbook has no District column.
+2. **PSGC on sites** — write `adm*_pcode` into `loc_id` / `prov_id` on the next import; optional: fill `sites.district` from `legislative_districts` when the workbook has no District column.
 5. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull`.
 6. **Firmware-age alert rule** — docs §4.3 “firmware older than latest-approved” (not in `AlertRuleSeeder`).
 7. **Wallboard extras** — live site map + active-alerts feed (counters/down list already there).
