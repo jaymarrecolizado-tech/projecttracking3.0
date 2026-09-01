@@ -75,7 +75,7 @@ class DemoContentSeeder extends Seeder
                 continue;
             }
             $downDay = in_array($name, ['Calle Crisologo Corner']) ? 2 : (in_array($name, ['Balyuan Amphitheater']) ? 5 : null);
-            for ($d = 7; $d >= 1; $d--) {
+            for ($d = 7; $d >= 0; $d--) {
                 $date = Carbon::today()->subDays($d);
                 $isDown = $downDay === $d || ($name === "People's Park Gazebo" && $d === 3);
                 $attributes = [

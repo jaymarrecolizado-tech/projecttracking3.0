@@ -44,9 +44,9 @@ const dotFor = {
 <template>
     <Head title="Sign in" />
 
-    <div class="min-h-screen lg:grid lg:grid-cols-[1.15fr_1fr]">
+    <div class="min-h-screen w-full lg:grid lg:grid-cols-2">
         <!-- ═══ Identity panel ═══ -->
-        <div class="relative hidden lg:flex flex-col justify-between overflow-hidden bg-[#0F1B2D] text-white p-12">
+        <div class="relative hidden lg:flex min-h-screen flex-col justify-between overflow-hidden bg-[#0F1B2D] text-white p-12">
             <!-- Blueprint grid -->
             <div class="absolute inset-0 pointer-events-none" :style="{
                 backgroundImage: 'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
@@ -116,15 +116,15 @@ const dotFor = {
                         <div class="text-3xl font-bold tabular-nums mt-1 text-emerald-400">{{ network.upToday }}</div>
                     </div>
                 </div>
-                <div class="border-t border-white/10 pt-5 text-xs text-slate-500 flex items-center justify-between">
+                <div class="border-t border-white/10 pt-5 text-xs text-slate-500 flex items-center justify-between gap-4">
                     <span>Department of Information and Communications Technology</span>
-                    <span class="hidden xl:inline">Free Public Internet Access Program · FreeWiFi · Broadband ng Masa</span>
+                    <span class="hidden lg:inline text-right">Free Public Internet Access Program · FreeWiFi · Broadband ng Masa</span>
                 </div>
             </div>
         </div>
 
         <!-- ═══ Sign-in panel ═══ -->
-        <div class="flex items-center justify-center bg-[#FAFAF8] px-6 py-12 sm:px-12">
+        <div class="flex min-h-screen items-center justify-center bg-[#FAFAF8] px-6 py-12 sm:px-12">
             <div class="w-full max-w-sm">
                 <!-- Compact brand for mobile -->
                 <div class="lg:hidden flex items-center gap-3 mb-10">
