@@ -12,7 +12,7 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] Scoped RBAC (`can:` + policies), transactional writes, MySQL-safe SQL
 - [x] Audit log redaction + payload caps, throttled auth routes, random `setup.ps1` admin password
 - [x] Queued Excel imports (atomic per row) and queued PDF reports with tracked exports
-- [x] CI: GitHub Actions, PHPStan L4, Pint, ESLint, PHPUnit — **111 tests**
+- [x] CI: GitHub Actions, PHPStan L4, Pint, ESLint, PHPUnit — **122 tests**
 
 ### Data platform
 - [x] Region II workbook importer (`php scripts/import-region-workbook.php`)
@@ -84,9 +84,9 @@ Out of scope (not started, not promised this slice): nationwide shapefiles, live
 ## Open (backlog)
 
 1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate, `LegislativeDistrictSeeder` + `AlertRuleSeeder`, `sites:backfill-districts`, `storage/app/geo`, Vite to **both** web root `build/` and `fpiap-app/public/build`, `cache:clear` / `view:clear`. Do not `route:cache`.
-3. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway).
-4. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
-5. **Phase 3 ops** (docs): SLA PDF vs target, firmware fleet view, solar power analytics, field inspection form, public unauthenticated map.
+2. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway).
+3. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
+4. **Phase 3 ops** (docs): SLA PDF vs target, firmware fleet view, solar power analytics, field inspection form, public unauthenticated map.
 
 ---
 
