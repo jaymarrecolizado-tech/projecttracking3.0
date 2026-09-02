@@ -2,6 +2,8 @@
 // Coverage readout beside the map (Plan §Map 5, stats panel card).
 defineProps({
     coverage: { type: Object, default: null },
+    plotted: { type: Number, default: 0 },
+    deployedOnly: { type: Boolean, default: false },
 });
 const emit = defineEmits(['generate-pdf']);
 </script>
@@ -10,6 +12,17 @@ const emit = defineEmits(['generate-pdf']);
   <div class="dict-card p-5">
     <div v-if="!coverage" class="text-sm text-slate-400">Loading coverage…</div>
     <template v-else>
+      <p class="text-sm text-slate-600 mb-4">
+        <span class="font-semibold text-slate-800 tabular-nums">{{ plotted }}</span>
+        {{ deployedOnly ? 'deployed devices on the map.' : 'sites on the map.' }}
+        <span v-if="deployedOnly" class="text-slate-500">
+          Turn off "Deployed devices" to plot all {{ coverage.totals.registered }} registered sites.
+        </span>
+        <span v-else-if="plotted !== coverage.totals.registered" class="text-slate-500">
+          {{ coverage.totals.registered }} registered in this filter
+          (sites without coordinates are listed but not plotted).
+        </span>
+      </p>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div>
           <div class="text-2xl font-bold text-slate-800 tabular-nums">{{ coverage.totals.registered }}</div>
@@ -42,7 +55,7 @@ const emit = defineEmits(['generate-pdf']);
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="row in coverage.rows" :key="row.site_type">
+            <tr v-for="row in coverage.rows" :key="row.site_type || '__unspecified__'">
               <td class="px-3 py-2 text-sm text-slate-700">{{ row.label }}</td>
               <td class="px-3 py-2 text-sm text-right tabular-nums">{{ row.registered }}</td>
               <td class="px-3 py-2 text-sm text-right tabular-nums">{{ row.actual }}</td>

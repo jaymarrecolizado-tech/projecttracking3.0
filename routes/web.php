@@ -12,6 +12,7 @@ use App\Http\Controllers\MilestoneController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SiteEquipmentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/projects/{project}/sites', [SiteController::class, 'byProject'])->name('projects.sites');
     Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index'])->name('projects.milestones');
     Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->name('projects.milestones.store')->middleware('can:milestone.manage');
+
+    Route::post('/sites/{site}/equipment', [SiteEquipmentController::class, 'store'])->name('sites.equipment.store')->middleware('can:devices.create');
+    Route::delete('/sites/{site}/equipment/{deployment}', [SiteEquipmentController::class, 'destroy'])->name('sites.equipment.destroy')->middleware('can:devices.edit');
 
     Route::get('/sites/{site}/daily-grid', [DailyStatusController::class, 'grid'])->name('sites.daily-grid');
     Route::post('/daily-statuses/batch', [DailyStatusController::class, 'batchStore'])->name('daily-statuses.batch')->middleware('can:daily.create');

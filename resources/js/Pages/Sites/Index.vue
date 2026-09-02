@@ -52,6 +52,7 @@ const statusStyles = {
         </Link>
         <h2 class="font-semibold text-lg text-slate-800 leading-tight">
           {{ project ? `${project.name} - Sites` : 'All Sites' }}
+          <span v-if="sites.total != null" class="ml-2 text-sm font-normal text-slate-400 tabular-nums">({{ sites.total }})</span>
         </h2>
       </div>
     </template>

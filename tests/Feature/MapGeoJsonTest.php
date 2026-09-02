@@ -58,6 +58,21 @@ class MapGeoJsonTest extends TestCase
         return $site;
     }
 
+    public function test_default_geojson_includes_every_site_with_coordinates(): void
+    {
+        $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri'], withDeployment: true);
+        $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Ballesteros']);
+
+        $features = collect($this->actingAs(User::factory()->create())
+            ->getJson('/map/geojson')->json('features'));
+
+        $this->assertCount(2, $features);
+        $this->assertEqualsCanonicalizing(
+            ['Aparri', 'Ballesteros'],
+            $features->pluck('properties.municipality')->all(),
+        );
+    }
+
     public function test_deployed_only_layer_omits_sites_without_active_deployments(): void
     {
         $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri'], withDeployment: true);

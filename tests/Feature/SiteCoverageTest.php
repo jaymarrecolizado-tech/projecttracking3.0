@@ -103,6 +103,38 @@ class SiteCoverageTest extends TestCase
         $this->assertSame('PHS', $coverage['rows'][0]['site_type']);
     }
 
+    public function test_coverage_includes_sites_with_no_site_type(): void
+    {
+        $this->site(['municipality' => 'Aparri', 'site_type' => 'PES']);
+        $this->site(['municipality' => 'Aparri', 'site_type' => null]);
+        $blank = $this->site(['municipality' => 'Aparri', 'site_type' => '']);
+        $this->deploy($blank);
+
+        $coverage = app(SiteCoverageService::class)->coverage();
+
+        $unspecified = collect($coverage['rows'])->firstWhere('site_type', '');
+        $this->assertNotNull($unspecified);
+        $this->assertSame('Unspecified', $unspecified['label']);
+        $this->assertSame(2, $unspecified['registered']);
+        $this->assertSame(1, $unspecified['actual']);
+        $this->assertSame(3, $coverage['totals']['registered']);
+        $this->assertSame(1, $coverage['totals']['actual']);
+    }
+
+    public function test_coverage_respects_site_type_and_status_filters(): void
+    {
+        $this->site(['municipality' => 'Aparri', 'site_type' => 'PES', 'status' => 'active']);
+        $this->site(['municipality' => 'Aparri', 'site_type' => 'PES', 'status' => 'inactive']);
+        $this->site(['municipality' => 'Aparri', 'site_type' => 'PHS', 'status' => 'active']);
+
+        $byType = app(SiteCoverageService::class)->coverage(['site_type' => 'PES']);
+        $this->assertSame(2, $byType['totals']['registered']);
+        $this->assertSame(['PES'], collect($byType['rows'])->pluck('site_type')->all());
+
+        $byStatus = app(SiteCoverageService::class)->coverage(['status' => 'inactive']);
+        $this->assertSame(1, $byStatus['totals']['registered']);
+    }
+
     public function test_site_type_report_queues_and_completes(): void
     {
         Storage::fake('local');

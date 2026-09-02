@@ -21,11 +21,12 @@ const filters = reactive({
     municipality: props.filters?.municipality ?? '',
     barangay: props.filters?.barangay ?? '',
     site_type: props.filters?.site_type ?? '',
-    deployed_only: props.filters?.deployed_only ?? '1',
+    deployed_only: props.filters?.deployed_only ?? '',
 });
 
 const options = ref(props.initialOptions);
 const coverage = ref(null);
+const plotted = ref(0);
 const busy = ref(false);
 
 const mapContainer = ref(null);
@@ -82,6 +83,7 @@ async function refresh({ syncUrl = false } = {}) {
             fetchJson('/map/coverage', apiParams()),
         ]);
 
+        plotted.value = markerData.features?.length ?? 0;
         leaflet.renderMarkers(markerData, { typeLabel: typeLabel.value });
 
         const scope = boundaryScope();
@@ -208,7 +210,12 @@ onBeforeUnmount(() => leaflet.destroy());
       <!-- Map -->
       <div ref="mapContainer" class="rounded-lg overflow-hidden shadow-sm border border-slate-200" style="height: 600px;"></div>
 
-      <MapStatsPanel :coverage="coverage" @generate-pdf="generatePdf" />
+      <MapStatsPanel
+        :coverage="coverage"
+        :plotted="plotted"
+        :deployed-only="filters.deployed_only === '1'"
+        @generate-pdf="generatePdf"
+      />
     </div>
   </AuthenticatedLayout>
 </template>

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSiteRequest;
 use App\Http\Requests\UpdateSiteRequest;
+use App\Models\Device;
+use App\Models\DeviceModel;
 use App\Models\Project;
 use App\Models\Site;
 use Illuminate\Http\Request;
@@ -42,7 +44,16 @@ class SiteController extends Controller
         $site->load(['project', 'latestDailyStatus', 'dailyStatuses' => fn ($q) => $q->latest('date')->take(30),
             'activeDeployments.device.deviceModel:id,manufacturer,model_name,model_number']);
 
-        return Inertia::render('Sites/Show', ['site' => $site]);
+        return Inertia::render('Sites/Show', [
+            'site' => $site,
+            'deviceModels' => DeviceModel::where('is_active', true)
+                ->orderBy('manufacturer')->orderBy('model_name')
+                ->get(['id', 'manufacturer', 'model_name', 'model_number']),
+            'stockDevices' => Device::where('status', 'in_stock')
+                ->with('deviceModel:id,manufacturer,model_name')
+                ->orderBy('asset_tag')
+                ->get(['id', 'asset_tag', 'serial_number', 'device_model_id']),
+        ]);
     }
 
     public function store(StoreSiteRequest $request)

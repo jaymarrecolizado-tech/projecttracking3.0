@@ -23,7 +23,7 @@ class MapController extends Controller
             // Unfiltered lists for first paint so the page has no waterfall.
             'initialOptions' => app(GeoFilterOptions::class)->for(),
             // URL state so map shares work (Plan §Map 5).
-            'filters' => $request->only(['project_id', 'province', 'district', 'municipality', 'barangay', 'site_type', 'deployed_only']),
+            'filters' => $request->only(['project_id', 'status', 'province', 'district', 'municipality', 'barangay', 'site_type', 'deployed_only']),
         ]);
     }
 
@@ -57,7 +57,7 @@ class MapController extends Controller
 
     public function coverage(Request $request, SiteCoverageService $service)
     {
-        $filters = $request->only(['project_id', 'province', 'district', 'municipality', 'barangay']);
+        $filters = $request->only(['project_id', 'status', 'province', 'district', 'municipality', 'barangay', 'site_type']);
 
         return response()->json($service->coverage($filters));
     }

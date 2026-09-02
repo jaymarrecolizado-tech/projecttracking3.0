@@ -1,8 +1,58 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { IconArrowLeft } from '@tabler/icons-vue';
-defineProps({ site: Object });
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { IconArrowLeft, IconCirclePlus } from '@tabler/icons-vue';
+import { ref } from 'vue';
+
+const props = defineProps({ site: Object, deviceModels: Array, stockDevices: Array });
+
+const page = usePage();
+const can = (permission) => page.props.auth.permissions?.includes(permission);
+
+const canAttach = can('devices.create');
+const canDetach = can('devices.edit');
+
+const showForm = ref(false);
+const mode = ref('existing');
+const roleLabels = {
+    primary_ap: 'Primary AP', backup_ap: 'Backup AP', backhaul: 'Backhaul',
+    power: 'Power', surveillance: 'Surveillance', other: 'Other',
+};
+
+const form = useForm({
+    mode: 'existing',
+    device_id: '',
+    device_model_id: '',
+    asset_tag: '',
+    serial_number: '',
+    mac_address: '',
+    firmware_version: '',
+    role_at_site: 'primary_ap',
+    installed_at: new Date().toISOString().slice(0, 10),
+});
+
+function openForm() {
+    showForm.value = true;
+    mode.value = props.stockDevices?.length ? 'existing' : 'new';
+    form.mode = mode.value;
+}
+
+function attach() {
+    form.mode = mode.value;
+    form.post(route('sites.equipment.store', props.site.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showForm.value = false;
+            form.reset();
+        },
+    });
+}
+
+function detach(deployment) {
+    if (confirm('Detach this unit? The deployment closes and the device returns to stock.')) {
+        router.delete(route('sites.equipment.destroy', { site: props.site.id, deployment: deployment.id }), { preserveScroll: true });
+    }
+}
 </script>
 
 <template>
@@ -90,8 +140,80 @@ defineProps({ site: Object });
 
       <!-- Installed Equipment -->
       <div class="dict-card overflow-hidden mt-6">
-        <div class="px-6 py-4 border-b border-slate-200">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
           <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Installed Equipment</h3>
+          <button
+            v-if="canAttach && !showForm" type="button"
+            class="inline-flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+            @click="openForm"
+          >
+            <IconCirclePlus class="w-4 h-4" /> Attach equipment
+          </button>
+        </div>
+
+        <!-- Attach form -->
+        <div v-if="showForm" class="px-6 py-4 border-b border-slate-200 bg-slate-50/60">
+          <div class="flex gap-2 mb-4">
+            <button
+              v-for="option in ['existing', 'new']" :key="option" type="button"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition"
+              :class="mode === option ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+              @click="mode = option; form.mode = option"
+            >
+              {{ option === 'existing' ? 'Assign from stock' : 'Register new unit' }}
+            </button>
+          </div>
+          <form class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" @submit.prevent="attach">
+            <template v-if="mode === 'existing'">
+              <div class="sm:col-span-2 lg:col-span-3">
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">In-stock device</label>
+                <select v-model="form.device_id" class="w-full rounded-lg border-slate-300 text-sm" required>
+                  <option value="" disabled>Select an in-stock unit…</option>
+                  <option v-for="device in stockDevices" :key="device.id" :value="device.id">
+                    {{ device.asset_tag }} — {{ device.device_model?.manufacturer }} {{ device.device_model?.model_name }} (S/N {{ device.serial_number }})
+                  </option>
+                </select>
+              </div>
+            </template>
+            <template v-else>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Model</label>
+                <select v-model="form.device_model_id" class="w-full rounded-lg border-slate-300 text-sm" required>
+                  <option value="" disabled>Select model…</option>
+                  <option v-for="model in deviceModels" :key="model.id" :value="model.id">
+                    {{ model.manufacturer }} {{ model.model_name }} ({{ model.model_number }})
+                  </option>
+                </select>
+              </div>
+              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Asset tag</label>
+                <input v-model="form.asset_tag" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
+              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Serial no.</label>
+                <input v-model="form.serial_number" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
+              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">MAC (optional)</label>
+                <input v-model="form.mac_address" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Firmware (optional)</label>
+                <input v-model="form.firmware_version" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+            </template>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Role at site</label>
+              <select v-model="form.role_at_site" class="w-full rounded-lg border-slate-300 text-sm">
+                <option v-for="(label, value) in roleLabels" :key="value" :value="value">{{ label }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Installed</label>
+              <input v-model="form.installed_at" type="date" class="w-full rounded-lg border-slate-300 text-sm" />
+            </div>
+            <div class="flex items-end gap-3">
+              <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition" :disabled="form.processing">
+                {{ form.processing ? 'Attaching…' : 'Attach' }}
+              </button>
+              <button type="button" class="text-sm text-slate-500 underline" @click="showForm = false">Cancel</button>
+            </div>
+            <div v-if="Object.values(form.errors).length" class="sm:col-span-2 lg:col-span-3 text-sm text-red-600">
+              {{ Object.values(form.errors)[0] }}
+            </div>
+          </form>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
@@ -114,7 +236,16 @@ defineProps({ site: Object });
                 <td class="px-6 py-4 text-sm capitalize text-slate-600">{{ deployment.role_at_site?.replaceAll('_', ' ') }}</td>
                 <td class="px-6 py-4 text-sm text-slate-600">{{ deployment.installed_at ? new Date(deployment.installed_at).toLocaleDateString() : '—' }}</td>
                 <td class="px-6 py-4 text-sm">
-                  <Link v-if="deployment.device" :href="route('devices.show', deployment.device.id)" class="text-blue-600 hover:text-blue-800 font-medium">View</Link>
+                  <div class="flex gap-2">
+                    <Link v-if="deployment.device" :href="route('devices.show', deployment.device.id)" class="text-blue-600 hover:text-blue-800 font-medium">View</Link>
+                    <button
+                      v-if="canDetach" type="button"
+                      class="text-red-600 hover:text-red-800 font-medium"
+                      @click="confirm('Detach this unit? It returns to stock.') && detach(deployment)"
+                    >
+                      Detach
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
