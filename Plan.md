@@ -44,6 +44,10 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] DataTable (Sites / Devices / DailyGrid)
 - [x] A11y: mobile drawer focus trap + Escape + restore, aria-live ops counter, sr-only captions
 
+### Dashboard v2 (2026-09)
+- [x] Counters: active sites, UP/DOWN/no-data today, reporting progress (x/y + bar), uptime 7d
+- [x] Panels: 14-day trend, barangay/site-type coverage snapshot, field equipment (deployed/stock/repair/warranty), network reach + per-province bars, currently-DOWN episodes with duration, active alerts feed, recent imports, quick actions
+
 ### Alerts console (2026-09)
 - [x] `/alerts`: active/resolved lists with severity filter, acknowledge + resolve actions (`daily.approve`), live counters
 - [x] Rules CRUD on the same page (`users.manage`)

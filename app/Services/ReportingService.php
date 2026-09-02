@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Alert;
+use App\Models\Device;
 use App\Models\FreewifiImportBatch;
 use App\Models\Project;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
+use App\Models\SiteStatusEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonInterface;
 
@@ -80,19 +82,83 @@ class ReportingService
 
     public function getDashboardStats(): array
     {
+        $activeSites = Site::where('status', 'active')->count();
+        $reportedToday = SiteDailyStatus::whereDate('date', today())->distinct('site_id')->count('site_id');
+
         return [
             'total_projects' => Project::count(),
             'total_sites' => Site::count(),
-            'active_sites' => Site::where('status', 'active')->count(),
+            'active_sites' => $activeSites,
             'total_up_today' => SiteDailyStatus::where('status', 'UP')->whereDate('date', today())->count(),
             'down_today' => SiteDailyStatus::where('status', 'DOWN')->whereDate('date', today())->count(),
-            'no_data_today' => max(
-                0,
-                Site::count() - SiteDailyStatus::whereIn('status', ['UP', 'DOWN'])->whereDate('date', today())->count(),
-            ),
+            'no_data_today' => max(0, $activeSites - $reportedToday),
+            'reported_today' => $reportedToday,
             'uptime_pct_7d' => $this->uptimePct(now()->subDays(6)->startOfDay(), now()->endOfDay()),
             'trend' => $this->dailyTrend(14),
             'recent_imports' => FreewifiImportBatch::with('importer:id,name')->latest()->take(5)->get(),
+
+            // Network reach (distinct places with at least one site).
+            'network' => [
+                'provinces' => Site::whereNotNull('province')->distinct()->count('province'),
+                'municipalities' => Site::whereNotNull('municipality')->distinct()->count('municipality'),
+                'barangays' => Site::whereNotNull('barangay')->distinct()->count('barangay'),
+                'sites_per_province' => Site::whereNotNull('province')
+                    ->selectRaw('province, COUNT(*) n')->groupBy('province')
+                    ->orderByDesc('n')->get(),
+            ],
+
+            // Barangay coverage snapshot (PSA-reconciled totals).
+            'barangay_coverage' => app(BarangayCoverageService::class)->coverage()['totals'],
+
+            // Site Type coverage: registered vs actual.
+            'site_type_totals' => app(SiteCoverageService::class)->coverage()['totals'],
+
+            // Field equipment.
+            'devices' => [
+                'deployed' => Device::where('status', 'deployed')->count(),
+                'in_stock' => Device::where('status', 'in_stock')->count(),
+                'under_repair' => Device::where('status', 'under_repair')->count(),
+                'warranty_expiring' => Device::where('status', 'deployed')
+                    ->whereBetween('warranty_until', [now(), now()->addDays(90)])->count(),
+            ],
+
+            // Alerting.
+            'alert_counts' => [
+                'active' => Alert::whereNull('resolved_at')->count(),
+                'critical' => Alert::whereNull('resolved_at')
+                    ->whereHas('rule', fn ($r) => $r->where('severity', 'critical'))->count(),
+            ],
+            'active_alerts' => Alert::query()
+                ->whereNull('resolved_at')
+                ->with(['rule:id,name,severity', 'site:id,location_name'])
+                ->orderByDesc('triggered_at')
+                ->take(6)
+                ->get(['id', 'rule_id', 'site_id', 'triggered_at', 'context'])
+                ->map(fn ($alert) => [
+                    'id' => $alert->id,
+                    'severity' => $alert->rule->severity ?? 'info',
+                    'rule' => $alert->rule?->name,
+                    'site' => $alert->site?->location_name,
+                    'observed' => data_get($alert->context, 'observed'),
+                    'triggered_at' => $alert->triggered_at->toDateTimeString(),
+                ]),
+
+            // Open DOWN episodes — longest suffering first.
+            'down_episodes' => SiteStatusEvent::query()
+                ->whereNull('resolved_at')
+                ->with('site:id,location_name,municipality,province')
+                ->orderBy('started_at')
+                ->take(6)
+                ->get(['id', 'site_id', 'to_status', 'started_at', 'cause'])
+                ->map(fn ($event) => [
+                    'id' => $event->id,
+                    'site' => $event->site?->location_name,
+                    'where' => trim(($event->site->municipality ?? '').', '.($event->site->province ?? ''), ', '),
+                    'status' => $event->to_status,
+                    'cause' => $event->cause,
+                    'started_at' => $event->started_at->toDateTimeString(),
+                    'duration_h' => (int) $event->started_at->diffInHours(now()),
+                ]),
         ];
     }
 
