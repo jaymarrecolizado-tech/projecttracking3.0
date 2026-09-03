@@ -58,6 +58,10 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] `/alerts`: active/resolved lists with severity filter, acknowledge + resolve actions (`daily.approve`), live counters
 - [x] Rules CRUD on the same page (`users.manage`)
 
+### Edit flows (2026-09)
+- [x] Site details editor on Site Show (`sites.edit`, project-scoped): identity, geo, classification, status, ISP/last-mile/CIR, coordinates
+- [x] Unit editor on Device Show (`devices.edit`): identity/MAC/firmware, condition, status with site re-assignment (closes old deployment, opens new), procurement + warranty fields
+
 ### Site equipment management (2026-09)
 - [x] Attach equipment on Site Show: **Assign from stock** or **Register new unit** (asset tag, serial, model, MAC, firmware, role, install date) — creates the unit and opens its deployment atomically (`devices.create`)
 - [x] **Detach** from the Installed Equipment table — closes the deployment, returns the unit to stock (`devices.edit`)

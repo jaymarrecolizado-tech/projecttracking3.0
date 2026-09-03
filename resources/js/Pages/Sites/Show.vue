@@ -11,6 +11,38 @@ const can = (permission) => page.props.auth.permissions?.includes(permission);
 
 const canAttach = can('devices.create');
 const canDetach = can('devices.edit');
+const canEditSite = can('sites.edit');
+
+const editOpen = ref(false);
+const editForm = useForm({
+    location_name: props.site.location_name ?? '',
+    site_type: props.site.site_type ?? '',
+    barangay: props.site.barangay ?? '',
+    municipality: props.site.municipality ?? '',
+    province: props.site.province ?? '',
+    district: props.site.district ?? '',
+    region: props.site.region ?? '',
+    island_group: props.site.island_group ?? '',
+    latitude: props.site.latitude ?? '',
+    longitude: props.site.longitude ?? '',
+    date_of_activation: props.site.date_of_activation ?? '',
+    status: props.site.status ?? 'active',
+    isp_provider: props.site.isp_provider ?? '',
+    last_mile_tech: props.site.last_mile_tech ?? '',
+    bw_download_cir: props.site.bw_download_cir ?? '',
+});
+
+function openEdit() {
+    editOpen.value = !editOpen.value;
+    Object.keys(editForm.data()).forEach((key) => {
+        editForm[key] = props.site[key] ?? editForm[key];
+    });
+    editForm.clearErrors();
+}
+
+function saveEdit() {
+    editForm.put(route('sites.update', props.site.id), { preserveScroll: true, onSuccess: () => (editOpen.value = false) });
+}
 
 const showForm = ref(false);
 const mode = ref('existing');
@@ -85,10 +117,66 @@ function detach(deployment) {
                 'bg-orange-100 text-orange-700': site.status === 'maintenance',
               }"
             >{{ site.status }}</span>
+            <button
+              v-if="canEditSite" type="button"
+              class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 text-slate-600 hover:bg-slate-100 transition"
+              @click="openEdit"
+            >
+              {{ editOpen ? 'Close editor' : 'Edit details' }}
+            </button>
             <Link :href="route('sites.daily-grid', site.id)" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Daily Status</Link>
             <Link :href="route('sites.accomplishments', site.id)" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition">Accomplishments</Link>
           </div>
         </div>
+      </div>
+
+      <!-- Edit details -->
+      <div v-if="editOpen" class="dict-card p-6 mb-6 border-l-4 border-blue-500">
+        <h3 class="text-base font-semibold text-slate-800 mb-4">Edit site details</h3>
+        <form class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" @submit.prevent="saveEdit">
+          <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Location name</label>
+            <input v-model="editForm.location_name" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Site type</label>
+            <input v-model="editForm.site_type" type="text" class="w-full rounded-lg border-slate-300 text-sm" placeholder="PES, PHS, LGU-BRGY…" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Status</label>
+            <select v-model="editForm.status" class="w-full rounded-lg border-slate-300 text-sm">
+              <option v-for="option in ['planned', 'active', 'inactive', 'decommissioned', 'maintenance']" :key="option" :value="option">{{ option }}</option>
+            </select></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Barangay</label>
+            <input v-model="editForm.barangay" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Municipality</label>
+            <input v-model="editForm.municipality" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Province</label>
+            <input v-model="editForm.province" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">District</label>
+            <input v-model="editForm.district" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Region</label>
+            <input v-model="editForm.region" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Island group</label>
+            <select v-model="editForm.island_group" class="w-full rounded-lg border-slate-300 text-sm">
+              <option value="">—</option>
+              <option v-for="option in ['Luzon', 'Visayas', 'Mindanao']" :key="option" :value="option">{{ option }}</option>
+            </select></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Latitude</label>
+            <input v-model="editForm.latitude" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Longitude</label>
+            <input v-model="editForm.longitude" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Date of activation</label>
+            <input v-model="editForm.date_of_activation" type="date" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">ISP</label>
+            <input v-model="editForm.isp_provider" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Last mile tech</label>
+            <input v-model="editForm.last_mile_tech" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Bandwidth CIR (Mbps)</label>
+            <input v-model="editForm.bw_download_cir" type="number" step="any" min="0" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+          <div class="sm:col-span-2 lg:col-span-4 flex items-center gap-3">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition" :disabled="editForm.processing">
+              {{ editForm.processing ? 'Saving…' : 'Save changes' }}
+            </button>
+            <button type="button" class="text-sm text-slate-500 underline" @click="editOpen = false">Cancel</button>
+            <span v-if="Object.values(editForm.errors).length" class="text-sm text-red-600">{{ Object.values(editForm.errors)[0] }}</span>
+          </div>
+        </form>
       </div>
 
       <!-- Details Grid -->

@@ -1,10 +1,48 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MetricSparkline from '@/Components/MetricSparkline.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { IconRouter } from '@tabler/icons-vue';
+import { ref } from 'vue';
 
-const props = defineProps({ device: Object });
+const props = defineProps({ device: Object, deviceModels: Array, sites: Array });
+
+const page = usePage();
+const canEdit = page.props.auth.permissions?.includes('devices.edit');
+
+const editOpen = ref(false);
+const roleLabels = {
+    primary_ap: 'Primary AP', backup_ap: 'Backup AP', backhaul: 'Backhaul',
+    power: 'Power', surveillance: 'Surveillance', other: 'Other',
+};
+
+const form = useForm({
+    device_model_id: props.device.device_model?.id ?? '',
+    asset_tag: props.device.asset_tag ?? '',
+    serial_number: props.device.serial_number ?? '',
+    mac_address: props.device.mac_address ?? '',
+    firmware_version: props.device.firmware_version ?? '',
+    status: props.device.status ?? 'in_stock',
+    condition: props.device.condition ?? 'good',
+    purchase_order_no: props.device.purchase_order_no ?? '',
+    supplier: props.device.supplier ?? '',
+    unit_cost: props.device.unit_cost ?? '',
+    purchased_at: props.device.purchased_at ?? '',
+    warranty_until: props.device.warranty_until ?? '',
+    notes: props.device.notes ?? '',
+    site_id: props.device.current_deployment?.site?.id ?? '',
+    role_at_site: props.device.current_deployment?.role_at_site ?? 'primary_ap',
+    installed_at: props.device.current_deployment?.installed_at?.slice(0, 10) ?? '',
+});
+
+function openEdit() {
+    editOpen.value = !editOpen.value;
+    form.clearErrors();
+}
+
+function save() {
+    form.put(route('devices.update', props.device.id), { preserveScroll: true, onSuccess: () => (editOpen.value = false) });
+}
 
 // Reshape loaded metrics into sparkline point arrays.
 const series = (key) => (props.device.metrics ?? [])
@@ -27,13 +65,95 @@ const statusPill = {
       <h2 class="font-semibold text-lg text-slate-800 leading-tight font-mono">{{ device.asset_tag }}</h2>
     </template>
 
-    <div class="mb-4">
+    <div class="mb-4 flex items-center gap-4">
       <a
         :href="`/devices-labels?device=${device.id}`" target="_blank"
         class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition"
       >
         🖨 Print asset label
       </a>
+      <button
+        v-if="canEdit" type="button"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition"
+        @click="openEdit"
+      >
+        {{ editOpen ? 'Close editor' : '✏️ Edit unit' }}
+      </button>
+    </div>
+
+    <!-- Edit form -->
+    <div v-if="editOpen" class="dict-card p-6 mb-6 border-l-4 border-blue-500">
+      <h3 class="text-base font-semibold text-slate-800 mb-4">Edit unit</h3>
+      <form class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" @submit.prevent="save">
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Model</label>
+          <select v-model="form.device_model_id" class="w-full rounded-lg border-slate-300 text-sm" required>
+            <option v-for="model in deviceModels" :key="model.id" :value="model.id">
+              {{ model.manufacturer }} {{ model.model_name }} ({{ model.model_number }})
+            </option>
+          </select>
+        </div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Asset tag</label>
+          <input v-model="form.asset_tag" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Serial no.</label>
+          <input v-model="form.serial_number" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">MAC (optional)</label>
+          <input v-model="form.mac_address" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Firmware</label>
+          <input v-model="form.firmware_version" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Status</label>
+          <select v-model="form.status" class="w-full rounded-lg border-slate-300 text-sm">
+            <option v-for="option in ['in_stock', 'deployed', 'under_repair', 'retired', 'lost']" :key="option" :value="option">
+              {{ option.replace('_', ' ') }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Condition</label>
+          <select v-model="form.condition" class="w-full rounded-lg border-slate-300 text-sm">
+            <option v-for="option in ['new', 'good', 'degraded', 'faulty']" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </div>
+        <template v-if="form.status === 'deployed'">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Assigned site</label>
+            <select v-model="form.site_id" class="w-full rounded-lg border-slate-300 text-sm" :required="form.status === 'deployed'">
+              <option value="" disabled>Select site…</option>
+              <option v-for="site in sites" :key="site.id" :value="site.id">{{ site.location_name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Role</label>
+            <select v-model="form.role_at_site" class="w-full rounded-lg border-slate-300 text-sm">
+              <option v-for="(label, value) in roleLabels" :key="value" :value="value">{{ label }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Installed</label>
+            <input v-model="form.installed_at" type="date" class="w-full rounded-lg border-slate-300 text-sm" />
+          </div>
+        </template>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">PO no.</label>
+          <input v-model="form.purchase_order_no" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Supplier</label>
+          <input v-model="form.supplier" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Unit cost</label>
+          <input v-model="form.unit_cost" type="number" step="any" min="0" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Purchased</label>
+          <input v-model="form.purchased_at" type="date" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Warranty until</label>
+          <input v-model="form.warranty_until" type="date" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notes</label>
+          <input v-model="form.notes" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div class="sm:col-span-2 lg:col-span-4 flex items-center gap-3">
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition" :disabled="form.processing">
+            {{ form.processing ? 'Saving…' : 'Save changes' }}
+          </button>
+          <button type="button" class="text-sm text-slate-500 underline" @click="editOpen = false">Cancel</button>
+          <span v-if="Object.values(form.errors).length" class="text-sm text-red-600">{{ Object.values(form.errors)[0] }}</span>
+        </div>
+      </form>
     </div>
 
     <div class="grid lg:grid-cols-3 gap-6">

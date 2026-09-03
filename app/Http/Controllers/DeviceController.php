@@ -6,6 +6,7 @@ use App\Http\Requests\StoreDeviceRequest;
 use App\Http\Requests\UpdateDeviceRequest;
 use App\Models\Device;
 use App\Models\DeviceModel;
+use App\Models\Site;
 use App\Services\DeviceDeploymentService;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\QRCode;
@@ -84,7 +85,13 @@ class DeviceController extends Controller
                 ->get(['id', 'device_id', 'ts', 'latency_ms', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'solar_w']),
         ]);
 
-        return Inertia::render('Devices/Show', ['device' => $device]);
+        return Inertia::render('Devices/Show', [
+            'device' => $device,
+            'deviceModels' => DeviceModel::where('is_active', true)
+                ->orderBy('manufacturer')->orderBy('model_name')
+                ->get(['id', 'manufacturer', 'model_name', 'model_number']),
+            'sites' => Site::where('status', 'active')->orderBy('location_name')->get(['id', 'location_name']),
+        ]);
     }
 
     public function store(StoreDeviceRequest $request)
