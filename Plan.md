@@ -86,6 +86,7 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] Deployed-device markers (default, clustered, daily-status color) + All-sites toggle
 - [x] Polygons in `storage/app/geo/`: provinces, municipalities, `districts.geojson` (12), `barangays.geojson` (2,197)
 - [x] Highlight + fit bounds + click-to-filter: province → district → municipality → barangay
+- [x] Boundary matching is name-normalized ("Basco (Capital)" == Basco) + marker-focus fallback when polygons are missing
 - [x] LGU holes closed: Cagaban/Cauayan aliases, Uyugan from OCHA barangays (95 LGUs)
 - [x] Site Type coverage panel + queued PDF (`/map/coverage`, `/reports/site-type`)
 - [x] Tests: `LegislativeDistrictBackfillTest`, `MapGeoJsonTest`, `SiteCoverageTest`

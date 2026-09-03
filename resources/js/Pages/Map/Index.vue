@@ -92,7 +92,10 @@ async function refresh({ syncUrl = false } = {}) {
             selectedName: scope.selected,
             onPick: (name) => pickBoundary(scope.level, name),
         });
-        leaflet.fitToBoundaries();
+        // Focus on the polygons; fall back to the markers if boundaries lag.
+        if (!leaflet.fitToBoundaries()) {
+            leaflet.fitToMarkers();
+        }
 
         coverage.value = coverageData;
     } finally {

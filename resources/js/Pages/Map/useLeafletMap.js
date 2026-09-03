@@ -132,8 +132,17 @@ export function useLeafletMap(containerRef) {
     function fitToBoundaries() {
         if (boundaryLayer) {
             map.fitBounds(boundaryLayer.getBounds(), { padding: [24, 24], maxZoom: 14 });
+            return true;
+        }
+        return false;
+    }
+
+    // Fallback focus when no polygons exist for the current drill level.
+    function fitToMarkers() {
+        if (markerLayer?.getLayers?.().length) {
+            map.fitBounds(markerLayer.getBounds(), { padding: [24, 24], maxZoom: 14 });
         }
     }
 
-    return { mapRef, init, destroy, renderMarkers, clearMarkers, renderBoundaries, clearBoundaries, fitToBoundaries };
+    return { mapRef, init, destroy, renderMarkers, clearMarkers, renderBoundaries, clearBoundaries, fitToBoundaries, fitToMarkers };
 }

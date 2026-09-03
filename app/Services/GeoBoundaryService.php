@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
+use App\Support\NameNormalizer;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -19,7 +20,8 @@ class GeoBoundaryService
     {
         $level = in_array($level, self::LEVELS, true) ? $level : 'province';
 
-        $cacheKey = 'map.boundaries.'.md5($level.serialize($filters));
+        // v2: normalized name matching ("Basco (Capital)" == "Basco", etc.).
+        $cacheKey = 'map.boundaries.v2.' . md5($level.serialize($filters));
         $ttl = now()->addHours(12);
 
         return Cache::remember($cacheKey, $ttl, fn () => $this->load($level, $filters));
@@ -42,8 +44,9 @@ class GeoBoundaryService
         $features = array_values(array_filter($decoded['features'] ?? [], function ($feature) use ($filters) {
             $props = $feature['properties'] ?? [];
 
-            foreach (['province' => 'province', 'district' => 'district', 'municipality' => 'municipality'] as $filter => $prop) {
-                if (! empty($filters[$filter]) && ($props[$prop] ?? null) !== $filters[$filter]) {
+            foreach (['province', 'district', 'municipality'] as $filter) {
+                if (! empty($filters[$filter])
+                    && NameNormalizer::normalize($props[$filter] ?? null) !== NameNormalizer::normalize($filters[$filter])) {
                     return false;
                 }
             }
