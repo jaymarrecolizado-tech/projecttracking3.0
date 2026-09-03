@@ -17,7 +17,7 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 ### Data platform
 - [x] Region II workbook importer (`php scripts/import-region-workbook.php`)
 - [x] Schema aligned with workbook (classification, providers, lifecycle, NO_NMS / DOWN_SERVER)
-- [x] Local data loaded: 1,132 sites · 253 AP devices · 14,270 day records
+- [x] Local data loaded: **716 distinct sites** (after dedupe — the workbook lists one row per AP, which had created 1,132 rows for the same locations) · 253 AP devices · 10,538 day records (true distinct days)
 - [x] `config/site_types.php` labels (PES, PHS, LGU-BRGY, …)
 - [x] `App\Support\NameNormalizer` (Ilagan City / City of Ilagan / Basco Capital)
 
@@ -47,6 +47,12 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 ### Dashboard v2 (2026-09)
 - [x] Counters: active sites, UP/DOWN/no-data today, reporting progress (x/y + bar), uptime 7d
 - [x] Panels: 14-day trend, barangay/site-type coverage snapshot, field equipment (deployed/stock/repair/warranty), network reach + per-province bars, currently-DOWN episodes with duration, active alerts feed, recent imports, quick actions
+
+### Data quality — site dedupe (2026-09)
+- [x] `sites:dedupe` (dry-run default, `--apply`): merges rows sharing coordinates + normalized name; re-homes deployments/daily statuses (unique-day aware)/accomplishments/tickets/status events/alerts/metrics onto the canonical row, soft-deletes the duplicate with `metadata.merged_into`
+- [x] **Result: 1,132 rows → 716 sites**; 124 deployments re-homed (253 intact), 3,733 same-day duplicate rows dropped, 64 sites now correctly hold multiple units
+- [x] Heartbeat resolves a merged duplicate's AP code to the canonical site
+- [x] Map deployed layer: one aggregated marker per site with device count + roster in popup
 
 ### Alerts console (2026-09)
 - [x] `/alerts`: active/resolved lists with severity filter, acknowledge + resolve actions (`daily.approve`), live counters

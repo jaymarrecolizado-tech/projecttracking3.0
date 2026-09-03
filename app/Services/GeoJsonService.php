@@ -25,33 +25,66 @@ class GeoJsonService
     }
 
     /**
-     * Deployed-device markers (Plan §Map 4.3): one point per active
-     * deployment, geometry from the host site, health from the site's daily
-     * status so ops read color the same way as the site layer.
+     * Deployed-device markers (Plan §Map 4.3): one point per SITE hosting at
+     * least one deployed unit — multiple units at one location aggregate into
+     * a single marker carrying the device roster. Health color comes from the
+     * site's daily status so ops read it the same way as the site layer.
      */
     public function getDeployedDevicesForMap(array $filters = []): array
     {
-        $deployments = DeviceDeployment::query()
-            ->whereNull('removed_at')
-            ->whereHas('device', fn ($q) => $q->where('status', 'deployed'))
-            ->whereHas('site', function ($q) use ($filters) {
+        $sites = Site::query()
+            ->whereHas('activeDeployments.device', fn ($q) => $q->where('status', 'deployed'))
+            ->where(function ($q) use ($filters) {
                 $this->applyGeoFilters($q, $filters);
-                $q->whereNotNull(['latitude', 'longitude']);
+                $q->whereNotNull(['sites.latitude', 'sites.longitude']);
             })
             ->with([
-                'device:id,serial_number,device_model_id',
-                'device.deviceModel:id,manufacturer,model_name',
-                'site:id,location_name,ap_site_code,barangay,municipality,province,region,site_type,status,latitude,longitude,project_id',
-                'site.project:id,code,name',
-                // No column subset here: latestOfMany + nested select produces
-                // ambiguous site_id SQL on some drivers.
-                'site.latestDailyStatus',
+                'project:id,code,name',
+                'latestDailyStatus',
+                'activeDeployments.device:id,asset_tag,serial_number,device_model_id',
+                'activeDeployments.device.deviceModel:id,manufacturer,model_name',
             ])
             ->get();
 
-        $features = $deployments->map(fn ($deployment) => $this->buildDeviceFeature($deployment))->values()->all();
+        $features = $sites->map(fn ($site) => $this->buildSiteDevicesFeature($site))->values()->all();
 
         return ['type' => 'FeatureCollection', 'features' => $features];
+    }
+
+    private function buildSiteDevicesFeature(Site $site): array
+    {
+        $units = $site->activeDeployments
+            ->filter(fn ($deployment) => $deployment->device !== null)
+            ->map(fn ($deployment) => [
+                'device_id' => $deployment->device->id,
+                'asset_tag' => $deployment->device->asset_tag,
+                'model' => trim(($deployment->device->deviceModel->manufacturer ?? '').' '.($deployment->device->deviceModel->model_name ?? '')),
+            ])
+            ->values();
+
+        return [
+            'type' => 'Feature',
+            'geometry' => [
+                'type' => 'Point',
+                'coordinates' => [(float) $site->longitude, (float) $site->latitude],
+            ],
+            'properties' => [
+                'site_id' => $site->id,
+                'location_name' => $site->location_name,
+                'ap_site_code' => $site->ap_site_code,
+                'site_type' => $site->site_type,
+                'barangay' => $site->barangay,
+                'municipality' => $site->municipality,
+                'province' => $site->province,
+                'district' => $site->district,
+                'status' => $site->status,
+                // Site health drives the marker color for ops.
+                'daily_status' => data_get($site->latestDailyStatus, 'status') ?? 'NO_DATA',
+                'project_name' => $site->project?->name,
+                'device_count' => $units->count(),
+                'devices' => $units->all(),
+            ],
+        ];
     }
 
     public function getSiteGeoJson(Site $site): array
@@ -82,39 +115,6 @@ class GeoJsonService
         return [
             'type' => 'FeatureCollection',
             'features' => $features,
-        ];
-    }
-
-    private function buildDeviceFeature(DeviceDeployment $deployment): array
-    {
-        $site = $deployment->site;
-        $device = $deployment->device;
-
-        return [
-            'type' => 'Feature',
-            'geometry' => [
-                'type' => 'Point',
-                'coordinates' => [(float) $site->longitude, (float) $site->latitude],
-            ],
-            'properties' => [
-                'deployment_id' => $deployment->id,
-                'device_id' => $device?->id,
-                'asset_tag' => $device?->asset_tag,
-                'serial_number' => $device?->serial_number,
-                'model' => trim(($device->deviceModel->manufacturer ?? '').' '.($device->deviceModel->model_name ?? '')),
-                'site_id' => $site->id,
-                'location_name' => $site->location_name,
-                'ap_site_code' => $site->ap_site_code,
-                'site_type' => $site->site_type,
-                'barangay' => $site->barangay,
-                'municipality' => $site->municipality,
-                'province' => $site->province,
-                'district' => $site->district,
-                'status' => $site->status,
-                // Site health drives the marker color for ops.
-                'daily_status' => data_get($site->latestDailyStatus, 'status') ?? 'NO_DATA',
-                'project_name' => $site->project?->name,
-            ],
         ];
     }
 

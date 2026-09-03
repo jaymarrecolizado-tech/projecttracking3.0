@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\DeviceMetric;
 use App\Models\Site;
-use App\Models\SiteStatusEvent;
 use App\Models\SiteDailyStatus;
+use App\Models\SiteStatusEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +42,16 @@ class HeartbeatController extends Controller
             'firmware' => 'nullable|string|max:100',
         ]);
 
-        $site = Site::where('ap_site_code', $validated['site_code'])->firstOrFail();
+        // A merged duplicate's AP code resolves to its canonical site
+        // (sites:dedupe stamps metadata.merged_into before soft-deleting).
+        $site = Site::where('ap_site_code', $validated['site_code'])->first()
+            ?? Site::withTrashed()->where('ap_site_code', $validated['site_code'])
+                ->get()
+                ->map(fn ($trashed) => Site::find(data_get($trashed->metadata, 'merged_into')))
+                ->filter()
+                ->first();
+
+        abort_if($site === null, 404, 'Unknown site code.');
 
         // Approved-and-locked records are authoritative — probes must not overwrite them.
         $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', today())->first();

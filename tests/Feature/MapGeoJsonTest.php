@@ -102,16 +102,29 @@ class MapGeoJsonTest extends TestCase
         $this->assertSame('PHS', $features[0]['properties']['site_type']);
     }
 
-    public function test_device_features_carry_asset_tag_and_site_health(): void
+    public function test_device_features_aggregate_units_per_site(): void
     {
-        $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri'], withDeployment: true);
+        $site = $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri'], withDeployment: true);
+        // A second deployed unit at the SAME site aggregates into one marker.
+        $model = DeviceModel::create([
+            'manufacturer' => 'U', 'model_name' => 'Y', 'model_number' => 'M2', 'type' => 'router', 'is_active' => true,
+        ]);
+        $device = Device::create([
+            'device_model_id' => $model->id, 'asset_tag' => 'DEV-2ND-'.uniqid(),
+            'serial_number' => 'SN-2ND-'.uniqid(), 'status' => 'deployed',
+        ]);
+        DeviceDeployment::create([
+            'device_id' => $device->id, 'site_id' => $site->id,
+            'role_at_site' => 'backup_ap', 'installed_at' => now(),
+        ]);
 
         $features = collect($this->actingAs(User::factory()->create())
             ->getJson('/map/geojson?deployed_only=1')->json('features'));
 
+        $this->assertCount(1, $features);
         $this->assertSame('Map Site', $features[0]['properties']['location_name']);
-        $this->assertArrayHasKey('asset_tag', $features[0]['properties']);
-        $this->assertArrayHasKey('serial_number', $features[0]['properties']);
+        $this->assertSame(2, $features[0]['properties']['device_count']);
+        $this->assertCount(2, $features[0]['properties']['devices']);
         $this->assertSame('NO_DATA', $features[0]['properties']['daily_status']);
     }
 

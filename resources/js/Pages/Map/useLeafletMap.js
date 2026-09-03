@@ -58,16 +58,17 @@ export function useLeafletMap(containerRef) {
             },
             onEachFeature: (feature, layer) => {
                 const p = feature.properties;
-                const isDevice = p.asset_tag !== undefined;
+                const isDevice = p.device_count !== undefined;
                 const where = [p.barangay, p.municipality, p.province].filter(Boolean).join(', ');
                 const lines = isDevice
                     ? [
-                        `<strong>${p.asset_tag}</strong> · ${p.model ?? ''}`,
-                        `${p.location_name}`,
+                        `<strong>${p.location_name}</strong>`,
                         `${typeLabel[p.site_type] ?? p.site_type ?? ''}`,
                         where,
                         `Site health: <span style="color:${statusColors[p.daily_status] ?? '#334155'};font-weight:600">${(p.daily_status ?? '').replace('_', ' ')}</span>`,
-                        `<a href="${route('devices.show', p.device_id)}">Device</a> · <a href="${route('sites.show', p.site_id)}">Site</a>`,
+                        `<strong>${p.device_count}</strong> deployed unit${p.device_count === 1 ? '' : 's'}`,
+                        ...(p.devices ?? []).map((d) => `&nbsp;· ${d.asset_tag} — ${d.model}`),
+                        `<a href="${route('sites.show', p.site_id)}">Site</a>`,
                     ]
                     : [
                         `<strong>${p.location_name}</strong>`,
