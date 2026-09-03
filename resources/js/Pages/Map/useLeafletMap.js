@@ -78,6 +78,16 @@ export function useLeafletMap(containerRef) {
                         `<a href="${route('sites.show', p.id)}">Site</a>`,
                     ];
                 layer.bindPopup(`<div class="text-sm leading-snug">${lines.filter(Boolean).join('<br>')}</div>`, { sticky: true });
+                // Hover previews the details; click pins the popup (touch-friendly).
+                layer.on('mouseover', () => layer.openPopup());
+                layer.on('mouseout', () => {
+                    if (!layer.isPopupOpen() || !layer._clickPinned) layer.closePopup();
+                });
+                layer.on('click', () => {
+                    layer._clickPinned = true;
+                    layer.openPopup();
+                });
+                layer.getPopup().on('remove', () => (layer._clickPinned = false));
             },
         });
 
