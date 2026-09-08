@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SiteDailyStatus extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['site_id', 'date', 'status', 'total_unique_users',
         'bandwidth_utilization_mbps', 'uptime_percent',
         'notes', 'entry_status', 'submitted_at', 'approved_by', 'approved_at', 'created_by'];

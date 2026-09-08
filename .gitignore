@@ -19,3 +19,6 @@ yarn-error.log
 Thumbs.db
 
 .tmp/
+
+# Built assets are produced by npm run build (deploy.sh) - never commit them
+/public/build

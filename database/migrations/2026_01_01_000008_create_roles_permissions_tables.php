@@ -1,9 +1,13 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-return new class extends Migration {
-    public function up(): void {
+
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
             $table->string('name', 60)->unique();
@@ -26,7 +30,9 @@ return new class extends Migration {
             $table->index('user_id');
         });
     }
-    public function down(): void {
+
+    public function down(): void
+    {
         Schema::dropIfExists('role_user');
         Schema::dropIfExists('role_permission');
         Schema::dropIfExists('permissions');

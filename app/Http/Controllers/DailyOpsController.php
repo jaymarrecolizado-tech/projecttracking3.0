@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 /**
- * The Daily Ops Board: one screen to record today's UP/DOWN/NO NMS for every
- * site the user may touch. Replaces row-by-row entry for 1,100+ sites.
+ * The Daily Ops Board: one screen to record today's status (UP, DOWN,
+ * NO_NMS, DOWN_SERVER) for every site the user may touch. Replaces
+ * row-by-row entry for 1,100+ sites.
  */
 class DailyOpsController extends Controller
 {

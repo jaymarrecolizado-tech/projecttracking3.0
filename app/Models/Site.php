@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +11,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Site extends Model
 {
+    use HasFactory;
     use SoftDeletes;
+
+    /**
+     * Province → region lookup, used by SiteObserver to keep sites.region
+     * populated. The region filter (map + coverage) silently drops
+     * unattributed sites, so a blank region is worse than no region filter.
+     */
+    public const REGIONS_BY_PROVINCE = [
+        'Batanes' => 'II',
+        'Cagayan' => 'II',
+        'Isabela' => 'II',
+        'Nueva Vizcaya' => 'II',
+        'Quirino' => 'II',
+    ];
 
     protected static function booted(): void
     {
@@ -18,6 +33,16 @@ class Site extends Model
             $site->dailyStatuses()->delete();
             $site->accomplishments()->delete();
         });
+    }
+
+    public function syntheticCode(): string
+    {
+        return 'NS-'.substr(sha1(implode('|', [
+            $this->province,
+            $this->municipality,
+            $this->barangay,
+            $this->location_name,
+        ])), 0, 12);
     }
 
     protected $fillable = ['project_id', 'nationwide_id', 'ap_site_code', 'location_name',

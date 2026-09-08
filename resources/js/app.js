@@ -1,4 +1,5 @@
 import '../css/app.css';
+import { ACCENT } from './theme';
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -22,6 +23,6 @@ createInertiaApp({
             .mount(el);
     },
     progress: {
-        color: '#2563eb',
+        color: ACCENT,
     },
 });

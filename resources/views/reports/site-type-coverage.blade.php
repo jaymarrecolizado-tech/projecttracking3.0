@@ -18,11 +18,7 @@
     <h1>Site Type Coverage — Actual vs Registered</h1>
     <p style="color:#64748b;font-size:11px">
         Scope:
-        @if (empty($filters))
-            All provinces · all projects
-        @else
-            {{ implode(' · ', array_filter($filters)) }}
-        @endif
+        {{ $coverage['scope'] ?? (empty($filters) ? 'All provinces · all projects' : implode(' · ', array_filter($filters))) }}
         | Generated: {{ now()->format('Y-m-d H:i') }}
     </p>
 

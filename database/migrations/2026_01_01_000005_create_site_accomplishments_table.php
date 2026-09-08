@@ -1,14 +1,18 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-return new class extends Migration {
-    public function up(): void {
+
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::create('site_accomplishments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('site_id')->constrained()->cascadeOnDelete();
             $table->foreignId('milestone_id')->constrained('project_milestones')->cascadeOnDelete();
-            $table->enum('status', ['NOT_STARTED','IN_PROGRESS','COMPLETED','ON_HOLD','CANCELLED'])->default('NOT_STARTED');
+            $table->enum('status', ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'ON_HOLD', 'CANCELLED'])->default('NOT_STARTED');
             $table->decimal('pct_complete', 5, 2)->default(0.00);
             $table->date('target_date')->nullable();
             $table->date('actual_date')->nullable();
@@ -21,5 +25,9 @@ return new class extends Migration {
             $table->index('milestone_id');
         });
     }
-    public function down(): void { Schema::dropIfExists('site_accomplishments'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('site_accomplishments');
+    }
 };

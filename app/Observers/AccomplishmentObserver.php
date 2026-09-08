@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Observers;
-use App\Models\SiteAccomplishment;
+
 use App\Models\AccomplishmentHistory;
+use App\Models\SiteAccomplishment;
+
 class AccomplishmentObserver
 {
     public function updated(SiteAccomplishment $accomplishment): void
@@ -15,7 +18,7 @@ class AccomplishmentObserver
             $changes['old_pct'] = $accomplishment->getOriginal('pct_complete');
             $changes['new_pct'] = $accomplishment->pct_complete;
         }
-        if (!empty($changes)) {
+        if (! empty($changes)) {
             AccomplishmentHistory::create(array_merge($changes, [
                 'accomplishment_id' => $accomplishment->id,
                 'changed_by' => auth()->id(),

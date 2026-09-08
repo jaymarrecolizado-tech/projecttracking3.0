@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Project;
 use App\Models\Site;
+use App\Support\CoverageCache;
 
 /**
  * Actual-vs-registered coverage by Site Type (Plan §Map 4.5). "Actual" = the
@@ -14,6 +16,11 @@ class SiteCoverageService
     private const GEO_FILTERS = ['region', 'province', 'district', 'municipality', 'barangay'];
 
     public function coverage(array $filters = []): array
+    {
+        return CoverageCache::remember('site-type', $filters, fn () => $this->computeCoverage($filters));
+    }
+
+    private function computeCoverage(array $filters): array
     {
         $registered = Site::query();
         $this->applyFilters($registered, $filters);
@@ -66,6 +73,7 @@ class SiteCoverageService
 
         return [
             'filters' => collect($filters)->only(['project_id', 'site_type', 'status', ...self::GEO_FILTERS])->filter()->all(),
+            'scope' => $this->describeScope($filters),
             'rows' => $rows,
             'totals' => [
                 'registered' => $totalRegistered,
@@ -75,6 +83,23 @@ class SiteCoverageService
                 'coverage_pct' => $totalRegistered > 0 ? round($totalActual / $totalRegistered * 100, 1) : 0.0,
             ],
         ];
+    }
+
+    /** Human-readable filter set so every PDF is self-describing (§Phase 5.5). */
+    private function describeScope(array $filters): string
+    {
+        $parts = [];
+        if (! empty($filters['project_id'])) {
+            $name = Project::where('id', $filters['project_id'])->value('name');
+            $parts[] = 'Project: '.($name ?? "#{$filters['project_id']}");
+        }
+        foreach (['province' => 'Province', 'district' => 'District', 'municipality' => 'Municipality', 'barangay' => 'Barangay', 'site_type' => 'Site type', 'status' => 'Status', 'region' => 'Region'] as $key => $label) {
+            if (! empty($filters[$key])) {
+                $parts[] = $label.': '.$filters[$key];
+            }
+        }
+
+        return $parts === [] ? 'All areas' : implode(' · ', $parts);
     }
 
     private function applyFilters($query, array $filters): void

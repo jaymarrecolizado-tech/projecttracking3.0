@@ -29,7 +29,7 @@ const emit = defineEmits(['generate-pdf']);
           <div class="text-xs uppercase tracking-wide text-slate-500">Registered sites</div>
         </div>
         <div>
-          <div class="text-2xl font-bold text-emerald-600 tabular-nums">{{ coverage.totals.actual }}</div>
+          <div class="text-2xl font-bold tracking-tight text-emerald-700 tabular-nums">{{ coverage.totals.actual }}</div>
           <div class="text-xs uppercase tracking-wide text-slate-500">Actual (deployed)</div>
         </div>
         <div>
@@ -37,7 +37,7 @@ const emit = defineEmits(['generate-pdf']);
           <div class="text-xs uppercase tracking-wide text-slate-500">Devices</div>
         </div>
         <div>
-          <div class="text-2xl font-bold text-blue-600 tabular-nums">{{ coverage.totals.coverage_pct }}%</div>
+          <div class="text-2xl font-bold tracking-tight text-accent-500 tabular-nums">{{ coverage.totals.coverage_pct }}%</div>
           <div class="text-xs uppercase tracking-wide text-slate-500">Coverage</div>
         </div>
       </div>
@@ -60,7 +60,7 @@ const emit = defineEmits(['generate-pdf']);
               <td class="px-3 py-2 text-sm text-right tabular-nums">{{ row.registered }}</td>
               <td class="px-3 py-2 text-sm text-right tabular-nums">{{ row.actual }}</td>
               <td class="px-3 py-2 text-sm text-right tabular-nums">{{ row.devices }}</td>
-              <td class="px-3 py-2 text-sm text-right tabular-nums" :class="row.gap > 0 ? 'text-orange-600' : 'text-emerald-600'">
+              <td class="px-3 py-2 text-sm text-right tabular-nums" :class="row.gap > 0 ? 'text-orange-700' : 'text-emerald-700'">
                 {{ row.coverage_pct }}%
               </td>
             </tr>
@@ -70,7 +70,7 @@ const emit = defineEmits(['generate-pdf']);
 
       <button
         type="button"
-        class="mt-4 inline-flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+        class="mt-4 inline-flex items-center gap-1.5 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition"
         @click="emit('generate-pdf')"
       >
         Generate PDF report

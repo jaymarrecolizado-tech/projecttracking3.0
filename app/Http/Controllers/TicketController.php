@@ -34,7 +34,11 @@ class TicketController extends Controller
                 'open' => MaintenanceTicket::whereIn('status', ['OPEN', 'IN_PROGRESS'])->count(),
                 'critical_open' => MaintenanceTicket::where('priority', 'critical')->whereIn('status', ['OPEN', 'IN_PROGRESS'])->count(),
             ],
-            'users' => User::orderBy('name')->get(['id', 'name']),
+            // Assignees must be able to work tickets, so offer active
+            // tickets.manage holders instead of every account in the system.
+            'users' => User::where('is_active', true)
+                ->whereHas('roles.permissions', fn ($q) => $q->where('permissions.name', 'tickets.manage'))
+                ->orderBy('name')->get(['id', 'name']),
             'sites' => Site::orderBy('location_name')->get(['id', 'location_name']),
             'devices' => Device::orderBy('asset_tag')->get(['id', 'asset_tag']),
         ]);

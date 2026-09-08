@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\DeviceDeployment;
-use App\Models\DeviceModel;
 use App\Models\Site;
 use App\Services\DeviceDeploymentService;
 use Illuminate\Http\Request;

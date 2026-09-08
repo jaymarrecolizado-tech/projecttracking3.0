@@ -6,7 +6,9 @@ use App\Http\Requests\BatchStoreDailyStatusRequest;
 use App\Http\Requests\StoreDailyStatusRequest;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class DailyStatusController extends Controller
@@ -21,11 +23,43 @@ class DailyStatusController extends Controller
 
     public function store(StoreDailyStatusRequest $request)
     {
-        $data = $request->validated();
-        $data['created_by'] = auth()->id();
-        SiteDailyStatus::create($data);
+        // entry_status never comes from the client (Plan_revision §Phase 2.2):
+        // hand-entered rows start as DRAFT and move through the workflow
+        // endpoints (approve/lock) gated on daily.approve.
+        SiteDailyStatus::create($request->safe()->except(['entry_status']) + [
+            'entry_status' => 'DRAFT',
+            'created_by' => auth()->id(),
+        ]);
 
         return redirect()->back();
+    }
+
+    public function approve(Request $request, SiteDailyStatus $status)
+    {
+        Gate::authorize('approve', $status);
+
+        abort_if($status->entry_status === 'LOCKED', 409, 'Record is locked.');
+
+        $status->update([
+            'entry_status' => 'APPROVED',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Record approved.');
+    }
+
+    public function lock(Request $request, SiteDailyStatus $status)
+    {
+        Gate::authorize('approve', $status);
+
+        $status->update([
+            'entry_status' => 'LOCKED',
+            'approved_by' => $status->approved_by ?? $request->user()->id,
+            'approved_at' => $status->approved_at ?? now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Record locked.');
     }
 
     public function grid(Site $site)

@@ -19,6 +19,9 @@ class VerifyEmailController extends Controller
         }
 
         if ($request->user()->markEmailAsVerified()) {
+            // App\Models\User carries the verification columns without
+            // implementing MustVerifyEmail — the stock stub ships this way.
+            // @phpstan-ignore argument.type
             event(new Verified($request->user()));
         }
 

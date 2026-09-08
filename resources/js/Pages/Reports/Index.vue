@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import GeoFilterFields from '@/Components/GeoFilterFields.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconTable, IconTarget } from '@tabler/icons-vue';
+import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconRefresh, IconTable, IconTarget } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
@@ -31,21 +31,32 @@ const coverageForm = useForm({
 
 const coverageOptions = ref(props.initialOptions);
 
-function onCoverageFilters(next) {
-    Object.assign(coverageForm, next);
+/** Shared cascading-area loader: narrowing a parent re-fetches its children. */
+function loadOptions(next, target) {
     const params = new URLSearchParams();
+    if (next.project_id) params.set('project_id', next.project_id);
     if (next.province) params.set('province', next.province);
     if (next.district) params.set('district', next.district);
     if (next.municipality) params.set('municipality', next.municipality);
     fetch(`/map/filter-options?${params}`)
         .then((r) => r.json())
-        .then((json) => (coverageOptions.value = json));
+        .then((json) => (target.value = json));
+}
+
+function onCoverageFilters(next) {
+    Object.assign(coverageForm, next);
+    loadOptions(next, coverageOptions);
 }
 
 function submitCoverage() {
     coverageForm.post(route('reports.site-type'), {
         preserveScroll: true,
-        onSuccess: () => coverageForm.reset(),
+        // Clear the form AND the cascading options, or the selects keep a
+        // narrowed list that no longer matches the (now empty) filters.
+        onSuccess: () => {
+            coverageForm.reset();
+            coverageOptions.value = props.initialOptions;
+        },
     });
 }
 
@@ -60,19 +71,16 @@ const barangayOptions = ref(props.initialOptions);
 
 function onBarangayFilters(next) {
     Object.assign(barangayForm, next);
-    const params = new URLSearchParams();
-    if (next.province) params.set('province', next.province);
-    if (next.district) params.set('district', next.district);
-    if (next.municipality) params.set('municipality', next.municipality);
-    fetch(`/map/filter-options?${params}`)
-        .then((r) => r.json())
-        .then((json) => (barangayOptions.value = json));
+    loadOptions(next, barangayOptions);
 }
 
 function submitBarangayCoverage() {
     barangayForm.post(route('reports.barangay-coverage'), {
         preserveScroll: true,
-        onSuccess: () => barangayForm.reset(),
+        onSuccess: () => {
+            barangayForm.reset();
+            barangayOptions.value = props.initialOptions;
+        },
     });
 }
 
@@ -105,7 +113,7 @@ function download(exportItem) {
 
 const statusStyles = {
     PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
-    PROCESSING: 'bg-blue-50 text-blue-700 border-blue-200',
+    PROCESSING: 'bg-amber-50 text-amber-700 border-amber-200',
     DONE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     FAILED: 'bg-red-50 text-red-700 border-red-200',
 };
@@ -115,15 +123,15 @@ const statusStyles = {
   <Head title="Reports" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Reports</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Reports</h2>
     </template>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Project Summary Report -->
       <div class="dict-card overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-50 to-blue-100/50 px-6 py-4 border-b border-blue-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center shrink-0">
               <IconFileDescription class="w-5 h-5 text-white" />
             </div>
             <div>
@@ -134,12 +142,11 @@ const statusStyles = {
         </div>
         <div class="p-6 space-y-2">
           <button
-            v-for="project in projects" :key="project.id" type="button" class="w-full text-left p-3 rounded-lg hover:bg-blue-50 transition flex items-center gap-3 group disabled:opacity-60"
-            :disabled="hasPending && false"
+            v-for="project in projects" :key="project.id" type="button" class="w-full text-left p-3 rounded-lg hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 transition flex items-center gap-3 group"
             @click="submitProject(project)"
           >
             <div class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: project.marker_color || '#64748b' }"></div>
-            <span class="text-sm text-slate-700 group-hover:text-blue-700 font-medium">{{ project.name }}</span>
+            <span class="text-sm text-slate-700 group-hover:text-accent-500 font-medium">{{ project.name }}</span>
           </button>
           <div v-if="!projects?.length" class="text-sm text-slate-400 text-center py-4">No projects available.</div>
         </div>
@@ -147,9 +154,9 @@ const statusStyles = {
 
       <!-- Province Report -->
       <div class="dict-card overflow-hidden">
-        <div class="bg-gradient-to-r from-emerald-50 to-emerald-100/50 px-6 py-4 border-b border-emerald-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center shrink-0">
               <IconMapPin class="w-5 h-5 text-white" />
             </div>
             <div>
@@ -160,17 +167,20 @@ const statusStyles = {
         </div>
         <div class="p-6">
           <form @submit.prevent="submitProvince">
-            <label for="province" class="block text-sm font-medium text-slate-700 mb-1.5">Province Name</label>
-            <input
-              id="province" v-model="provinceForm.province" type="text" placeholder="Enter province name"
-              class="w-full rounded-lg border-slate-300 text-sm focus:border-emerald-500 focus:ring-emerald-500 mb-1.5"
-            />
+            <label for="province" class="block text-sm font-medium text-slate-700 mb-1.5">Province</label>
+            <select
+              id="province" v-model="provinceForm.province"
+              class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40 mb-1.5"
+            >
+              <option value="">Select a province…</option>
+              <option v-for="province in provinceOptions" :key="province" :value="province">{{ province }}</option>
+            </select>
             <div v-if="provinceForm.errors.province" class="text-xs text-red-600 mb-2">{{ provinceForm.errors.province }}</div>
 
             <label for="project-filter" class="block text-sm font-medium text-slate-700 mb-1.5">Filter by project (optional)</label>
             <select
               id="project-filter" v-model="provinceForm.project_id"
-              class="w-full rounded-lg border-slate-300 text-sm focus:border-emerald-500 focus:ring-emerald-500 mb-4"
+              class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40 mb-4"
             >
               <option value="">All projects</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
@@ -178,7 +188,7 @@ const statusStyles = {
 
             <button
               type="submit" :disabled="provinceForm.processing"
-              class="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-60"
+              class="inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
             >
               <IconLoader2 v-if="provinceForm.processing" class="w-4 h-4 animate-spin" />
               {{ provinceForm.processing ? 'Submitting…' : 'Generate PDF' }}
@@ -189,9 +199,9 @@ const statusStyles = {
 
       <!-- Barangay Coverage Report -->
       <div class="dict-card overflow-hidden lg:col-span-2">
-        <div class="bg-gradient-to-r from-teal-50 to-teal-100/50 px-6 py-4 border-b border-teal-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center shrink-0">
               <IconTarget class="w-5 h-5 text-white" />
             </div>
             <div>
@@ -212,7 +222,7 @@ const statusStyles = {
             />
             <button
               type="submit" :disabled="barangayForm.processing"
-              class="mt-4 inline-flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition disabled:opacity-60"
+              class="mt-4 inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
             >
               <IconLoader2 v-if="barangayForm.processing" class="w-4 h-4 animate-spin" />
               {{ barangayForm.processing ? 'Submitting…' : 'Generate PDF' }}
@@ -223,9 +233,9 @@ const statusStyles = {
 
       <!-- Site Type Coverage Report -->
       <div class="dict-card overflow-hidden lg:col-span-2">
-        <div class="bg-gradient-to-r from-orange-50 to-orange-100/50 px-6 py-4 border-b border-orange-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center shrink-0">
               <IconTable class="w-5 h-5 text-white" />
             </div>
             <div>
@@ -246,7 +256,7 @@ const statusStyles = {
             />
             <button
               type="submit" :disabled="coverageForm.processing"
-              class="mt-4 inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-60"
+              class="mt-4 inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
             >
               <IconLoader2 v-if="coverageForm.processing" class="w-4 h-4 animate-spin" />
               {{ coverageForm.processing ? 'Submitting…' : 'Generate PDF' }}
@@ -274,19 +284,25 @@ const statusStyles = {
             {{ exportItem.status }}
           </span>
           <span class="text-sm text-slate-700 font-medium">
-            {{ exportItem.download_name || (exportItem.type === 'project' ? 'Project report' : 'Province report') }}
+            {{ exportItem.download_name || typeLabels[exportItem.type] || 'Report' }}
           </span>
           <span class="text-xs text-slate-400">{{ new Date(exportItem.created_at).toLocaleString() }}</span>
           <span v-if="exportItem.error" class="text-xs text-red-600 w-full">{{ exportItem.error }}</span>
           <button
-            v-if="exportItem.status === 'DONE'" class="ml-auto inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium"
+            v-if="exportItem.status === 'FAILED'" class="ml-auto inline-flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 rounded font-medium transition-colors"
+            @click="router.post(route('reports.retry', exportItem.id))"
+          >
+            <IconRefresh class="w-4 h-4" /> Retry
+          </button>
+          <button
+            v-if="exportItem.status === 'DONE'" class="ml-auto inline-flex items-center gap-1.5 text-sm text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium transition-colors"
             @click="download(exportItem)"
           >
             <IconDownload class="w-4 h-4" /> Download
           </button>
         </li>
       </ul>
-      <div v-else class="px-6 py-8 text-center text-sm text-slate-400">No reports generated yet.</div>
+      <div v-else class="px-6 py-8 text-center text-sm text-slate-400">No reports generated yet — use a report card above to queue one.</div>
     </div>
   </AuthenticatedLayout>
 </template>

@@ -46,7 +46,7 @@ const dotFor = {
 
     <div class="min-h-screen w-full lg:grid lg:grid-cols-2">
         <!-- ═══ Identity panel ═══ -->
-        <div class="relative hidden lg:flex min-h-screen flex-col justify-between overflow-hidden bg-[#0F1B2D] text-white p-12">
+        <div class="relative hidden lg:flex min-h-screen flex-col justify-between overflow-hidden bg-ink text-white p-12">
             <!-- Blueprint grid -->
             <div class="absolute inset-0 pointer-events-none" :style="{
                 backgroundImage: 'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
@@ -57,7 +57,7 @@ const dotFor = {
             <div class="relative">
                 <div class="flex items-center gap-3.5">
                     <div class="w-11 h-11 bg-white rounded-lg flex items-center justify-center">
-                        <span class="text-[#0F1B2D] font-extrabold text-base tracking-tight">FW</span>
+                        <span class="text-ink font-extrabold text-base tracking-tight">FW</span>
                     </div>
                     <div>
                         <div class="font-bold text-[15px] leading-tight tracking-tight">Free Public Internet Access Program <span class="text-slate-400">(FPIAP)</span></div>
@@ -93,7 +93,7 @@ const dotFor = {
                                 'text-emerald-400': r.status === 'UP',
                                 'text-red-400': r.status.startsWith('DOWN'),
                                 'text-amber-400': r.status === 'NO_NMS',
-                                'text-slate-500': r.status === 'NO_DATA',
+                                'text-slate-400': r.status === 'NO_DATA',
                             }">{{ r.status.replace('_', ' ') }}</span>
                         </div>
                     </div>
@@ -128,7 +128,7 @@ const dotFor = {
             <div class="w-full max-w-sm">
                 <!-- Compact brand for mobile -->
                 <div class="lg:hidden flex items-center gap-3 mb-10">
-                    <div class="w-10 h-10 bg-[#0F1B2D] rounded-lg flex items-center justify-center">
+                    <div class="w-10 h-10 bg-ink rounded-lg flex items-center justify-center">
                         <span class="text-white font-extrabold text-sm">FW</span>
                     </div>
                     <div>
@@ -154,7 +154,7 @@ const dotFor = {
                             required
                             autofocus
                             autocomplete="username"
-                            class="w-full rounded-lg border-slate-300 bg-white text-sm shadow-none focus:border-[#0E5E6F] focus:ring-[#0E5E6F]/20"
+                            class="w-full rounded-lg border-slate-300 bg-white text-sm shadow-none focus:border-accent-500 focus:ring-accent-500/20"
                         />
                         <InputError class="mt-2" :message="form.errors.email" />
                     </div>
@@ -165,7 +165,7 @@ const dotFor = {
                             <Link
                                 v-if="canResetPassword"
                                 :href="route('password.request')"
-                                class="text-xs font-medium text-[#0E5E6F] hover:text-[#0a414c] hover:underline"
+                                class="text-xs font-medium text-accent-500 hover:text-accent-600 hover:underline"
                             >
                                 Forgot password?
                             </Link>
@@ -176,7 +176,7 @@ const dotFor = {
                             type="password"
                             required
                             autocomplete="current-password"
-                            class="w-full rounded-lg border-slate-300 bg-white text-sm shadow-none focus:border-[#0E5E6F] focus:ring-[#0E5E6F]/20"
+                            class="w-full rounded-lg border-slate-300 bg-white text-sm shadow-none focus:border-accent-500 focus:ring-accent-500/20"
                         />
                         <InputError class="mt-2" :message="form.errors.password" />
                     </div>
@@ -189,7 +189,7 @@ const dotFor = {
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="w-full inline-flex justify-center items-center rounded-lg bg-[#0E5E6F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0a414c] focus:outline-none focus:ring-2 focus:ring-[#0E5E6F]/40 focus:ring-offset-2 disabled:opacity-60 transition-colors"
+                        class="w-full inline-flex justify-center items-center rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-500/40 focus:ring-offset-2 disabled:opacity-60 transition-colors"
                     >
                         {{ form.processing ? 'Signing in…' : 'Sign in' }}
                     </button>

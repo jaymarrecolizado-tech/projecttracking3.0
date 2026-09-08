@@ -1,8 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MetricSparkline from '@/Components/MetricSparkline.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { IconRouter } from '@tabler/icons-vue';
+import { IconRouter, IconPrinter, IconPencil } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 const props = defineProps({ device: Object, deviceModels: Array, sites: Array });
@@ -49,61 +50,62 @@ const series = (key) => (props.device.metrics ?? [])
     .filter((m) => m[key] !== null && m[key] !== undefined)
     .map((m) => ({ ts: m.ts, value: m[key] }));
 
-const statusPill = {
-    deployed: 'bg-green-100 text-green-700',
-    in_stock: 'bg-blue-100 text-blue-700',
-    under_repair: 'bg-orange-100 text-orange-700',
-    retired: 'bg-slate-100 text-slate-500',
-    lost: 'bg-red-100 text-red-700',
-};
 </script>
 
 <template>
   <Head :title="device.asset_tag" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight font-mono">{{ device.asset_tag }}</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight font-mono">{{ device.asset_tag }}</h2>
     </template>
 
     <div class="mb-4 flex items-center gap-4">
       <a
         :href="`/devices-labels?device=${device.id}`" target="_blank"
-        class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 transition"
+        class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition-colors"
       >
-        🖨 Print asset label
+        <IconPrinter class="w-4 h-4" /> Print asset label
       </a>
       <button
         v-if="canEdit" type="button"
-        class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition-colors"
         @click="openEdit"
       >
-        {{ editOpen ? 'Close editor' : '✏️ Edit unit' }}
+        <IconPencil v-if="!editOpen" class="w-4 h-4" /> {{ editOpen ? 'Close editor' : 'Edit unit' }}
       </button>
     </div>
 
     <!-- Edit form -->
-    <div v-if="editOpen" class="dict-card p-6 mb-6 border-l-4 border-blue-500">
+    <div v-if="editOpen" class="dict-card p-6 mb-6 border-l-4 border-l-accent-500">
       <h3 class="text-base font-semibold text-slate-800 mb-4">Edit unit</h3>
       <form class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" @submit.prevent="save">
         <div class="sm:col-span-2">
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Model</label>
-          <select v-model="form.device_model_id" class="w-full rounded-lg border-slate-300 text-sm" required>
+          <select v-model="form.device_model_id" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required>
             <option v-for="model in deviceModels" :key="model.id" :value="model.id">
               {{ model.manufacturer }} {{ model.model_name }} ({{ model.model_number }})
             </option>
           </select>
         </div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Asset tag</label>
-          <input v-model="form.asset_tag" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Serial no.</label>
-          <input v-model="form.serial_number" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">MAC (optional)</label>
-          <input v-model="form.mac_address" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Firmware</label>
-          <input v-model="form.firmware_version" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Asset tag</label>
+          <input v-model="form.asset_tag" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Serial no.</label>
+          <input v-model="form.serial_number" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">MAC (optional)</label>
+          <input v-model="form.mac_address" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Firmware</label>
+          <input v-model="form.firmware_version" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Status</label>
-          <select v-model="form.status" class="w-full rounded-lg border-slate-300 text-sm">
+          <select v-model="form.status" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
             <option v-for="option in ['in_stock', 'deployed', 'under_repair', 'retired', 'lost']" :key="option" :value="option">
               {{ option.replace('_', ' ') }}
             </option>
@@ -111,46 +113,58 @@ const statusPill = {
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Condition</label>
-          <select v-model="form.condition" class="w-full rounded-lg border-slate-300 text-sm">
+          <select v-model="form.condition" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
             <option v-for="option in ['new', 'good', 'degraded', 'faulty']" :key="option" :value="option">{{ option }}</option>
           </select>
         </div>
         <template v-if="form.status === 'deployed'">
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Assigned site</label>
-            <select v-model="form.site_id" class="w-full rounded-lg border-slate-300 text-sm" :required="form.status === 'deployed'">
+            <select v-model="form.site_id" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" :required="form.status === 'deployed'">
               <option value="" disabled>Select site…</option>
               <option v-for="site in sites" :key="site.id" :value="site.id">{{ site.location_name }}</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Role</label>
-            <select v-model="form.role_at_site" class="w-full rounded-lg border-slate-300 text-sm">
+            <select v-model="form.role_at_site" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
               <option v-for="(label, value) in roleLabels" :key="value" :value="value">{{ label }}</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Installed</label>
-            <input v-model="form.installed_at" type="date" class="w-full rounded-lg border-slate-300 text-sm" />
+            <input v-model="form.installed_at" type="date" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
           </div>
         </template>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">PO no.</label>
-          <input v-model="form.purchase_order_no" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Supplier</label>
-          <input v-model="form.supplier" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Unit cost</label>
-          <input v-model="form.unit_cost" type="number" step="any" min="0" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Purchased</label>
-          <input v-model="form.purchased_at" type="date" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-        <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Warranty until</label>
-          <input v-model="form.warranty_until" type="date" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-        <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notes</label>
-          <input v-model="form.notes" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">PO no.</label>
+          <input v-model="form.purchase_order_no" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Supplier</label>
+          <input v-model="form.supplier" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Unit cost</label>
+          <input v-model="form.unit_cost" type="number" step="any" min="0" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Purchased</label>
+          <input v-model="form.purchased_at" type="date" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Warranty until</label>
+          <input v-model="form.warranty_until" type="date" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notes</label>
+          <input v-model="form.notes" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+        </div>
         <div class="sm:col-span-2 lg:col-span-4 flex items-center gap-3">
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition" :disabled="form.processing">
+          <button type="submit" class="bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition" :disabled="form.processing">
             {{ form.processing ? 'Saving…' : 'Save changes' }}
           </button>
-          <button type="button" class="text-sm text-slate-500 underline" @click="editOpen = false">Cancel</button>
+          <button type="button" class="text-sm text-slate-500 underline hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition" @click="editOpen = false">Cancel</button>
           <span v-if="Object.values(form.errors).length" class="text-sm text-red-600">{{ Object.values(form.errors)[0] }}</span>
         </div>
       </form>
@@ -166,9 +180,7 @@ const statusPill = {
             </h3>
             <p class="text-sm text-slate-500">{{ device.device_model.model_number }}</p>
           </div>
-          <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="statusPill[device.status]">
-            {{ device.status.replace('_', ' ') }}
-          </span>
+          <StatusPill :status="device.status" size="md" />
         </div>
 
         <dl class="space-y-2 text-sm">
@@ -197,7 +209,7 @@ const statusPill = {
       <div class="dict-card p-6">
         <h3 class="text-lg font-semibold text-slate-800 mb-4">Current Assignment</h3>
         <template v-if="device.current_deployment">
-          <Link :href="route('sites.show', device.current_deployment.site.id)" class="text-blue-600 hover:text-blue-800 font-medium">
+          <Link :href="route('sites.show', device.current_deployment.site.id)" class="text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium transition-colors">
             {{ device.current_deployment.site.location_name }}
           </Link>
           <dl class="mt-3 space-y-2 text-sm">

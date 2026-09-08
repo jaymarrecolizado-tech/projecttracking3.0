@@ -1,5 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Modal from '@/Components/Modal.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft, IconCirclePlus } from '@tabler/icons-vue';
 import { ref } from 'vue';
@@ -45,6 +47,7 @@ function saveEdit() {
 }
 
 const showForm = ref(false);
+const detaching = ref(null);
 const mode = ref('existing');
 const roleLabels = {
     primary_ap: 'Primary AP', backup_ap: 'Backup AP', backhaul: 'Backhaul',
@@ -80,10 +83,12 @@ function attach() {
     });
 }
 
-function detach(deployment) {
-    if (confirm('Detach this unit? The deployment closes and the device returns to stock.')) {
-        router.delete(route('sites.equipment.destroy', { site: props.site.id, deployment: deployment.id }), { preserveScroll: true });
-    }
+function detach() {
+    if (!detaching.value) return;
+    router.delete(route('sites.equipment.destroy', { site: props.site.id, deployment: detaching.value.id }), {
+        preserveScroll: true,
+        onSuccess: () => (detaching.value = null),
+    });
 }
 </script>
 
@@ -91,12 +96,12 @@ function detach(deployment) {
   <Head :title="site.location_name" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">{{ site.location_name }}</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">{{ site.location_name }}</h2>
     </template>
 
     <div>
       <!-- Back Link -->
-      <Link :href="route('sites.index')" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-4 transition">
+      <Link :href="route('sites.index')" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded mb-4 transition-colors">
         <IconArrowLeft class="w-4 h-4" /> Back to Sites
       </Link>
 
@@ -108,15 +113,7 @@ function detach(deployment) {
             <span class="text-sm text-slate-500">{{ site.project?.name }}</span>
           </div>
           <div class="flex items-center gap-3">
-            <span
-              class="px-2.5 py-1 rounded-full text-xs font-medium" :class="{
-                'bg-green-100 text-green-700': site.status === 'active',
-                'bg-red-100 text-red-700': site.status === 'inactive',
-                'bg-yellow-100 text-yellow-700': site.status === 'planned',
-                'bg-slate-100 text-slate-500': site.status === 'decommissioned',
-                'bg-orange-100 text-orange-700': site.status === 'maintenance',
-              }"
-            >{{ site.status }}</span>
+            <StatusPill :status="site.status" size="md" />
             <button
               v-if="canEditSite" type="button"
               class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 text-slate-600 hover:bg-slate-100 transition"
@@ -124,56 +121,86 @@ function detach(deployment) {
             >
               {{ editOpen ? 'Close editor' : 'Edit details' }}
             </button>
-            <Link :href="route('sites.daily-grid', site.id)" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Daily Status</Link>
-            <Link :href="route('sites.accomplishments', site.id)" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition">Accomplishments</Link>
+            <Link :href="route('sites.daily-grid', site.id)" class="bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition">Daily Status</Link>
+            <Link :href="route('sites.accomplishments', site.id)" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition">Accomplishments</Link>
           </div>
         </div>
       </div>
 
       <!-- Edit details -->
-      <div v-if="editOpen" class="dict-card p-6 mb-6 border-l-4 border-blue-500">
+      <div v-if="editOpen" class="dict-card p-6 mb-6 border-l-4 border-l-accent-500">
         <h3 class="text-base font-semibold text-slate-800 mb-4">Edit site details</h3>
         <form class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" @submit.prevent="saveEdit">
-          <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Location name</label>
-            <input v-model="editForm.location_name" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Site type</label>
-            <input v-model="editForm.site_type" type="text" class="w-full rounded-lg border-slate-300 text-sm" placeholder="PES, PHS, LGU-BRGY…" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Status</label>
-            <select v-model="editForm.status" class="w-full rounded-lg border-slate-300 text-sm">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Location name</label>
+            <input v-model="editForm.location_name" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Site type</label>
+            <input v-model="editForm.site_type" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" placeholder="PES, PHS, LGU-BRGY…" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Status</label>
+            <select v-model="editForm.status" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
               <option v-for="option in ['planned', 'active', 'inactive', 'decommissioned', 'maintenance']" :key="option" :value="option">{{ option }}</option>
-            </select></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Barangay</label>
-            <input v-model="editForm.barangay" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Municipality</label>
-            <input v-model="editForm.municipality" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Province</label>
-            <input v-model="editForm.province" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">District</label>
-            <input v-model="editForm.district" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Region</label>
-            <input v-model="editForm.region" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Island group</label>
-            <select v-model="editForm.island_group" class="w-full rounded-lg border-slate-300 text-sm">
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Barangay</label>
+            <input v-model="editForm.barangay" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Municipality</label>
+            <input v-model="editForm.municipality" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Province</label>
+            <input v-model="editForm.province" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">District</label>
+            <input v-model="editForm.district" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Region</label>
+            <input v-model="editForm.region" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Island group</label>
+            <select v-model="editForm.island_group" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
               <option value="">—</option>
               <option v-for="option in ['Luzon', 'Visayas', 'Mindanao']" :key="option" :value="option">{{ option }}</option>
-            </select></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Latitude</label>
-            <input v-model="editForm.latitude" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Longitude</label>
-            <input v-model="editForm.longitude" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Date of activation</label>
-            <input v-model="editForm.date_of_activation" type="date" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">ISP</label>
-            <input v-model="editForm.isp_provider" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Last mile tech</label>
-            <input v-model="editForm.last_mile_tech" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-          <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Bandwidth CIR (Mbps)</label>
-            <input v-model="editForm.bw_download_cir" type="number" step="any" min="0" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Latitude</label>
+            <input v-model="editForm.latitude" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Longitude</label>
+            <input v-model="editForm.longitude" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Date of activation</label>
+            <input v-model="editForm.date_of_activation" type="date" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">ISP</label>
+            <input v-model="editForm.isp_provider" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Last mile tech</label>
+            <input v-model="editForm.last_mile_tech" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Bandwidth CIR (Mbps)</label>
+            <input v-model="editForm.bw_download_cir" type="number" step="any" min="0" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+          </div>
           <div class="sm:col-span-2 lg:col-span-4 flex items-center gap-3">
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition" :disabled="editForm.processing">
+            <button type="submit" class="bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition" :disabled="editForm.processing">
               {{ editForm.processing ? 'Saving…' : 'Save changes' }}
             </button>
-            <button type="button" class="text-sm text-slate-500 underline" @click="editOpen = false">Cancel</button>
+            <button type="button" class="text-sm text-slate-500 underline hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition" @click="editOpen = false">Cancel</button>
             <span v-if="Object.values(editForm.errors).length" class="text-sm text-red-600">{{ Object.values(editForm.errors)[0] }}</span>
           </div>
         </form>
@@ -232,7 +259,7 @@ function detach(deployment) {
           <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Installed Equipment</h3>
           <button
             v-if="canAttach && !showForm" type="button"
-            class="inline-flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+            class="inline-flex items-center gap-1.5 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition"
             @click="openForm"
           >
             <IconCirclePlus class="w-4 h-4" /> Attach equipment
@@ -244,8 +271,8 @@ function detach(deployment) {
           <div class="flex gap-2 mb-4">
             <button
               v-for="option in ['existing', 'new']" :key="option" type="button"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition"
-              :class="mode === option ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 transition"
+              :class="mode === option ? 'bg-accent-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
               @click="mode = option; form.mode = option"
             >
               {{ option === 'existing' ? 'Assign from stock' : 'Register new unit' }}
@@ -255,7 +282,7 @@ function detach(deployment) {
             <template v-if="mode === 'existing'">
               <div class="sm:col-span-2 lg:col-span-3">
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">In-stock device</label>
-                <select v-model="form.device_id" class="w-full rounded-lg border-slate-300 text-sm" required>
+                <select v-model="form.device_id" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required>
                   <option value="" disabled>Select an in-stock unit…</option>
                   <option v-for="device in stockDevices" :key="device.id" :value="device.id">
                     {{ device.asset_tag }} — {{ device.device_model?.manufacturer }} {{ device.device_model?.model_name }} (S/N {{ device.serial_number }})
@@ -266,37 +293,45 @@ function detach(deployment) {
             <template v-else>
               <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Model</label>
-                <select v-model="form.device_model_id" class="w-full rounded-lg border-slate-300 text-sm" required>
+                <select v-model="form.device_model_id" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required>
                   <option value="" disabled>Select model…</option>
                   <option v-for="model in deviceModels" :key="model.id" :value="model.id">
                     {{ model.manufacturer }} {{ model.model_name }} ({{ model.model_number }})
                   </option>
                 </select>
               </div>
-              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Asset tag</label>
-                <input v-model="form.asset_tag" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
-              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Serial no.</label>
-                <input v-model="form.serial_number" type="text" class="w-full rounded-lg border-slate-300 text-sm" required /></div>
-              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">MAC (optional)</label>
-                <input v-model="form.mac_address" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
-              <div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Firmware (optional)</label>
-                <input v-model="form.firmware_version" type="text" class="w-full rounded-lg border-slate-300 text-sm" /></div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Asset tag</label>
+                <input v-model="form.asset_tag" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Serial no.</label>
+                <input v-model="form.serial_number" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">MAC (optional)</label>
+                <input v-model="form.mac_address" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Firmware (optional)</label>
+                <input v-model="form.firmware_version" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+              </div>
             </template>
             <div>
               <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Role at site</label>
-              <select v-model="form.role_at_site" class="w-full rounded-lg border-slate-300 text-sm">
+              <select v-model="form.role_at_site" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
                 <option v-for="(label, value) in roleLabels" :key="value" :value="value">{{ label }}</option>
               </select>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Installed</label>
-              <input v-model="form.installed_at" type="date" class="w-full rounded-lg border-slate-300 text-sm" />
+              <input v-model="form.installed_at" type="date" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
             </div>
             <div class="flex items-end gap-3">
-              <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition" :disabled="form.processing">
+              <button type="submit" class="bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition" :disabled="form.processing">
                 {{ form.processing ? 'Attaching…' : 'Attach' }}
               </button>
-              <button type="button" class="text-sm text-slate-500 underline" @click="showForm = false">Cancel</button>
+              <button type="button" class="text-sm text-slate-500 underline hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition" @click="showForm = false">Cancel</button>
             </div>
             <div v-if="Object.values(form.errors).length" class="sm:col-span-2 lg:col-span-3 text-sm text-red-600">
               {{ Object.values(form.errors)[0] }}
@@ -325,11 +360,11 @@ function detach(deployment) {
                 <td class="px-6 py-4 text-sm text-slate-600">{{ deployment.installed_at ? new Date(deployment.installed_at).toLocaleDateString() : '—' }}</td>
                 <td class="px-6 py-4 text-sm">
                   <div class="flex gap-2">
-                    <Link v-if="deployment.device" :href="route('devices.show', deployment.device.id)" class="text-blue-600 hover:text-blue-800 font-medium">View</Link>
+                    <Link v-if="deployment.device" :href="route('devices.show', deployment.device.id)" class="text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium transition-colors">View</Link>
                     <button
                       v-if="canDetach" type="button"
-                      class="text-red-600 hover:text-red-800 font-medium"
-                      @click="confirm('Detach this unit? It returns to stock.') && detach(deployment)"
+                      class="text-red-600 hover:text-red-800 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 rounded font-medium transition-colors"
+                      @click="detaching = deployment"
                     >
                       Detach
                     </button>
@@ -343,6 +378,17 @@ function detach(deployment) {
           <p class="text-sm text-slate-500">No equipment registered at this site yet.</p>
         </div>
       </div>
+      <!-- Detach confirmation -->
+      <Modal :show="!!detaching" max-width="md" @close="detaching = null">
+        <div v-if="detaching" class="p-6">
+          <h3 class="text-lg font-bold tracking-tight text-slate-900 mb-1">Detach this unit?</h3>
+          <p class="text-sm text-slate-500 mb-4">{{ detaching.device?.asset_tag }} — the deployment closes and the device returns to stock.</p>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition" @click="detaching = null">Cancel</button>
+            <button type="button" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition" @click="detach">Detach unit</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   </AuthenticatedLayout>
 </template>

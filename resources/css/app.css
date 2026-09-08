@@ -4,9 +4,19 @@
 
 @layer components {
     .dict-card {
-        @apply bg-white rounded-lg border border-slate-200 shadow-sm;
+        @apply bg-white rounded-lg border border-slate-200;
     }
     .dict-table-header {
         @apply bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500;
+    }
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+@layer base {
+    h1, h2, h3 {
+        text-wrap: balance;
     }
 }

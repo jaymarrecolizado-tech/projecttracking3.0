@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class BulkDailyOpsRequest extends FormRequest
 {
@@ -18,7 +19,9 @@ class BulkDailyOpsRequest extends FormRequest
             'action' => 'required|in:save_draft,submit,approve',
             'entries' => 'required|array|min:1',
             'entries.*.site_id' => 'required|integer|exists:sites,id',
-            'entries.*.status' => 'required|in:UP,DOWN,NO_NMS',
+            // Was in:UP,DOWN,NO_NMS — DOWN_SERVER (a real NMS state) was
+            // rejected here while SiteController filtered on it.
+            'entries.*.status' => ['required', Rule::in(config('daily_status.codes'))],
             'entries.*.bandwidth_utilization_mbps' => 'nullable|numeric|min:0',
             'entries.*.total_unique_users' => 'nullable|integer|min:0',
             'entries.*.remarks' => 'nullable|string|max:1000',

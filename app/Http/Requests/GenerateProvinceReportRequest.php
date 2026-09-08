@@ -8,7 +8,7 @@ class GenerateProvinceReportRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // Reports index is behind auth; export permission checked at download.
+        return true; // Gated by the can:reports.export middleware on the route.
     }
 
     public function rules(): array

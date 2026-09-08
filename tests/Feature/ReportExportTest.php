@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\ReportingService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -25,12 +26,9 @@ class ReportExportTest extends TestCase
         return $admin;
     }
 
-    public function test_project_report_request_queues_export_then_job_completes_it(): void
+    private function project(): Project
     {
-        Storage::fake('local');
-        $admin = $this->admin();
-
-        $project = Project::create([
+        return Project::create([
             'code' => 'FREEWIFI',
             'name' => 'Free WiFi for All',
             'report_type' => 'freewifi',
@@ -38,6 +36,14 @@ class ReportExportTest extends TestCase
             'marker_shape' => 'circle',
             'marker_icon' => 'wifi',
         ]);
+    }
+
+    public function test_project_report_request_queues_export_then_job_completes_it(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+
+        $project = $this->project();
 
         $this->actingAs($admin)
             ->post(route('reports.project', $project))
@@ -91,6 +97,46 @@ class ReportExportTest extends TestCase
         $this->actingAs($plain)
             ->get(route('reports.download', $export))
             ->assertForbidden();
+    }
+
+    private function viewer(): User
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $viewer = User::factory()->create();
+        $viewer->roles()->attach(DB::table('roles')->where('name', 'viewer')->value('id'));
+
+        return $viewer;
+    }
+
+    /**
+     * The reports console is gated: reports.view opens the page, reports.export
+     * is required to queue a PDF (it costs CPU and storage).
+     */
+    public function test_viewer_can_open_reports_but_cannot_queue_pdfs(): void
+    {
+        $viewer = $this->viewer();
+        $project = $this->project();
+
+        $this->actingAs($viewer)->get(route('reports.index'))->assertOk();
+
+        $this->actingAs($viewer)->post(route('reports.project', $project))->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.province'), ['province' => 'Cagayan'])->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.site-type'))->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.barangay-coverage'))->assertForbidden();
+
+        $this->assertSame(0, ReportExport::count());
+    }
+
+    public function test_export_permission_holder_can_queue_a_report(): void
+    {
+        $admin = $this->admin();
+        $project = $this->project();
+
+        $this->actingAs($admin)
+            ->post(route('reports.project', $project))
+            ->assertRedirect();
+
+        $this->assertSame(1, ReportExport::where('type', 'project')->count());
     }
 
     public function test_failed_generation_is_recorded_on_the_export(): void

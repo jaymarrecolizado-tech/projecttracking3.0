@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
 use App\Support\NameNormalizer;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -21,7 +21,7 @@ class GeoBoundaryService
         $level = in_array($level, self::LEVELS, true) ? $level : 'province';
 
         // v2: normalized name matching ("Basco (Capital)" == "Basco", etc.).
-        $cacheKey = 'map.boundaries.v2.' . md5($level.serialize($filters));
+        $cacheKey = 'map.boundaries.v2.'.md5($level.serialize($filters));
         $ttl = now()->addHours(12);
 
         return Cache::remember($cacheKey, $ttl, fn () => $this->load($level, $filters));

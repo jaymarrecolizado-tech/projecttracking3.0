@@ -20,11 +20,7 @@
     <h1>Barangay Coverage — Free WiFi Installed/Existing vs Total</h1>
     <p style="color:#64748b;font-size:11px">
         Scope:
-        @if (empty($filters))
-            Region II · all projects
-        @else
-            {{ implode(' · ', array_filter($filters)) }}
-        @endif
+        {{ $coverage['scope'] ?? (empty($filters) ? 'Region II · all projects' : implode(' · ', array_filter($filters))) }}
         | Generated: {{ now()->format('Y-m-d H:i') }}
     </p>
 
@@ -98,6 +94,10 @@
         PSA count for Region II and add missing barangays to keep the percentages exact.
         @if (($coverage['unattributed_sites'] ?? 0) > 0)
             {{ $coverage['unattributed_sites'] }} site(s) have no barangay recorded and are not attributed.
+        @endif
+        @if (($coverage['district_blank_sites'] ?? 0) > 0)
+            {{ $coverage['district_blank_sites'] }} site(s) in the selected province(s) have no legislative district
+            recorded and are therefore excluded by the district filter.
         @endif
     </p>
 

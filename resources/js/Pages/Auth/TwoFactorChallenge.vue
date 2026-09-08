@@ -23,12 +23,12 @@ const submit = () => {
     <GuestLayout>
         <Head title="Two-Factor Authentication" />
 
-        <div class="mb-4 text-sm text-gray-600">
+        <div class="mb-4 text-sm text-slate-600">
             Your account is protected with an authenticator app. Enter the
             6-digit code from your app to finish signing in.
         </div>
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+        <div v-if="status" class="mb-4 text-sm font-medium text-emerald-700">
             {{ status }}
         </div>
 
@@ -62,7 +62,7 @@ const submit = () => {
         <form class="mt-6 text-center">
             <a
                 href="#"
-                class="text-sm text-gray-600 underline hover:text-gray-900"
+                class="text-sm text-slate-600 underline hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded"
                 @click.prevent="router.post(route('logout'))"
             >
                 Cancel and sign out

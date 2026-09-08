@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { IconChevronRight, IconFolder } from '@tabler/icons-vue';
 defineProps({ projects: Array });
@@ -9,7 +10,7 @@ defineProps({ projects: Array });
   <Head title="Projects" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Projects</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Projects</h2>
     </template>
 
     <div class="dict-card overflow-hidden">
@@ -49,17 +50,12 @@ defineProps({ projects: Array });
               </td>
               <td class="px-6 py-4 text-sm text-slate-700">{{ project.sites_count }}</td>
               <td class="px-6 py-4 text-sm">
-                <span
-                  class="px-2.5 py-1 rounded-full text-xs font-medium"
-                  :class="project.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'"
-                >
-                  {{ project.is_active ? 'Active' : 'Inactive' }}
-                </span>
+                <StatusPill :status="project.is_active ? 'Active' : 'Inactive'" />
               </td>
               <td class="px-6 py-4 text-sm">
                 <Link
                   :href="route('projects.show', project.id)"
-                  class="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1"
+                  class="text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium inline-flex items-center gap-1 transition-colors"
                   @click.stop
                 >
                   View <IconChevronRight class="w-4 h-4" />

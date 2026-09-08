@@ -23,6 +23,11 @@ class HeartbeatController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        // A Sanctum token is not enough — it must carry the heartbeat ability
+        // (Plan_revision §Phase 2.4), so a leaked token scoped to another
+        // purpose cannot write statuses.
+        abort_unless($request->user()?->tokenCan('heartbeat'), 403, 'Token lacks the heartbeat ability.');
+
         $validated = $request->validate([
             'site_code' => 'required|string|exists:sites,ap_site_code',
             'status' => 'required|in:UP,DOWN',
@@ -53,13 +58,14 @@ class HeartbeatController extends Controller
 
         abort_if($site === null, 404, 'Unknown site code.');
 
-        // Approved-and-locked records are authoritative — probes must not overwrite them.
+        // Approved and locked records are authoritative — probes must not
+        // overwrite either (APPROVED used to be silently clobbered too).
         $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', today())->first();
-        if ($existing && $existing->entry_status === 'LOCKED') {
+        if ($existing && in_array($existing->entry_status, ['APPROVED', 'LOCKED'], true)) {
             return response()->json([
                 'ok' => false,
-                'error' => 'locked',
-                'message' => "Today's record for site {$site->ap_site_code} is locked.",
+                'error' => strtolower($existing->entry_status),
+                'message' => "Today's record for site {$site->ap_site_code} is {$existing->entry_status}.",
             ], 409);
         }
 

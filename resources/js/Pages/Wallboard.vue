@@ -1,6 +1,7 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 import { router } from '@inertiajs/vue3';
+import SeverityChip from '@/Components/SeverityChip.vue';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 
 const props = defineProps({ stats: Object });
@@ -15,23 +16,40 @@ const uptimeColor = computed(() =>
     props.stats.uptime_pct_7d >= 95 ? 'text-emerald-400' : props.stats.uptime_pct_7d >= 85 ? 'text-amber-400' : 'text-red-400',
 );
 
-// 14-day UP/DOWN bars, pure SVG — no chart library.
+// 14-day stacked bars, pure SVG — one segment per observed status.
+const barWidth = computed(() => 100 / Math.max((props.stats.trend ?? []).length, 1));
+
 const chart = computed(() => {
     const days = props.stats.trend ?? [];
-    const max = Math.max(1, ...days.map((d) => d.up + d.down));
-    const width = 100 / Math.max(days.length, 1);
-    return days.map((d, i) => ({
-        ...d,
-        x: i * width,
-        upH: (d.up / max) * 100,
-        downH: (d.down / max) * 100,
-    }));
+    // All four statuses share the scale, so the stack height is honest.
+    const max = Math.max(1, ...days.map((d) => d.up + d.down + d.no_nms + d.down_server));
+    const width = barWidth.value;
+    const unit = (n) => (n / max) * 52;
+
+    return days.map((d, i) => {
+        const up = unit(d.up);
+        const noNms = unit(d.no_nms);
+        const downServer = unit(d.down_server);
+        const down = unit(d.down);
+
+        // Stacked bottom-up from y = 58.
+        return {
+            ...d,
+            x: i * width,
+            segments: [
+                { key: 'up', y: 58 - up, h: up, fill: '#34d399' },
+                { key: 'no_nms', y: 58 - up - noNms, h: noNms, fill: '#fbbf24' },
+                { key: 'down_server', y: 58 - up - noNms - downServer, h: downServer, fill: '#fb923c' },
+                { key: 'down', y: 58 - up - noNms - downServer - down, h: down, fill: '#f87171' },
+            ],
+        };
+    });
 });
 </script>
 
 <template>
   <Head title="NOC Wallboard" />
-  <div class="min-h-screen bg-[#0F1B2D] text-white p-6 flex flex-col">
+  <div class="min-h-screen bg-ink text-white p-6 flex flex-col">
     <header class="flex items-center justify-between mb-8">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">FreeWiFi Network Status</h1>
@@ -54,14 +72,16 @@ const chart = computed(() => {
       <div class="border-l-4 border-red-500 pl-5 py-2">
         <div class="text-sm uppercase tracking-widest text-slate-400">DOWN Today</div>
         <div class="text-6xl font-bold tabular-nums text-red-400">{{ stats.down_today }}</div>
+        <div v-if="stats.down_server_today" class="text-sm font-medium tabular-nums text-orange-400 mt-1">+{{ stats.down_server_today }} server</div>
       </div>
       <div class="border-l-4 border-slate-600 pl-5 py-2">
         <div class="text-sm uppercase tracking-widest text-slate-400">No Data</div>
         <div class="text-6xl font-bold tabular-nums text-slate-400">{{ stats.no_data_today }}</div>
+        <div v-if="stats.no_nms_today" class="text-sm font-medium tabular-nums text-amber-400 mt-1">{{ stats.no_nms_today }} NO NMS</div>
       </div>
-      <div class="border-l-4 border-blue-500 pl-5 py-2">
+      <div class="border-l-4 border-slate-500 pl-5 py-2">
         <div class="text-sm uppercase tracking-widest text-slate-400">Active Sites</div>
-        <div class="text-6xl font-bold tabular-nums text-blue-400">{{ stats.total_sites }}</div>
+        <div class="text-6xl font-bold tabular-nums text-white">{{ stats.total_sites }}</div>
       </div>
     </div>
 
@@ -71,19 +91,23 @@ const chart = computed(() => {
         <h2 class="text-sm uppercase tracking-widest text-slate-400 mb-4">14-Day Trend</h2>
         <svg viewBox="0 0 100 60" preserveAspectRatio="none" class="w-full h-56">
           <g v-for="(bar, i) in chart" :key="i">
-            <rect :x="bar.x + 0.15" :y="58 - bar.upH * 0.55" :width="width - 0.3" :height="bar.upH * 0.55" fill="#34d399" />
             <rect
+              v-for="segment in bar.segments"
+              :key="segment.key"
               :x="bar.x + 0.15"
-              :y="59 - bar.downH * 0.25"
-              :width="width - 0.3"
-              :height="bar.downH * 0.25"
-              fill="#f87171"
+              :y="segment.y"
+              :width="barWidth - 0.3"
+              :height="segment.h"
+              :fill="segment.fill"
             />
+            <title>{{ bar.date }}: {{ bar.up }} UP · {{ bar.down }} DOWN · {{ bar.no_nms }} NO NMS · {{ bar.down_server }} DOWN SERVER</title>
           </g>
         </svg>
-        <div class="flex gap-6 mt-2 text-xs text-slate-400">
+        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-400">
           <span><span class="inline-block w-2 h-2 bg-emerald-400 mr-1"></span>UP</span>
           <span><span class="inline-block w-2 h-2 bg-red-400 mr-1"></span>DOWN</span>
+          <span><span class="inline-block w-2 h-2 bg-amber-400 mr-1"></span>NO NMS</span>
+          <span><span class="inline-block w-2 h-2 bg-orange-400 mr-1"></span>DOWN SERVER</span>
         </div>
       </div>
 
@@ -99,10 +123,8 @@ const chart = computed(() => {
             :class="alert.severity === 'critical' ? 'border-red-900/50 bg-red-950/30' : alert.severity === 'warning' ? 'border-amber-900/50 bg-amber-950/30' : 'border-slate-700 bg-slate-900/40'"
           >
             <div class="flex items-center justify-between gap-2">
-              <span class="text-xs font-bold uppercase tracking-wide" :class="alert.severity === 'critical' ? 'text-red-400' : alert.severity === 'warning' ? 'text-amber-400' : 'text-blue-400'">
-                {{ alert.severity }}
-              </span>
-              <span class="text-[11px] text-slate-500">{{ new Date(alert.triggered_at).toLocaleTimeString() }}</span>
+              <SeverityChip :severity="alert.severity" dark />
+              <span class="text-[11px] text-slate-400">{{ new Date(alert.triggered_at).toLocaleTimeString() }}</span>
             </div>
             <div class="mt-1 text-sm font-medium truncate">{{ alert.site }}</div>
             <div class="text-xs text-slate-400 truncate">

@@ -22,6 +22,9 @@ export default [
             'vue/singleline-html-element-content-newline': 'off',
             // Laravel paginator labels are trusted server-rendered HTML.
             'vue/no-v-text-v-html-on-component': 'off',
+            // Inertia delivers props fully-formed from the server on every
+            // render; per-prop defaults are noise here.
+            'vue/require-default-prop': 'off',
             'vue/html-self-closing': ['error', { html: { void: 'always', normal: 'never', component: 'always' } }],
         },
     },

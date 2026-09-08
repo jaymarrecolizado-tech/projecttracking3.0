@@ -1,4 +1,5 @@
 <script setup>
+import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -22,15 +23,15 @@ const start = () => useForm({}).post(route('two-factor.enable'));
 
 <template>
   <section v-if="canManage" aria-labelledby="two-factor-heading">
-    <h2 id="two-factor-heading" class="text-lg font-medium text-gray-900">Two-Factor Authentication</h2>
+    <h2 id="two-factor-heading" class="text-lg font-medium text-slate-900">Two-Factor Authentication</h2>
 
     <!-- Enabled -->
     <template v-if="twoFactor.enabled">
-      <p class="mt-1 text-sm text-gray-600">
+      <p class="mt-1 text-sm text-slate-600">
         Your account requires a 6-digit code from your authenticator app at every sign-in.
       </p>
       <form class="mt-4 max-w-sm space-y-3" @submit.prevent="disable">
-        <p class="text-sm text-gray-500">To turn it off, enter a current code:</p>
+        <p class="text-sm text-slate-500">To turn it off, enter a current code:</p>
         <div>
           <InputLabel for="disable-code" value="Authentication code" />
           <TextInput
@@ -39,22 +40,23 @@ const start = () => useForm({}).post(route('two-factor.enable'));
           />
           <InputError class="mt-2" :message="disableForm.errors.code" />
         </div>
-        <PrimaryButton type="submit" class="bg-red-600 hover:bg-red-700" :disabled="disableForm.processing">
+        <DangerButton type="submit" :disabled="disableForm.processing">
           Disable two-factor
-        </PrimaryButton>
+        </DangerButton>
       </form>
     </template>
 
     <!-- Setup in progress: show secret + QR, confirm with a live code -->
     <template v-else-if="twoFactor.setup">
-      <p class="mt-1 text-sm text-gray-600">
+      <p class="mt-1 text-sm text-slate-600">
         Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password…).
         Can't scan? Enter the secret manually. Then confirm with the 6-digit code it shows.
       </p>
       <div class="mt-4 flex flex-col sm:flex-row gap-6 items-start">
+        <!-- eslint-disable-next-line vue/no-v-html -- trusted SVG emitted server-side by the 2FA backend -->
         <div class="rounded-lg bg-white p-2 border border-slate-200 shrink-0" v-html="twoFactor.setup.qr"></div>
         <div class="min-w-0">
-          <p class="text-xs uppercase tracking-wide text-gray-400">Manual entry secret</p>
+          <p class="text-xs uppercase tracking-wide text-slate-400">Manual entry secret</p>
           <p class="font-mono text-sm font-semibold text-slate-800 break-all">{{ twoFactor.setup.secret }}</p>
           <form class="mt-4 max-w-xs space-y-3" @submit.prevent="confirm">
             <div>
@@ -67,7 +69,7 @@ const start = () => useForm({}).post(route('two-factor.enable'));
             </div>
             <PrimaryButton :disabled="confirmForm.processing">Confirm and enable</PrimaryButton>
           </form>
-          <p class="mt-3 text-xs text-gray-400">
+          <p class="mt-3 text-xs text-slate-400">
             Codes rotate every 30 seconds — use the code currently shown in your app.
           </p>
         </div>
@@ -76,7 +78,7 @@ const start = () => useForm({}).post(route('two-factor.enable'));
 
     <!-- Not enabled -->
     <template v-else>
-      <p class="mt-1 text-sm text-gray-600">
+      <p class="mt-1 text-sm text-slate-600">
         Add a second factor to your sign-in: a 6-digit code from an authenticator app.
         Recommended for administrator accounts.
       </p>

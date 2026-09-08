@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { IconArrowLeft } from '@tabler/icons-vue';
 defineProps({ batch: Object });
@@ -9,12 +10,12 @@ defineProps({ batch: Object });
   <Head title="Import Details" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Import Details</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Import Details</h2>
     </template>
 
     <div>
       <!-- Back Link -->
-      <Link :href="route('import.index')" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-4 transition">
+      <Link :href="route('import.index')" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded mb-4 transition-colors">
         <IconArrowLeft class="w-4 h-4" /> Back to Imports
       </Link>
 
@@ -25,14 +26,7 @@ defineProps({ batch: Object });
             <h1 class="text-lg font-bold text-slate-800">{{ batch.filename }}</h1>
             <p class="text-sm text-slate-500">Imported by {{ batch.importer?.name }}</p>
           </div>
-          <span
-            class="px-3 py-1 rounded-full text-sm font-medium" :class="{
-              'bg-green-100 text-green-700': batch.job_status === 'DONE',
-              'bg-yellow-100 text-yellow-700': batch.job_status === 'PROCESSING',
-              'bg-red-100 text-red-700': batch.job_status === 'FAILED',
-              'bg-slate-100 text-slate-500': batch.job_status === 'PENDING',
-            }"
-          >{{ batch.job_status }}</span>
+          <StatusPill :status="batch.job_status" size="md" />
         </div>
       </div>
 
@@ -43,7 +37,7 @@ defineProps({ batch: Object });
           <p class="text-xs text-slate-500 mt-1">Total Rows</p>
         </div>
         <div class="dict-card p-4 text-center">
-          <p class="text-2xl font-bold text-green-600">{{ batch.rows_success }}</p>
+          <p class="text-2xl font-bold tracking-tight text-green-700 tabular-nums">{{ batch.rows_success }}</p>
           <p class="text-xs text-slate-500 mt-1">Success</p>
         </div>
         <div class="dict-card p-4 text-center">

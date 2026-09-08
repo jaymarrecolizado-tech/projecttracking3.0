@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\DeviceDeployment;
 use App\Models\Project;
 use App\Models\Site;
 
@@ -17,7 +16,14 @@ class GeoJsonService
 
     public function getSitesForMap(array $filters = []): array
     {
-        $query = Site::query()->with(['project', 'latestDailyStatus']);
+        // Hydrate only the project fields the marker payload uses — the
+        // full model (logo blob metadata, timestamps) is dead weight per row.
+        // latestDailyStatus stays unprojected: a column list on a latestOfMany
+        // relation compiles an ambiguous-column join on SQLite.
+        $query = Site::query()->with([
+            'project:id,code,name,marker_color,marker_shape,marker_icon',
+            'latestDailyStatus',
+        ]);
         $this->applyGeoFilters($query, $filters);
         $query->whereNotNull(['latitude', 'longitude']);
 

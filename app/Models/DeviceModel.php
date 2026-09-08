@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeviceModel extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['manufacturer', 'model_name', 'model_number', 'type', 'wifi_standard',
         'specs', 'datasheet_url', 'photo_path', 'is_active'];
 

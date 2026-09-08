@@ -43,7 +43,7 @@ class MapController extends Controller
     public function filterOptions(Request $request, GeoFilterOptions $options)
     {
         return response()->json($options->for(
-            $request->only(['province', 'district', 'municipality']),
+            $request->only(['project_id', 'province', 'district', 'municipality']),
         ));
     }
 

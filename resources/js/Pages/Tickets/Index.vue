@@ -1,6 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import Modal from '@/Components/Modal.vue';
+import Pagination from '@/Components/Pagination.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { IconCirclePlus, IconTicket, IconTool } from '@tabler/icons-vue';
@@ -39,19 +41,6 @@ function create() {
 function transition(ticket, status) {
     useForm({ status, resolution_notes: '' }).put(route('tickets.update', ticket.id), { preserveScroll: true });
 }
-
-const priorityStyles = {
-    low: 'bg-slate-100 text-slate-600',
-    medium: 'bg-blue-100 text-blue-700',
-    high: 'bg-amber-100 text-amber-700',
-    critical: 'bg-red-100 text-red-700',
-};
-const statusStyles = {
-    OPEN: 'bg-red-50 text-red-700 border border-red-200',
-    IN_PROGRESS: 'bg-blue-50 text-blue-700 border border-blue-200',
-    RESOLVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    CLOSED: 'bg-slate-100 text-slate-500 border border-slate-200',
-};
 </script>
 
 <template>
@@ -59,9 +48,9 @@ const statusStyles = {
   <AuthenticatedLayout>
     <template #header>
       <div class="flex items-center justify-between w-full">
-        <h2 class="font-semibold text-lg text-slate-800 leading-tight">Maintenance Tickets</h2>
+        <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Maintenance Tickets</h2>
         <button
-          class="inline-flex items-center gap-1.5 bg-blue-600 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+          class="inline-flex items-center gap-1.5 bg-accent-500 text-white px-3.5 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition"
           @click="showCreate = true"
         >
           <IconCirclePlus class="w-4 h-4" /> New Ticket
@@ -70,15 +59,15 @@ const statusStyles = {
     </template>
 
     <!-- Counters -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-5 mb-6">
-      <div class="dict-card p-5 flex items-center gap-4">
-        <IconTicket class="w-8 h-8 text-blue-500" />
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 mb-6">
+      <div class="dict-card p-6 flex items-center gap-4">
+        <IconTicket class="w-8 h-8 text-slate-400" />
         <div>
           <p class="text-sm text-slate-500">Open / In Progress</p>
           <p class="text-2xl font-bold text-slate-800 tabular-nums">{{ counts.open }}</p>
         </div>
       </div>
-      <div class="dict-card p-5 flex items-center gap-4" :class="counts.critical_open > 0 ? 'ring-1 ring-red-200' : ''">
+      <div class="dict-card p-6 flex items-center gap-4" :class="counts.critical_open > 0 ? 'ring-1 ring-red-200' : ''">
         <IconTool class="w-8 h-8" :class="counts.critical_open > 0 ? 'text-red-500' : 'text-slate-300'" />
         <div>
           <p class="text-sm text-slate-500">Critical Open</p>
@@ -112,21 +101,21 @@ const statusStyles = {
                 <span v-if="ticket.device" class="block text-xs font-mono text-slate-400">{{ ticket.device.asset_tag }}</span>
               </td>
               <td class="px-6 py-4">
-                <span class="px-2.5 py-1 rounded-full text-xs font-medium capitalize" :class="priorityStyles[ticket.priority]">{{ ticket.priority }}</span>
+                <StatusPill :status="ticket.priority" />
               </td>
               <td class="px-6 py-4">
-                <span class="px-2.5 py-1 rounded-full text-xs font-medium" :class="statusStyles[ticket.status]">{{ ticket.status.replace('_', ' ') }}</span>
+                <StatusPill :status="ticket.status" />
               </td>
               <td class="px-6 py-4 text-sm text-slate-600">{{ ticket.assignee?.name || 'Unassigned' }}</td>
               <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                 <button
-                  v-if="ticket.status === 'OPEN'" class="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  v-if="ticket.status === 'OPEN'" class="text-xs font-medium text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition-colors"
                   @click="transition(ticket, 'IN_PROGRESS')"
                 >
                   Start
                 </button>
                 <button
-                  v-if="['OPEN', 'IN_PROGRESS'].includes(ticket.status)" class="text-xs font-medium text-emerald-600 hover:text-emerald-800"
+                  v-if="['OPEN', 'IN_PROGRESS'].includes(ticket.status)" class="text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 rounded transition-colors"
                   @click="transition(ticket, 'RESOLVED')"
                 >
                   Resolve
@@ -163,20 +152,20 @@ const statusStyles = {
         <form class="space-y-4" @submit.prevent="create">
           <div>
             <label for="t-title" class="block text-sm font-medium text-slate-700 mb-1">Title</label>
-            <input id="t-title" v-model="createForm.title" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-200" />
+            <input id="t-title" v-model="createForm.title" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
             <InputError :message="createForm.errors.title" class="mt-1" />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label for="t-site" class="block text-sm font-medium text-slate-700 mb-1">Site</label>
-              <select id="t-site" v-model="createForm.site_id" class="w-full rounded-lg border-slate-300 text-sm">
+              <select id="t-site" v-model="createForm.site_id" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
                 <option value="">— none —</option>
                 <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.location_name }}</option>
               </select>
             </div>
             <div>
               <label for="t-device" class="block text-sm font-medium text-slate-700 mb-1">Device</label>
-              <select id="t-device" v-model="createForm.device_id" class="w-full rounded-lg border-slate-300 text-sm">
+              <select id="t-device" v-model="createForm.device_id" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
                 <option value="">— none —</option>
                 <option v-for="d in devices" :key="d.id" :value="d.id">{{ d.asset_tag }}</option>
               </select>
@@ -191,13 +180,13 @@ const statusStyles = {
             </div>
             <div>
               <label for="t-category" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
-              <select id="t-category" v-model="createForm.category" class="w-full rounded-lg border-slate-300 text-sm">
+              <select id="t-category" v-model="createForm.category" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
                 <option v-for="c in ['connectivity', 'hardware', 'power', 'firmware', 'other']" :key="c" :value="c">{{ c }}</option>
               </select>
             </div>
             <div>
               <label for="t-assignee" class="block text-sm font-medium text-slate-700 mb-1">Assign to</label>
-              <select id="t-assignee" v-model="createForm.assigned_to" class="w-full rounded-lg border-slate-300 text-sm">
+              <select id="t-assignee" v-model="createForm.assigned_to" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
                 <option value="">— unassigned —</option>
                 <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
               </select>
@@ -205,14 +194,14 @@ const statusStyles = {
           </div>
           <div>
             <label for="t-desc" class="block text-sm font-medium text-slate-700 mb-1">Description</label>
-            <textarea id="t-desc" v-model="createForm.description" rows="3" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+            <textarea id="t-desc" v-model="createForm.description" rows="3" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"></textarea>
             <InputError :message="createForm.errors.description" class="mt-1" />
           </div>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="button" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800" @click="showCreate = false">Cancel</button>
+            <button type="button" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition" @click="showCreate = false">Cancel</button>
             <button
               type="submit" :disabled="createForm.processing"
-              class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+              class="bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] disabled:opacity-60 transition"
             >
               {{ createForm.processing ? 'Creating…' : 'Create ticket' }}
             </button>

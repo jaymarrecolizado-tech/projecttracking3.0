@@ -163,7 +163,7 @@ onBeforeUnmount(() => leaflet.destroy());
   <Head title="Map View" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Map View</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Map View</h2>
     </template>
 
     <div class="space-y-4">
@@ -179,7 +179,7 @@ onBeforeUnmount(() => leaflet.destroy());
           <div class="flex items-center gap-3">
             <select
               :value="filters.status"
-              class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+              class="rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
               @change="apply({ status: $event.target.value })"
             >
               <option value="">All Site Statuses</option>
@@ -192,7 +192,7 @@ onBeforeUnmount(() => leaflet.destroy());
             <label class="flex items-center gap-2 text-sm text-slate-600 select-none">
               <input
                 type="checkbox"
-                class="rounded border-slate-300 text-blue-600 focus:ring-blue-200"
+                class="rounded border-slate-300 text-accent-500 focus:ring-accent-500/40"
                 :checked="filters.deployed_only === '1'"
                 @change="toggleDeployedOnly"
               />
@@ -211,7 +211,7 @@ onBeforeUnmount(() => leaflet.destroy());
       </div>
 
       <!-- Map -->
-      <div ref="mapContainer" class="rounded-lg overflow-hidden shadow-sm border border-slate-200" style="height: 600px;"></div>
+      <div ref="mapContainer" class="rounded-lg overflow-hidden border border-slate-200" style="height: 600px;"></div>
 
       <MapStatsPanel
         :coverage="coverage"

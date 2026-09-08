@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { IconUpload, IconChevronRight, IconFileSpreadsheet } from '@tabler/icons-vue';
 import { ref } from 'vue';
@@ -43,7 +44,7 @@ function submit() {
   <Head title="Import" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Excel Import</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Excel Import</h2>
     </template>
 
     <!-- Upload Card -->
@@ -54,7 +55,7 @@ function submit() {
           <label for="import-type" class="text-sm font-medium text-slate-700">Import as</label>
           <select
             id="import-type" v-model="form.type"
-            class="rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+            class="rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring focus:ring-accent-500/40"
           >
             <option value="region_workbook">Region status workbook (multi-sheet)</option>
             <option value="sites">Sites & daily statuses</option>
@@ -65,7 +66,7 @@ function submit() {
 
         <div
           class="border-2 border-dashed rounded-lg p-8 text-center transition"
-          :class="dragging ? 'border-blue-500 bg-blue-50/50' : 'border-slate-300 hover:border-blue-400'"
+          :class="dragging ? 'border-accent-500 bg-accent-500/5' : 'border-slate-300 hover:border-accent-500/60'"
           @dragover.prevent="dragging = true"
           @dragleave.prevent="dragging = false"
           @drop.prevent="onDrop"
@@ -74,7 +75,7 @@ function submit() {
           <IconUpload v-else class="w-10 h-10 text-slate-400 mx-auto mb-2" />
           <p v-if="fileName" class="text-sm text-slate-700 font-medium">{{ fileName }}</p>
           <p v-else class="text-sm text-slate-600">
-            <label for="file-upload" class="text-blue-600 font-medium cursor-pointer hover:text-blue-800">Browse files</label>
+            <label for="file-upload" class="text-accent-500 font-medium cursor-pointer hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded">Browse files</label>
             or drag and drop
           </p>
           <p class="text-xs text-slate-400 mt-1">.xlsx, .xls, .csv up to 10MB</p>
@@ -84,7 +85,7 @@ function submit() {
 
         <button
           type="submit" :disabled="form.processing || !form.file"
-          class="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="mt-4 inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ form.processing ? 'Uploading…' : 'Upload & Import' }}
         </button>
@@ -113,22 +114,16 @@ function submit() {
             <tr v-for="batch in batches.data" :key="batch.id" class="hover:bg-slate-50/50 transition-colors">
               <td class="px-6 py-4 text-sm font-medium text-slate-700">
                 {{ batch.filename }}
-                <span v-if="batch.type === 'devices'" class="ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700 uppercase">Devices</span>
+                <span v-if="batch.type === 'devices'" class="ml-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent-500/10 text-accent-500 uppercase">Devices</span>
               </td>
               <td class="px-6 py-4 text-sm">
-                <span
-                  class="px-2.5 py-1 rounded-full text-xs font-medium" :class="{
-                    'bg-green-100 text-green-700': batch.job_status === 'DONE',
-                    'bg-yellow-100 text-yellow-700': batch.job_status === 'PROCESSING' || batch.job_status === 'PENDING',
-                    'bg-red-100 text-red-700': batch.job_status === 'FAILED',
-                  }"
-                >{{ batch.job_status }}</span>
+                <StatusPill :status="batch.job_status" />
               </td>
-              <td class="px-6 py-4 text-sm text-green-600 font-medium tabular-nums">{{ batch.rows_success }}</td>
+              <td class="px-6 py-4 text-sm text-green-700 font-medium tabular-nums">{{ batch.rows_success }}</td>
               <td class="px-6 py-4 text-sm text-red-600 font-medium tabular-nums">{{ batch.rows_failed }}</td>
               <td class="px-6 py-4 text-sm text-slate-500">{{ batch.created_at }}</td>
               <td class="px-6 py-4 text-sm">
-                <Link :href="route('import.show', batch.id)" class="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1">
+                <Link :href="route('import.show', batch.id)" class="text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium inline-flex items-center gap-1 transition-colors">
                   Details <IconChevronRight class="w-4 h-4" />
                 </Link>
               </td>

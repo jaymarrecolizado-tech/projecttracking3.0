@@ -1,9 +1,10 @@
-includes: []
 parameters:
-    level: 4
+    level: 5
     paths:
         - app/
         - database/migrations/
+        - database/factories/
+        - database/seeders/
         - routes/
     excludePaths:
         analyseAndScan:

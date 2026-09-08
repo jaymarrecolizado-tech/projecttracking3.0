@@ -40,7 +40,7 @@ class Phase5FeaturesTest extends TestCase
     {
         $admin = $this->admin();
 
-        $this->actingAs($admin)->get('/dashboard')->assertOk();
+        $this->actingAs($admin)->get('/')->assertOk();
         $this->actingAs($admin)->get('/wallboard')->assertOk();
     }
 

@@ -24,9 +24,12 @@ class LegislativeDistrictBackfillTest extends TestCase
             ]);
         }
 
+        // Raw inserts bypass the model observer that would otherwise fill a
+        // synthetic ap_site_code; the NOT NULL column needs an explicit value.
         return (int) DB::table('sites')->insertGetId(array_merge([
             'project_id' => $this->projectId,
             'location_name' => 'Test Site',
+            'ap_site_code' => 'TEST-'.uniqid(),
             'latitude' => 17.6,
             'longitude' => 121.7,
             'status' => 'active',

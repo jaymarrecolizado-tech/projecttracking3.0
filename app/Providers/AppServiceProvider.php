@@ -8,9 +8,13 @@ use App\Models\SiteDailyStatus;
 use App\Observers\AccomplishmentObserver;
 use App\Observers\SiteObserver;
 use App\Observers\SiteStatusEventObserver;
+use App\Services\Telegram;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Vite;
@@ -30,6 +34,24 @@ class AppServiceProvider extends ServiceProvider
         SiteAccomplishment::observe(AccomplishmentObserver::class);
         SiteDailyStatus::observe(SiteStatusEventObserver::class);
         Vite::prefetch(concurrency: 3);
+
+        // failed_jobs must not fail silently (Plan_revision §Phase 4.6): every
+        // permanent queue failure is logged loudly and pushed to the ops
+        // Telegram channel when it is configured.
+        Queue::failing(function (JobFailed $event): void {
+            Log::error('Queue job failed permanently.', [
+                'job' => $event->job->resolveName(),
+                'queue' => $event->job->getQueue(),
+                'error' => $event->exception->getMessage(),
+            ]);
+
+            $telegram = app(Telegram::class);
+            if ($telegram->configured()) {
+                $telegram->sendMessage(
+                    "⚠️ Queue job failed permanently\n\nJob: {$event->job->resolveName()}\nQueue: {$event->job->getQueue()}\nError: {$event->exception->getMessage()}"
+                );
+            }
+        });
 
         // Used by $middleware->throttleApi('api') in bootstrap/app.php.
         RateLimiter::for('api', function (Request $request) {

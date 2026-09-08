@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StatusPill from '@/Components/StatusPill.vue';
 import { Head } from '@inertiajs/vue3';
 import { IconChecklist } from '@tabler/icons-vue';
 defineProps({ accomplishments: Object });
@@ -9,7 +10,7 @@ defineProps({ accomplishments: Object });
   <Head title="Accomplishments" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Accomplishments</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Accomplishments</h2>
     </template>
 
     <div class="dict-card overflow-hidden">
@@ -34,15 +35,7 @@ defineProps({ accomplishments: Object });
               <td class="px-6 py-4 text-sm font-medium text-slate-700">{{ a.site?.location_name }}</td>
               <td class="px-6 py-4 text-sm text-slate-700">{{ a.milestone?.milestone_name }}</td>
               <td class="px-6 py-4 text-sm">
-                <span
-                  class="px-2.5 py-1 rounded-full text-xs font-medium" :class="{
-                    'bg-green-100 text-green-700': a.status === 'COMPLETED',
-                    'bg-blue-100 text-blue-700': a.status === 'IN_PROGRESS',
-                    'bg-slate-100 text-slate-500': a.status === 'NOT_STARTED',
-                    'bg-yellow-100 text-yellow-700': a.status === 'ON_HOLD',
-                    'bg-red-100 text-red-700': a.status === 'CANCELLED',
-                  }"
-                >{{ a.status }}</span>
+                <StatusPill :status="a.status" />
               </td>
               <td class="px-6 py-4 text-sm">
                 <div class="flex items-center gap-3">

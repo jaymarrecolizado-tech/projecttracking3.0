@@ -84,6 +84,78 @@ class BarangayCoverageTest extends TestCase
         $this->assertSame(0, $row['deployed']);
     }
 
+    /**
+     * Regression: the area filters used `when(! empty($x), fn ($q, $v) => ...)`,
+     * which binds the boolean `true` instead of the value — every province /
+     * district / municipality filter silently returned zero barangays.
+     */
+    public function test_area_filters_narrow_the_barangay_universe(): void
+    {
+        $this->seedReferences('Aparri', ['Tobias', 'Zitanga'], 'Cagayan');
+        $this->seedReferences('Ilagan', ['Centro', 'Bagumbayan', 'Alibagu'], 'Isabela');
+
+        $all = app(BarangayCoverageService::class)->coverage();
+        $this->assertSame(5, $all['totals']['barangays']);
+
+        $cagayan = app(BarangayCoverageService::class)->coverage(['province' => 'Cagayan']);
+        $this->assertSame(2, $cagayan['totals']['barangays']);
+
+        $isabela = app(BarangayCoverageService::class)->coverage(['province' => 'Isabela']);
+        $this->assertSame(3, $isabela['totals']['barangays']);
+
+        $aparri = app(BarangayCoverageService::class)->coverage(['municipality' => 'Aparri']);
+        $this->assertSame(2, $aparri['totals']['barangays']);
+    }
+
+    /**
+     * `district` is not a column on barangay_references, so it has to be
+     * resolved via legislative_districts or the denominator stays nationwide.
+     */
+    public function test_district_filter_narrows_both_sides_of_the_ratio(): void
+    {
+        DB::table('legislative_districts')->insert([
+            ['province' => 'Cagayan', 'municipality' => 'Aparri', 'district' => '1st District'],
+            ['province' => 'Cagayan', 'municipality' => 'Tuguegarao', 'district' => '3rd District'],
+        ]);
+        $this->seedReferences('Aparri', ['Tobias']);
+        $this->seedReferences('Tuguegarao', ['Centro']);
+        // Sites carry their own district (backfilled by sites:backfill-districts).
+        $this->site([
+            'municipality' => 'Aparri',
+            'district' => '1st District',
+            'barangay' => 'Tobias',
+        ]);
+
+        $first = app(BarangayCoverageService::class)->coverage([
+            'province' => 'Cagayan', 'district' => '1st District',
+        ]);
+        $this->assertSame(1, $first['totals']['barangays']);
+        $this->assertSame(1, $first['totals']['covered']);
+        $this->assertSame(100.0, $first['totals']['coverage_pct']);
+
+        $third = app(BarangayCoverageService::class)->coverage([
+            'province' => 'Cagayan', 'district' => '3rd District',
+        ]);
+        $this->assertSame(1, $third['totals']['barangays']);
+        $this->assertSame(0, $third['totals']['covered']);
+    }
+
+    /** Municipality names repeat across provinces (Quezon, Alicia, …). */
+    public function test_same_named_municipalities_do_not_cross_credit(): void
+    {
+        $this->seedReferences('Quezon', ['Poblacion'], 'Isabela');
+        $this->seedReferences('Quezon', ['Poblacion'], 'Nueva Vizcaya');
+        $this->site(['province' => 'Isabela', 'municipality' => 'Quezon', 'barangay' => 'Poblacion']);
+
+        $coverage = app(BarangayCoverageService::class)->coverage();
+
+        $rows = collect($coverage['rows'])->keyBy(fn ($r) => $r['province']);
+        $this->assertSame(1, $rows['Isabela']['covered']);
+        $this->assertSame(1, $rows['Isabela']['sites']);
+        $this->assertSame(0, $rows['Nueva Vizcaya']['covered']);
+        $this->assertSame(0, $rows['Nueva Vizcaya']['sites']);
+    }
+
     public function test_deployed_column_requires_active_deployment(): void
     {
         $this->seedReferences('Aparri', ['Tobias', 'Zitanga']);

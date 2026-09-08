@@ -1,9 +1,13 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-return new class extends Migration {
-    public function up(): void {
+
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::create('sites', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_id')->constrained()->cascadeOnDelete();
@@ -17,11 +21,11 @@ return new class extends Migration {
             $table->string('province')->nullable();
             $table->string('district')->nullable();
             $table->string('region')->nullable();
-            $table->enum('island_group', ['Luzon','Visayas','Mindanao'])->nullable();
+            $table->enum('island_group', ['Luzon', 'Visayas', 'Mindanao'])->nullable();
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
             $table->date('date_of_activation')->nullable();
-            $table->enum('status', ['planned','active','inactive','decommissioned','maintenance'])->default('planned');
+            $table->enum('status', ['planned', 'active', 'inactive', 'decommissioned', 'maintenance'])->default('planned');
             $table->string('isp_provider', 100)->nullable();
             $table->string('last_mile_tech', 80)->nullable();
             $table->decimal('bw_download_cir', 10, 2)->nullable();
@@ -37,5 +41,9 @@ return new class extends Migration {
             $table->unique(['project_id', 'ap_site_code']);
         });
     }
-    public function down(): void { Schema::dropIfExists('sites'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('sites');
+    }
 };

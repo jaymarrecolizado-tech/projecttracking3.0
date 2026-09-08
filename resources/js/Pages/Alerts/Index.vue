@@ -1,6 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
+import Modal from '@/Components/Modal.vue';
+import SeverityChip from '@/Components/SeverityChip.vue';
 import InputError from '@/Components/InputError.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { IconAlertTriangle, IconCircleCheck, IconShieldCheck } from '@tabler/icons-vue';
@@ -29,12 +31,6 @@ function resolve(alert) {
     router.post(route('alerts.resolve', alert.id), {}, { preserveScroll: true });
 }
 
-const severityStyles = {
-    critical: 'bg-red-100 text-red-700',
-    warning: 'bg-amber-100 text-amber-700',
-    info: 'bg-blue-100 text-blue-700',
-};
-
 const metricLabels = {
     offline_minutes: 'Offline (min since last beat)',
     latency_ms: 'WAN latency (ms)',
@@ -53,6 +49,7 @@ const blankRule = {
 };
 const ruleForm = useForm({ ...blankRule });
 const editingId = ref(null);
+const deletingRule = ref(null);
 
 function editRule(rule) {
     editingId.value = rule.id;
@@ -70,10 +67,12 @@ function saveRule() {
     }
 }
 
-function deleteRule(rule) {
-    if (confirm(`Delete rule "${rule.name}"? Its alerts stay for the record.`)) {
-        router.delete(route('alert-rules.destroy', rule.id), { preserveScroll: true });
-    }
+function deleteRule() {
+    if (!deletingRule.value) return;
+    router.delete(route('alert-rules.destroy', deletingRule.value.id), {
+        preserveScroll: true,
+        onSuccess: () => (deletingRule.value = null),
+    });
 }
 
 function cancelEdit() {
@@ -87,7 +86,7 @@ function cancelEdit() {
   <Head title="Alerts" />
   <AuthenticatedLayout>
     <template #header>
-      <h2 class="font-semibold text-lg text-slate-800 leading-tight">Alerts</h2>
+      <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Alerts</h2>
     </template>
 
     <!-- Counters -->
@@ -101,7 +100,7 @@ function cancelEdit() {
         <div class="text-xs uppercase tracking-wide text-slate-500">Critical</div>
       </div>
       <div class="dict-card px-4 py-3">
-        <div class="text-2xl font-bold text-amber-600">{{ counts.unacknowledged }}</div>
+        <div class="text-2xl font-bold tracking-tight text-amber-700 tabular-nums">{{ counts.unacknowledged }}</div>
         <div class="text-xs uppercase tracking-wide text-slate-500">Unacknowledged</div>
       </div>
     </div>
@@ -134,13 +133,12 @@ function cancelEdit() {
       </template>
       <tr v-for="alert in alerts.data" :key="alert.id" class="hover:bg-slate-50/50">
         <td class="px-6 py-4 text-sm">
-          <span class="px-2.5 py-1 rounded-full text-xs font-semibold uppercase" :class="severityStyles[alert.rule.severity]">
-            {{ alert.rule.severity }}
-          </span>
+          <SeverityChip :severity="alert.rule.severity" />
         </td>
         <td class="px-6 py-4 text-sm">
           <div class="font-medium text-slate-700">{{ alert.rule.name }}</div>
-          <div class="text-slate-500">{{ alert.site?.location_name ?? '—' }}
+          <div class="text-slate-500">
+            {{ alert.site?.location_name ?? '—' }}
             <span v-if="alert.device" class="font-mono text-xs">· {{ alert.device.asset_tag }}</span>
           </div>
         </td>
@@ -151,10 +149,10 @@ function cancelEdit() {
         <td class="px-6 py-4 text-sm text-slate-600">{{ new Date(alert.triggered_at).toLocaleString() }}</td>
         <td class="px-6 py-4 text-sm">
           <template v-if="alert.resolved_at">
-            <span class="inline-flex items-center gap-1 text-emerald-600"><IconCircleCheck class="w-4 h-4" /> Resolved</span>
+            <span class="inline-flex items-center gap-1 text-emerald-700"><IconCircleCheck class="w-4 h-4" /> Resolved</span>
           </template>
           <template v-else-if="alert.acknowledged_at">
-            <span class="inline-flex items-center gap-1 text-blue-600"><IconShieldCheck class="w-4 h-4" /> Ack · {{ alert.acknowledger?.name }}</span>
+            <span class="inline-flex items-center gap-1 text-slate-600"><IconShieldCheck class="w-4 h-4" /> Ack · {{ alert.acknowledger?.name }}</span>
           </template>
           <span v-else class="text-amber-600">Needs attention</span>
         </td>
@@ -162,13 +160,13 @@ function cancelEdit() {
           <div class="flex gap-2">
             <button
               v-if="!alert.acknowledged_at && !alert.resolved_at" type="button"
-              class="text-blue-600 hover:text-blue-800 font-medium" @click="acknowledge(alert)"
+              class="text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium transition-colors" @click="acknowledge(alert)"
             >
               Acknowledge
             </button>
             <button
               v-if="!alert.resolved_at" type="button"
-              class="text-emerald-600 hover:text-emerald-800 font-medium" @click="resolve(alert)"
+              class="text-emerald-700 hover:text-emerald-800 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 rounded font-medium transition-colors" @click="resolve(alert)"
             >
               Resolve
             </button>
@@ -189,7 +187,7 @@ function cancelEdit() {
         <h3 class="text-lg font-semibold text-slate-800">Alert Rules</h3>
         <button
           v-if="!editingId" type="button"
-          class="inline-flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+          class="inline-flex items-center gap-1.5 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition"
           @click="editingId = 0; Object.assign(ruleForm, { ...blankRule })"
         >
           <IconAlertTriangle class="w-4 h-4" /> New rule
@@ -200,33 +198,33 @@ function cancelEdit() {
       <form v-if="editingId !== null" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6" @submit.prevent="saveRule">
         <div class="sm:col-span-2 lg:col-span-1">
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Name</label>
-          <input v-model="ruleForm.name" type="text" class="w-full rounded-lg border-slate-300 text-sm" required />
+          <input v-model="ruleForm.name" type="text" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Metric</label>
-          <select v-model="ruleForm.metric" class="w-full rounded-lg border-slate-300 text-sm">
+          <select v-model="ruleForm.metric" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
             <option v-for="(label, metric) in metricLabels" :key="metric" :value="metric">{{ label }}</option>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Operator</label>
-            <select v-model="ruleForm.operator" class="w-full rounded-lg border-slate-300 text-sm">
+            <select v-model="ruleForm.operator" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
               <option v-for="op in ['<', '<=', '>', '>=', '==']" :key="op" :value="op">{{ op }}</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Threshold</label>
-            <input v-model="ruleForm.threshold" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm" required />
+            <input v-model="ruleForm.threshold" type="number" step="any" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" required />
           </div>
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Held for (minutes, 0 = instant)</label>
-          <input v-model="ruleForm.duration_minutes" type="number" min="0" max="1440" class="w-full rounded-lg border-slate-300 text-sm" />
+          <input v-model="ruleForm.duration_minutes" type="number" min="0" max="1440" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Severity</label>
-          <select v-model="ruleForm.severity" class="w-full rounded-lg border-slate-300 text-sm">
+          <select v-model="ruleForm.severity" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40">
             <option value="critical">Critical</option>
             <option value="warning">Warning</option>
             <option value="info">Info</option>
@@ -234,17 +232,17 @@ function cancelEdit() {
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notify roles (permissions)</label>
-          <select v-model="ruleForm.notify_roles" class="w-full rounded-lg border-slate-300 text-sm" multiple>
+          <select v-model="ruleForm.notify_roles" class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" multiple>
             <option value="daily.approve">daily.approve (approvers)</option>
             <option value="users.manage">users.manage (admins)</option>
           </select>
         </div>
         <div class="flex items-end gap-3">
           <label class="flex items-center gap-2 text-sm text-slate-600">
-            <input v-model="ruleForm.is_active" type="checkbox" class="rounded border-slate-300 text-blue-600" />
+            <input v-model="ruleForm.is_active" type="checkbox" class="rounded border-slate-300 text-accent-500 focus:ring-accent-500/40" />
             Active
           </label>
-          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Save</button>
+          <button type="submit" class="bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition">Save</button>
           <button type="button" class="text-sm text-slate-500 underline" @click="cancelEdit">Cancel</button>
         </div>
         <InputError class="sm:col-span-2 lg:col-span-3" :message="typeof ruleForm.errors === 'object' ? Object.values(ruleForm.errors)[0] : ''" />
@@ -270,15 +268,15 @@ function cancelEdit() {
                 <span v-if="rule.duration_minutes > 0" class="text-slate-400">held {{ rule.duration_minutes }}m</span>
               </td>
               <td class="px-4 py-2 text-sm">
-                <span class="px-2 py-0.5 rounded-full text-xs font-semibold uppercase" :class="severityStyles[rule.severity]">{{ rule.severity }}</span>
+                <SeverityChip :severity="rule.severity" />
               </td>
-              <td class="px-4 py-2 text-sm" :class="rule.is_active ? 'text-emerald-600' : 'text-slate-400'">
+              <td class="px-4 py-2 text-sm font-medium" :class="rule.is_active ? 'text-emerald-700' : 'text-slate-400'">
                 {{ rule.is_active ? 'Active' : 'Paused' }}
               </td>
               <td class="px-4 py-2 text-sm">
                 <div class="flex gap-2">
-                  <button type="button" class="text-blue-600 hover:text-blue-800 font-medium" @click="editRule(rule)">Edit</button>
-                  <button type="button" class="text-red-600 hover:text-red-800 font-medium" @click="deleteRule(rule)">Delete</button>
+                  <button type="button" class="text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium transition-colors" @click="editRule(rule)">Edit</button>
+                  <button type="button" class="text-red-600 hover:text-red-800 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 rounded font-medium transition-colors" @click="deletingRule = rule">Delete</button>
                 </div>
               </td>
             </tr>
@@ -286,5 +284,16 @@ function cancelEdit() {
         </table>
       </div>
     </div>
+    <!-- Delete rule confirmation -->
+    <Modal :show="!!deletingRule" max-width="md" @close="deletingRule = null">
+      <div v-if="deletingRule" class="p-6">
+        <h3 class="text-lg font-bold tracking-tight text-slate-900 mb-1">Delete rule?</h3>
+        <p class="text-sm text-slate-500 mb-4">"{{ deletingRule.name }}" — its alerts stay for the record.</p>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded transition" @click="deletingRule = null">Cancel</button>
+          <button type="button" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition" @click="deleteRule">Delete rule</button>
+        </div>
+      </div>
+    </Modal>
   </AuthenticatedLayout>
 </template>

@@ -4,7 +4,7 @@ Internal operations platform for the Philippines' **DICT "Free WiFi for All / Br
 
 ## Stack
 
-- Laravel 12 (PHP 8.2+), Inertia + Vue 3, Tailwind CSS
+- Laravel 11 (PHP 8.2+), Inertia + Vue 3, Tailwind CSS
 - MySQL in production, SQLite for local dev/tests
 - Database-backed queues (Excel imports, PDF report generation)
 

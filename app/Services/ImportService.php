@@ -35,7 +35,7 @@ class ImportService
     {
         $batch->update(['job_status' => 'PROCESSING', 'started_at' => now()]);
         try {
-            $rows = Excel::toArray([], $filePath);
+            $rows = Excel::toArray(new class {}, $filePath);
             $data = $rows[0] ?? [];
             if (empty($data)) {
                 $batch->update(['job_status' => 'FAILED', 'error_log' => [['message' => 'No data found in file']]]);
@@ -179,7 +179,7 @@ class ImportService
     {
         $batch->update(['job_status' => 'PROCESSING', 'started_at' => now()]);
         try {
-            $rows = Excel::toArray([], $filePath);
+            $rows = Excel::toArray(new class {}, $filePath);
             $data = $rows[0] ?? [];
             if (empty($data)) {
                 $batch->update(['job_status' => 'FAILED', 'error_log' => [['message' => 'No data found in file']]]);

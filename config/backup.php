@@ -164,10 +164,15 @@ return [
 
             /*
              * The disk names on which the backups will be stored.
+             *
+             * BACKUP_OFFSITE_DISK adds a second destination (e.g. an
+             * S3-compatible bucket) so a copy survives the VPS itself —
+             * same-machine backups are not backups (Plan_revision §Phase 2.6).
              */
-            'disks' => [
+            'disks' => array_values(array_filter([
                 'local',
-            ],
+                env('BACKUP_OFFSITE_DISK'),
+            ])),
         ],
 
         /*

@@ -30,8 +30,8 @@ async function copyToken() {
 <template>
   <section class="space-y-4">
     <header>
-      <h2 class="text-lg font-medium text-gray-900">Field Probe Tokens</h2>
-      <p class="mt-1 text-sm text-gray-600">
+      <h2 class="text-lg font-bold tracking-tight text-slate-900">Field Probe Tokens</h2>
+      <p class="mt-1 text-sm text-slate-600">
         Bearer tokens for automated site-status probes calling
         <code class="text-xs bg-slate-100 rounded px-1.5 py-0.5">POST /api/heartbeat</code>.
         Create one per device or deployment script.
@@ -44,7 +44,7 @@ async function copyToken() {
       <div class="flex items-center gap-2">
         <code class="flex-1 text-xs bg-white border border-emerald-200 rounded px-3 py-2 font-mono break-all">{{ plainTextToken }}</code>
         <button
-          type="button" class="px-3 py-2 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+          type="button" class="px-3 py-2 text-xs font-medium rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 focus-visible:ring-offset-2 active:scale-[0.98] transition"
           @click="copyToken"
         >
           {{ copied ? 'Copied!' : 'Copy' }}
@@ -54,35 +54,35 @@ async function copyToken() {
 
     <form class="flex items-end gap-2 max-w-xl" @submit.prevent="create">
       <div class="flex-1">
-        <label for="token-name" class="block text-sm font-medium text-gray-700 mb-1">Token name</label>
+        <label for="token-name" class="block text-sm font-medium text-slate-700 mb-1">Token name</label>
         <input
           id="token-name" v-model="form.name" type="text" placeholder="e.g. Barangay Hall probe"
-          class="w-full rounded-lg border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-200"
+          class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
         />
         <InputError :message="form.errors.name" class="mt-1" />
       </div>
       <button
         type="submit" :disabled="form.processing"
-        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition"
+        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-accent-500 text-white hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] disabled:opacity-60 transition"
       >
         <IconKey class="w-4 h-4" /> Create token
       </button>
     </form>
 
-    <ul v-if="tokens?.length" class="divide-y divide-gray-100 max-w-xl rounded-lg border border-gray-200">
+    <ul v-if="tokens?.length" class="divide-y divide-slate-100 max-w-xl rounded-lg border border-slate-200">
       <li v-for="token in tokens" :key="token.id" class="flex items-center justify-between px-4 py-2.5">
         <div>
-          <div class="text-sm font-medium text-gray-700">{{ token.name }}</div>
-          <div class="text-xs text-gray-400">created {{ new Date(token.created_at).toLocaleDateString() }}</div>
+          <div class="text-sm font-medium text-slate-700">{{ token.name }}</div>
+          <div class="text-xs text-slate-400">created {{ new Date(token.created_at).toLocaleDateString() }}</div>
         </div>
         <button
-          type="button" class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800"
+          type="button" class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 rounded transition-colors"
           @click="revoke(token.id)"
         >
           <IconTrash class="w-3.5 h-3.5" /> Revoke
         </button>
       </li>
     </ul>
-    <p v-else class="text-sm text-gray-400">No probe tokens yet.</p>
+    <p v-else class="text-sm text-slate-400">No probe tokens yet.</p>
   </section>
 </template>

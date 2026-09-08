@@ -83,14 +83,23 @@ class ReportingService
     public function getDashboardStats(): array
     {
         $activeSites = Site::where('status', 'active')->count();
-        $reportedToday = SiteDailyStatus::whereDate('date', today())->distinct('site_id')->count('site_id');
+        $reportedToday = $this->reportedSiteCount(today());
+
+        // One grouped pass instead of one query per status, and every status is
+        // represented so the counters actually reconcile with the site total.
+        $todayCounts = SiteDailyStatus::whereDate('date', today())
+            ->selectRaw('status, COUNT(*) AS n')
+            ->groupBy('status')
+            ->pluck('n', 'status');
 
         return [
             'total_projects' => Project::count(),
             'total_sites' => Site::count(),
             'active_sites' => $activeSites,
-            'total_up_today' => SiteDailyStatus::where('status', 'UP')->whereDate('date', today())->count(),
-            'down_today' => SiteDailyStatus::where('status', 'DOWN')->whereDate('date', today())->count(),
+            'total_up_today' => (int) $todayCounts->get('UP', 0),
+            'down_today' => (int) $todayCounts->get('DOWN', 0),
+            'down_server_today' => (int) $todayCounts->get('DOWN_SERVER', 0),
+            'no_nms_today' => (int) $todayCounts->get('NO_NMS', 0),
             'no_data_today' => max(0, $activeSites - $reportedToday),
             'reported_today' => $reportedToday,
             'uptime_pct_7d' => $this->uptimePct(now()->subDays(6)->startOfDay(), now()->endOfDay()),
@@ -165,18 +174,29 @@ class ReportingService
     /** NOC wallboard payload — big numbers + who's down right now. */
     public function getWallboardStats(): array
     {
+        // DOWN_SERVER is a down site too — matching SiteController's "down"
+        // filter and SiteStatusEvent::DOWN_STATUSES.
         $downSites = Site::query()
-            ->whereHas('latestDailyStatus', fn ($q) => $q->where('status', 'DOWN'))
+            ->whereHas('latestDailyStatus', fn ($q) => $q->whereIn('status', SiteStatusEvent::DOWN_STATUSES))
             ->orderBy('location_name')
             ->get(['id', 'location_name', 'municipality', 'province']);
 
+        $todayCounts = SiteDailyStatus::whereDate('date', today())
+            ->selectRaw('status, COUNT(*) AS n')
+            ->groupBy('status')
+            ->pluck('n', 'status');
+
         return [
             'total_sites' => Site::where('status', 'active')->count(),
-            'up_today' => SiteDailyStatus::where('status', 'UP')->whereDate('date', today())->count(),
-            'down_today' => SiteDailyStatus::where('status', 'DOWN')->whereDate('date', today())->count(),
+            'up_today' => (int) $todayCounts->get('UP', 0),
+            'down_today' => (int) $todayCounts->get('DOWN', 0),
+            'down_server_today' => (int) $todayCounts->get('DOWN_SERVER', 0),
+            'no_nms_today' => (int) $todayCounts->get('NO_NMS', 0),
+            // Was counted against UP+DOWN rows only, so a NO_NMS or
+            // DOWN_SERVER report looked like "no report at all".
             'no_data_today' => max(
                 0,
-                Site::where('status', 'active')->count() - SiteDailyStatus::whereIn('status', ['UP', 'DOWN'])->whereDate('date', today())->count(),
+                Site::where('status', 'active')->count() - $this->reportedSiteCount(today()),
             ),
             'uptime_pct_7d' => $this->uptimePct(now()->subDays(6)->startOfDay(), now()->endOfDay()),
             'trend' => $this->dailyTrend(14),
@@ -203,10 +223,14 @@ class ReportingService
     {
         $start = today()->subDays($days - 1);
 
+        // Every observed status gets its own series. Folding NO_NMS and
+        // DOWN_SERVER into "other" is what made a fifth of the fleet invisible.
         $rows = SiteDailyStatus::whereBetween('date', [$start, today()])
             ->selectRaw("date,
                 SUM(CASE WHEN status = 'UP' THEN 1 ELSE 0 END) AS up_count,
-                SUM(CASE WHEN status = 'DOWN' THEN 1 ELSE 0 END) AS down_count")
+                SUM(CASE WHEN status = 'DOWN' THEN 1 ELSE 0 END) AS down_count,
+                SUM(CASE WHEN status = 'NO_NMS' THEN 1 ELSE 0 END) AS no_nms_count,
+                SUM(CASE WHEN status = 'DOWN_SERVER' THEN 1 ELSE 0 END) AS down_server_count")
             ->groupBy('date')
             ->orderBy('date')
             ->get()
@@ -220,15 +244,44 @@ class ReportingService
                 'date' => $date->format('M j'),
                 'up' => (int) ($row->up_count ?? 0),
                 'down' => (int) ($row->down_count ?? 0),
+                'no_nms' => (int) ($row->no_nms_count ?? 0),
+                'down_server' => (int) ($row->down_server_count ?? 0),
             ];
         })->values()->all();
     }
 
+    /**
+     * Uptime over a window: UP as a share of every *observed* status.
+     *
+     * Previously only UP and DOWN were counted, which silently discarded
+     * NO_NMS and DOWN_SERVER — 19.3% of all rows — and inflated the figure.
+     * See config/daily_status.php.
+     */
     private function uptimePct(CarbonInterface $from, CarbonInterface $to): float
     {
-        $up = SiteDailyStatus::whereBetween('date', [$from, $to])->where('status', 'UP')->count();
-        $down = SiteDailyStatus::whereBetween('date', [$from, $to])->where('status', 'DOWN')->count();
+        $counts = SiteDailyStatus::whereBetween('date', [$from, $to])
+            ->whereIn('status', config('daily_status.observed'))
+            ->selectRaw('status, COUNT(*) AS n')
+            ->groupBy('status')
+            ->pluck('n', 'status');
 
-        return ($up + $down) > 0 ? round($up / ($up + $down) * 100, 1) : 0.0;
+        $observed = (int) $counts->sum();
+        $up = (int) ($counts->get('UP') ?? 0);
+
+        return $observed > 0 ? round($up / $observed * 100, 1) : 0.0;
+    }
+
+    /**
+     * Distinct sites that reported an observed status on a day.
+     *
+     * Counts sites, not rows, and ignores NO_DATA — otherwise the 23:00 snapshot
+     * would make a site with no real report look like it had reported.
+     */
+    private function reportedSiteCount(CarbonInterface $date): int
+    {
+        return (int) SiteDailyStatus::whereDate('date', $date)
+            ->whereIn('status', config('daily_status.observed'))
+            ->distinct()
+            ->count('site_id');
     }
 }

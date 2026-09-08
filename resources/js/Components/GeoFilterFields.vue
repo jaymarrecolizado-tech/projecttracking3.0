@@ -37,7 +37,7 @@ function set(patch) {
       <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Project</label>
       <select
         :value="filters.project_id ?? ''"
-        class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
         @change="set({ project_id: $event.target.value })"
       >
         <option value="">All Projects</option>
@@ -49,7 +49,7 @@ function set(patch) {
       <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Province</label>
       <select
         :value="filters.province ?? ''"
-        class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
         @change="set({ province: $event.target.value })"
       >
         <option value="">All Provinces</option>
@@ -62,7 +62,7 @@ function set(patch) {
       <select
         :value="filters.district ?? ''"
         :disabled="!filters.province || !options.districts?.length"
-        class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40 disabled:bg-slate-100 disabled:text-slate-400"
         @change="set({ district: $event.target.value })"
       >
         <option value="">All Districts</option>
@@ -75,7 +75,7 @@ function set(patch) {
       <select
         :value="filters.municipality ?? ''"
         :disabled="!filters.province"
-        class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40 disabled:bg-slate-100 disabled:text-slate-400"
         @change="set({ municipality: $event.target.value })"
       >
         <option value="">All Municipalities</option>
@@ -88,7 +88,7 @@ function set(patch) {
       <select
         :value="filters.barangay ?? ''"
         :disabled="!filters.municipality"
-        class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40 disabled:bg-slate-100 disabled:text-slate-400"
         @change="set({ barangay: $event.target.value })"
       >
         <option value="">All Barangays</option>
@@ -100,7 +100,7 @@ function set(patch) {
       <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Site Type</label>
       <select
         :value="filters.site_type ?? ''"
-        class="w-full rounded-lg border-slate-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
         @change="set({ site_type: $event.target.value })"
       >
         <option value="">All Types</option>

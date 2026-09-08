@@ -81,7 +81,7 @@ class DashboardTest extends TestCase
             'name' => 'Tobias', 'name_normalized' => 'tobias', 'psgc' => '0201505001',
         ]);
 
-        $this->actingAs($admin)->get('/dashboard')
+        $this->actingAs($admin)->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Dashboard')
@@ -116,7 +116,7 @@ class DashboardTest extends TestCase
             'serial_number' => 'SN-S-1', 'status' => 'in_stock',
         ]);
 
-        $this->actingAs($admin)->get('/dashboard')
+        $this->actingAs($admin)->get('/')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('stats.devices.deployed', 1)

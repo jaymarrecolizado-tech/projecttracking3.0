@@ -26,10 +26,17 @@ class DeviceController extends Controller
         ])
             ->when($request->input('status'), fn ($q, $v) => $q->where('status', $v))
             ->when($request->input('type'), fn ($q, $v) => $q->whereHas('deviceModel', fn ($m) => $m->where('type', $v)))
-            ->when($request->input('search'), fn ($q, $v) => $q->where(fn ($w) => $w
-                ->where('asset_tag', 'like', "%{$v}%")
-                ->orWhere('serial_number', 'like', "%{$v}%")
-                ->orWhere('mac_address', 'like', "%{$v}%")))
+            ->when($request->input('search'), function ($q, $v) {
+                // Identifiers are tag-shaped: an anchored prefix LIKE can use
+                // the devices_asset_tag/serial indexes instead of scanning
+                // (Plan_revision §Phase 3.4). MAC keeps substring matching —
+                // probes are often searched by OUI-less tail.
+                $q->where(function ($w) use ($v) {
+                    $w->where('asset_tag', 'like', "{$v}%")
+                        ->orWhere('serial_number', 'like', "{$v}%")
+                        ->orWhere('mac_address', 'like', "%{$v}%");
+                });
+            })
             ->when($request->input('warranty'), function ($q, $v) {
                 if ($v === 'expired') {
                     $q->whereNotNull('warranty_until')->where('warranty_until', '<', now());
@@ -82,7 +89,7 @@ class DeviceController extends Controller
             // Recent telemetry for the 48h sparklines (docs §Phase 2).
             'metrics' => fn ($q) => $q->where('ts', '>=', now()->subHours(48))
                 ->orderBy('ts')
-                ->get(['id', 'device_id', 'ts', 'latency_ms', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'solar_w']),
+                ->select(['id', 'device_id', 'ts', 'latency_ms', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'solar_w']),
         ]);
 
         return Inertia::render('Devices/Show', [

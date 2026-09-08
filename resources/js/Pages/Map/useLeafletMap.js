@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { INK } from '../../theme';
 
 // Leaflet wiring for Map View (Plan §Map 3): init, deployed-device markers
 // with clustering, and the boundary polygon layer with highlight +
@@ -53,7 +54,7 @@ export function useLeafletMap(containerRef) {
                 const p = feature.properties;
                 return L.circleMarker(latlng, {
                     ...style,
-                    fillColor: statusColors[p.daily_status] ?? p.marker_color ?? '#2563eb',
+                    fillColor: statusColors[p.daily_status] ?? p.marker_color ?? '#64748b',
                 });
             },
             onEachFeature: (feature, layer) => {
@@ -114,7 +115,7 @@ export function useLeafletMap(containerRef) {
 
         boundaryLayer = L.geoJSON(featureCollection, {
             style: (feature) => (feature.properties.name === selectedName
-                ? { fillColor: '#0F1B2D', fillOpacity: 0.3, color: '#0F1B2D', weight: 2 }
+                ? { fillColor: INK, fillOpacity: 0.3, color: INK, weight: 2 }
                 : { fill: false, color: '#64748b', weight: 1, opacity: 0.55 }),
             onEachFeature: (feature, layer) => {
                 layer.bindTooltip(feature.properties.name, { sticky: true });

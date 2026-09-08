@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DailyOpsTest extends TestCase
@@ -112,6 +113,46 @@ class DailyOpsTest extends TestCase
         $approved = $site->dailyStatuses()->first();
         $this->assertSame('APPROVED', $approved->entry_status);
         $this->assertSame($manager->id, $approved->approved_by);
+    }
+
+    /**
+     * Plan_revision §Phase 1.2 — the board must accept every observed status.
+     * Before this, BulkDailyOpsRequest rejected DOWN_SERVER even though the
+     * NMS reports it and SiteController filters on it.
+     *
+     * @return array<int, array<int, string>>
+     */
+    public static function observedStatusProvider(): array
+    {
+        return [['UP'], ['DOWN'], ['NO_NMS'], ['DOWN_SERVER']];
+    }
+
+    #[DataProvider('observedStatusProvider')]
+    public function test_board_accepts_every_observed_status(string $status): void
+    {
+        $project = $this->project('OPS-'.$status);
+        $site = $this->site($project);
+        $encoder = $this->userWithRole('encoder', $project->id);
+
+        $this->actingAs($encoder)
+            ->post('/daily-ops/batch', $this->payload($site, 'submit', $status))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame($status, $site->dailyStatuses()->first()->status);
+    }
+
+    public function test_board_rejects_a_status_outside_the_vocabulary(): void
+    {
+        $project = $this->project('OPS-BAD');
+        $site = $this->site($project);
+        $encoder = $this->userWithRole('encoder', $project->id);
+
+        $this->actingAs($encoder)
+            ->post('/daily-ops/batch', $this->payload($site, 'submit', 'PURPLE'))
+            ->assertSessionHasErrors('entries.0.status');
+
+        $this->assertSame(0, $site->dailyStatuses()->count());
     }
 
     public function test_locked_rows_reject_manual_edits_and_heartbeats(): void

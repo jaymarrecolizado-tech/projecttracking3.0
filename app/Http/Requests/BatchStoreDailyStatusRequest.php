@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class BatchStoreDailyStatusRequest extends FormRequest
 {
@@ -17,7 +18,7 @@ class BatchStoreDailyStatusRequest extends FormRequest
             'entries' => 'required|array',
             'entries.*.site_id' => 'required|exists:sites,id',
             'entries.*.date' => 'required|date',
-            'entries.*.status' => 'required|in:UP,DOWN,NO_DATA',
+            'entries.*.status' => ['required', Rule::in(config('daily_status.codes'))],
             'entries.*.total_unique_users' => 'nullable|integer|min:0',
             'entries.*.bandwidth_utilization_mbps' => 'nullable|numeric|min:0',
             'entries.*.uptime_percent' => 'nullable|numeric|between:0,100',
