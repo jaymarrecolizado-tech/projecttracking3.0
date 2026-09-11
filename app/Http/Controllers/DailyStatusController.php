@@ -26,12 +26,34 @@ class DailyStatusController extends Controller
         // entry_status never comes from the client (Plan_revision §Phase 2.2):
         // hand-entered rows start as DRAFT and move through the workflow
         // endpoints (approve/lock) gated on daily.approve.
-        SiteDailyStatus::create($request->safe()->except(['entry_status']) + [
-            'entry_status' => 'DRAFT',
-            'created_by' => auth()->id(),
-        ]);
+        $data = $request->safe()->except(['entry_status']);
+        $site = Site::findOrFail($data['site_id']);
+        $user = $request->user();
 
-        return redirect()->back();
+        $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', $data['date'])->first();
+
+        // Same guards as batchStore and the Daily Ops board: LOCKED rows are
+        // immutable, APPROVED rows need an approver, and everything else
+        // resolves through per-project create/edit grants.
+        if ($existing && $existing->entry_status === 'LOCKED') {
+            return redirect()->back()->with('error', 'That record is locked.');
+        }
+        if ($existing && $existing->entry_status === 'APPROVED') {
+            abort_unless($user->hasPermission('daily.approve', $site->project_id), 403);
+        } elseif (! $user->hasPermission($existing ? 'daily.edit' : 'daily.create', $site->project_id)) {
+            abort(403, 'You do not have permission to perform this action.');
+        }
+
+        if ($existing) {
+            $existing->update($data);
+        } else {
+            SiteDailyStatus::create($data + [
+                'entry_status' => 'DRAFT',
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Status saved.');
     }
 
     public function approve(Request $request, SiteDailyStatus $status)

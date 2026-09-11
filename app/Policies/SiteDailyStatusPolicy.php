@@ -28,7 +28,7 @@ class SiteDailyStatusPolicy
             return false;
         }
         if ($status->entry_status === 'APPROVED') {
-            return $user->hasPermission('daily.approve');
+            return $user->hasPermission('daily.approve', $status->site->project_id);
         }
 
         return $user->hasPermission('daily.edit', $status->site->project_id);

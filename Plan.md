@@ -132,11 +132,11 @@ Phase 2 — auth/token hardening [done]
 - [x] TOTP enrollment for all accounts; confirm/disable throttled (10/min); disable requires a current code. Hard-require for admins/approvers deferred — needs an owner rollout so existing accounts are not locked out.
 - [x] Last-admin guards (self + victim, profile + admin console), self-delete/demote/deactivate blocks, token + session cleanup on user deletion.
 
-Phase 3 — data integrity [open]
-- [ ] Centralize daily-status mutations; enforce per-project and APPROVED/LOCKED rules everywhere.
-- [ ] Make workbook imports respect authoritative rows and report conflicts.
-- [ ] Add uniqueness/locking for open deployments and asset-tag allocation.
-- [ ] Add audit retention/pruning and deduplicate HTTP/observer audit rows.
+Phase 3 — data integrity [done]
+- [x] Every daily-status writer enforces per-project + APPROVED/LOCKED: board, single/batch store, heartbeat (409), NMS pull, imports (skip + report); snapshot only fills missing rows. Policy `update` requires the site's project approver.
+- [x] Workbook imports leave APPROVED/LOCKED rows untouched and report the count in the batch log.
+- [x] One open deployment per device (row-locked close-then-open); asset-tag allocation retries on unique collision.
+- [x] Monthly `audit:prune` (90d default); HTTP + observer audit rows share one `request_id`.
 
 Phase 4 — reliability/performance/ops [open]
 - [ ] Bound map GeoJSON, PDF generation, ticket/site selectors, and alert evaluation.

@@ -157,6 +157,21 @@ class DailyStatusWorkflowAuthorizationTest extends TestCase
         ])->assertStatus(409);
     }
 
+    public function test_approved_row_update_requires_project_approver(): void
+    {
+        $row = $this->statusRow('APPROVED');
+        $ownApprover = $this->userWithRole('project_manager', $this->project->id);
+        $otherProject = Project::create([
+            'code' => 'OTHER', 'name' => 'Other Project', 'report_type' => 'freewifi',
+            'marker_color' => '#0ea5e9', 'marker_shape' => 'circle', 'marker_icon' => 'wifi',
+            'is_active' => true,
+        ]);
+        $otherApprover = $this->userWithRole('project_manager', $otherProject->id);
+
+        $this->assertTrue($ownApprover->can('update', $row));
+        $this->assertFalse($otherApprover->can('update', $row));
+    }
+
     public function test_heartbeat_token_needs_the_heartbeat_ability(): void
     {
         $manager = $this->userWithRole('project_manager');
@@ -217,6 +232,62 @@ class DailyStatusWorkflowAuthorizationTest extends TestCase
             'site_code' => $otherSite->ap_site_code, 'status' => 'DOWN',
         ])->assertForbidden();
         $this->assertSame(0, $otherSite->dailyStatuses()->count());
+    }
+
+    public function test_single_store_enforces_project_scope_and_workflow_guards(): void
+    {
+        $encoder = $this->userWithRole('encoder', $this->project->id);
+        $otherProject = Project::create([
+            'code' => 'OTHER', 'name' => 'Other Project', 'report_type' => 'freewifi',
+            'marker_color' => '#0ea5e9', 'marker_shape' => 'circle', 'marker_icon' => 'wifi',
+            'is_active' => true,
+        ]);
+        $otherSite = Site::create([
+            'project_id' => $otherProject->id, 'location_name' => 'Other Site',
+            'latitude' => 18.0, 'longitude' => 121.0, 'status' => 'active',
+        ]);
+
+        // Own site, fresh date: creates a DRAFT row.
+        $this->actingAs($encoder)->post('/daily-statuses', [
+            'site_id' => $this->site->id, 'date' => today()->toDateString(), 'status' => 'DOWN',
+        ])->assertRedirect()->assertSessionHas('success');
+        $this->assertSame('DRAFT', SiteDailyStatus::where('site_id', $this->site->id)
+            ->whereDate('date', today())->first()->entry_status);
+
+        // Other project: 403, nothing written.
+        $this->actingAs($encoder)->post('/daily-statuses', [
+            'site_id' => $otherSite->id, 'date' => today()->toDateString(), 'status' => 'UP',
+        ])->assertForbidden();
+        $this->assertSame(0, $otherSite->dailyStatuses()->count());
+
+        // LOCKED row: rejected with an error, value untouched.
+        $lockedDate = today()->subDay()->toDateString();
+        SiteDailyStatus::create([
+            'site_id' => $this->site->id, 'date' => $lockedDate, 'status' => 'UP',
+            'entry_status' => 'LOCKED', 'created_by' => $encoder->id,
+        ]);
+        $this->actingAs($encoder)->post('/daily-statuses', [
+            'site_id' => $this->site->id, 'date' => $lockedDate, 'status' => 'DOWN',
+        ])->assertRedirect()->assertSessionHas('error');
+        $this->assertSame('UP', SiteDailyStatus::where('site_id', $this->site->id)
+            ->whereDate('date', $lockedDate)->first()->status);
+
+        // APPROVED row: encoder 403s, project approver may rewrite.
+        $approvedDate = today()->subDays(2)->toDateString();
+        SiteDailyStatus::create([
+            'site_id' => $this->site->id, 'date' => $approvedDate, 'status' => 'UP',
+            'entry_status' => 'APPROVED', 'created_by' => $encoder->id,
+        ]);
+        $this->actingAs($encoder)->post('/daily-statuses', [
+            'site_id' => $this->site->id, 'date' => $approvedDate, 'status' => 'DOWN',
+        ])->assertForbidden();
+
+        $manager = $this->userWithRole('project_manager', $this->project->id);
+        $this->actingAs($manager)->post('/daily-statuses', [
+            'site_id' => $this->site->id, 'date' => $approvedDate, 'status' => 'DOWN',
+        ])->assertRedirect()->assertSessionHas('success');
+        $this->assertSame('DOWN', SiteDailyStatus::where('site_id', $this->site->id)
+            ->whereDate('date', $approvedDate)->first()->status);
     }
 
     public function test_batch_store_enforces_project_scope_and_locked_rows(): void
