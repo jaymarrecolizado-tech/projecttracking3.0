@@ -44,6 +44,8 @@ const coverageForm = useForm({
     district: '',
     municipality: '',
     barangay: '',
+    site_type: '',
+    status: '',
 });
 
 const coverageOptions = ref(props.initialOptions);
@@ -278,7 +280,7 @@ const statusStyles = {
               :site-types="siteTypes"
               :options="coverageOptions"
               :filters="coverageForm.data()"
-              :show-site-type="false"
+              :show-status="true"
               @update:filters="onCoverageFilters"
             />
             <button

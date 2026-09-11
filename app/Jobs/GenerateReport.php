@@ -47,12 +47,16 @@ class GenerateReport implements ShouldQueue
                 'province' => $reportingService->generateProvinceReport(
                     $this->export->params['province'],
                     $this->export->params['project_id'] ?? null,
+                    $this->export->params,
+                    User::whereKey($this->export->user_id)->value('name') ?? 'system',
                 ),
                 'site_type' => $reportingService->generateSiteTypeCoverageReport(
                     $this->export->params['filters'] ?? [],
+                    User::whereKey($this->export->user_id)->value('name') ?? 'system',
                 ),
                 'barangay_coverage' => $reportingService->generateBarangayCoverageReport(
                     $this->export->params['filters'] ?? [],
+                    User::whereKey($this->export->user_id)->value('name') ?? 'system',
                 ),
                 default => throw new InvalidArgumentException("Unknown report type '{$this->export->type}'."),
             };

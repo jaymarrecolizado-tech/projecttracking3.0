@@ -3,34 +3,27 @@
 <head>
     <meta charset="utf-8">
     <title>Site Type Coverage Report</title>
-    <style>
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12px; color: #333; }
-        h1 { color: #1e40af; font-size: 20px; margin-bottom: 5px; }
-        h2 { color: #1e40af; font-size: 16px; margin: 20px 0 10px; border-bottom: 2px solid #dbeafe; padding-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        th { background: #1e40af; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
-        td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
-        .totals td { font-weight: bold; background: #f1f5f9; }
-        .footer { margin-top: 30px; font-size: 9px; color: #94a3b8; text-align: center; }
-    </style>
+    @include('reports.partials.styles')
 </head>
 <body>
-    <h1>Site Type Coverage — Actual vs Registered</h1>
-    <p style="color:#64748b;font-size:11px">
-        Scope:
-        {{ $coverage['scope'] ?? (empty($filters) ? 'All provinces · all projects' : implode(' · ', array_filter($filters))) }}
-        | Generated: {{ now()->format('Y-m-d H:i') }}
-    </p>
+    @include('reports.partials.cover', ['title' => 'Site Type Coverage — Actual vs Registered', 'scope' => $coverage['scope'] ?? 'All areas', 'userName' => $userName])
 
-    <table>
+    @include('reports.partials.kpi-strip', ['kpis' => [
+        [$coverage['totals']['registered'], 'Registered sites'],
+        [$coverage['totals']['actual'], 'With deployed device'],
+        [$coverage['totals']['devices'], 'Deployed devices'],
+        [$coverage['totals']['coverage_pct'].'%', 'Coverage'],
+    ]])
+
+    <table class="grid">
         <thead>
             <tr>
                 <th>Site Type</th>
                 <th>Registered</th>
-                <th>Actual (with deployed device)</th>
+                <th>Actual</th>
                 <th>Gap</th>
-                <th>Deployed devices</th>
-                <th>Coverage %</th>
+                <th>Devices</th>
+                <th style="width:30%">Coverage %</th>
             </tr>
         </thead>
         <tbody>
@@ -41,12 +34,18 @@
                 <td>{{ $row['actual'] }}</td>
                 <td>{{ $row['gap'] }}</td>
                 <td>{{ $row['devices'] }}</td>
-                <td>{{ $row['coverage_pct'] }}%</td>
+                <td>
+                    <table style="width:100%;border-collapse:collapse"><tr>
+                        <td class="bar-fill-teal" style="width:{{ min(100, $row['coverage_pct']) }}%"></td>
+                        <td class="bar-track" style="width:{{ max(0, 100 - $row['coverage_pct']) }}%"></td>
+                    </tr></table>
+                    {{ $row['coverage_pct'] }}%
+                </td>
             </tr>
             @endforeach
         </tbody>
-        <tfoot class="totals">
-            <tr>
+        <tfoot>
+            <tr style="font-weight:bold;background:#f1f5f9">
                 <td>Total</td>
                 <td>{{ $coverage['totals']['registered'] }}</td>
                 <td>{{ $coverage['totals']['actual'] }}</td>
@@ -58,8 +57,8 @@
     </table>
 
     @if ($sites->isNotEmpty())
-    <h2>Deployed sites appendix</h2>
-    <table>
+    <h2>Deployed sites appendix ({{ $sites->count() }} sites)</h2>
+    <table class="grid">
         <thead>
             <tr>
                 <th>Site Type</th>
@@ -81,8 +80,6 @@
     </table>
     @endif
 
-    <div class="footer">
-        Free Public Internet Access Program (FPIAP) — FreeWiFi Device Operations — Confidential
-    </div>
+    @include('reports.partials.footer')
 </body>
 </html>

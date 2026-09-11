@@ -3,47 +3,67 @@
 <head>
     <meta charset="utf-8">
     <title>Province Report - {{ $province }}</title>
-    <style>
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12px; color: #333; }
-        h1 { color: #1e40af; font-size: 20px; margin-bottom: 5px; }
-        h2 { color: #1e40af; font-size: 16px; margin: 20px 0 10px; border-bottom: 2px solid #dbeafe; padding-bottom: 5px; }
-        h3 { font-size: 14px; color: #334155; margin: 15px 0 5px; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        th { background: #1e40af; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
-        td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
-        .footer { margin-top: 30px; font-size: 9px; color: #94a3b8; text-align: center; }
-    </style>
+    @include('reports.partials.styles')
 </head>
 <body>
-    <h1>Province Report: {{ $province }}</h1>
-    <p style="color:#64748b;font-size:11px">Total Sites: {{ $sites->count() }} | Generated: {{ now()->format('Y-m-d H:i') }}</p>
+    @include('reports.partials.cover', ['title' => 'Province Report: '.$province, 'scope' => $scope, 'userName' => $userName])
+
+    @include('reports.partials.kpi-strip', ['kpis' => [
+        [$sites->count(), 'Sites'],
+        [$rollup->sum('up').' UP', 'Reporting UP'],
+        [$rollup->count(), 'Municipalities'],
+    ]])
+
+    <h2>Municipality rollup</h2>
+    <table class="grid">
+        <thead>
+            <tr><th>Municipality / City</th><th>Sites</th><th>UP</th><th>UP %</th></tr>
+        </thead>
+        <tbody>
+            @foreach($rollup as $row)
+            <tr>
+                <td>{{ $row['municipality'] }}</td>
+                <td>{{ $row['sites'] }}</td>
+                <td>{{ $row['up'] }}</td>
+                <td>{{ $row['up_pct'] }}%</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
 
     @foreach($grouped as $municipality => $municipalitySites)
-    <h3>{{ $municipality }} ({{ $municipalitySites->count() }} sites)</h3>
-    <table>
+    <h2>{{ $municipality }} ({{ $municipalitySites->count() }} sites)</h2>
+    <table class="grid">
         <thead>
             <tr>
                 <th>Location</th>
                 <th>Barangay</th>
                 <th>Project</th>
                 <th>Status</th>
+                <th>Daily Status</th>
             </tr>
         </thead>
         <tbody>
             @foreach($municipalitySites as $site)
+            @php($daily = $statusesAtTo->get($site->id))
             <tr>
                 <td>{{ $site->location_name }}</td>
-                <td>{{ $site->barangay }}</td>
-                <td>{{ $site->project?->code }}</td>
+                <td>{{ $site->barangay ?? '—' }}</td>
+                <td>{{ $site->project?->code ?? '—' }}</td>
                 <td>{{ $site->status }}</td>
+                <td>
+                    @if($daily)
+                    <span class="badge @if($daily === 'UP') b-green @elseif(in_array($daily, ['DOWN', 'DOWN_SERVER'])) b-red @elseif($daily === 'NO_NMS') b-amber @else b-slate @endif">{{ $daily }}</span>
+                    @else
+                    <span class="badge b-slate">NO DATA</span>
+                    @endif
+                </td>
             </tr>
             @endforeach
         </tbody>
     </table>
     @endforeach
 
-    <div class="footer">
-        Free Public Internet Access Program (FPIAP) — FreeWiFi Device Operations — Confidential
-    </div>
+    @include('reports.partials.footer')
 </body>
 </html>

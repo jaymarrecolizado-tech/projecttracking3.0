@@ -8,6 +8,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     showProject: { type: Boolean, default: true },
     showSiteType: { type: Boolean, default: true },
+    showStatus: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:filters']);
@@ -105,6 +106,20 @@ function set(patch) {
       >
         <option value="">All Types</option>
         <option v-for="type in siteTypes" :key="type.code" :value="type.code">{{ type.label }}</option>
+      </select>
+    </div>
+
+    <div v-if="showStatus" class="flex-1 min-w-[150px]">
+      <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Site Status</label>
+      <select
+        :value="filters.status ?? ''"
+        class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
+        @change="set({ status: $event.target.value })"
+      >
+        <option value="">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+        <option value="planned">Planned</option>
       </select>
     </div>
 

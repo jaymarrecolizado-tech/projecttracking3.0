@@ -3,28 +3,19 @@
 <head>
     <meta charset="utf-8">
     <title>Barangay Coverage Report</title>
-    <style>
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12px; color: #333; }
-        h1 { color: #1e40af; font-size: 20px; margin-bottom: 5px; }
-        h2 { color: #1e40af; font-size: 15px; margin: 18px 0 8px; border-bottom: 2px solid #dbeafe; padding-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-        th { background: #1e40af; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
-        td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
-        .num { text-align: right; }
-        .totals td { font-weight: bold; background: #f1f5f9; }
-        .footer { margin-top: 26px; font-size: 9px; color: #94a3b8; text-align: center; }
-        .note { font-size: 9px; color: #64748b; margin-top: 4px; }
-    </style>
+    @include('reports.partials.styles')
 </head>
 <body>
-    <h1>Barangay Coverage — Free WiFi Installed/Existing vs Total</h1>
-    <p style="color:#64748b;font-size:11px">
-        Scope:
-        {{ $coverage['scope'] ?? (empty($filters) ? 'Region II · all projects' : implode(' · ', array_filter($filters))) }}
-        | Generated: {{ now()->format('Y-m-d H:i') }}
-    </p>
+    @include('reports.partials.cover', ['title' => 'Barangay Coverage — Installed/Existing vs Total', 'scope' => $coverage['scope'] ?? 'All areas', 'userName' => $userName])
 
-    <table>
+    @include('reports.partials.kpi-strip', ['kpis' => [
+        [$coverage['totals']['covered'].' / '.$coverage['totals']['barangays'], 'Barangays with Free WiFi'],
+        [$coverage['totals']['deployed'], 'With deployed device'],
+        [$coverage['totals']['remaining'], 'Remaining'],
+        [$coverage['totals']['coverage_pct'].'%', 'Coverage'],
+    ]])
+
+    <table class="grid">
         <thead>
             <tr>
                 <th>Province</th>
@@ -38,7 +29,7 @@
         <tbody>
             @php $byProvince = collect($coverage['rows'])->groupBy('province'); @endphp
             @foreach ($byProvince as $province => $rows)
-            <tr class="totals">
+            <tr style="font-weight:bold;background:#f1f5f9">
                 <td>{{ $province }}</td>
                 <td class="num">{{ $rows->sum('covered') }}</td>
                 <td class="num">{{ $rows->sum('deployed') }}</td>
@@ -48,9 +39,9 @@
             </tr>
             @endforeach
         </tbody>
-        <tfoot class="totals">
-            <tr>
-                <td>REGION II — TOTAL</td>
+        <tfoot>
+            <tr style="font-weight:bold;background:#e2e8f0">
+                <td>{{ ($coverage['scope'] ?? 'All areas') === 'All areas' ? 'REGION II — TOTAL' : $coverage['scope'] }}</td>
                 <td class="num">{{ $coverage['totals']['covered'] }}</td>
                 <td class="num">{{ $coverage['totals']['deployed'] }}</td>
                 <td class="num">{{ $coverage['totals']['remaining'] }}</td>
@@ -62,7 +53,7 @@
 
     @foreach ($byProvince as $province => $rows)
     <h2>{{ $province }}</h2>
-    <table>
+    <table class="grid">
         <thead>
             <tr>
                 <th>Municipality / City</th>
@@ -88,7 +79,25 @@
     </table>
     @endforeach
 
-    <p class="note">
+    @if (! empty($coverage['uncovered']))
+    <h2>Uncovered barangays ({{ count($coverage['uncovered']) }})</h2>
+    <table class="grid">
+        <thead>
+            <tr><th>Barangay</th><th>Municipality / City</th><th>Province</th></tr>
+        </thead>
+        <tbody>
+            @foreach ($coverage['uncovered'] as $place)
+            <tr>
+                <td>{{ $place['barangay'] }}</td>
+                <td>{{ $place['municipality'] }}</td>
+                <td>{{ $place['province'] }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    @endif
+
+    <p class="muted" style="font-size:9px">
         "Covered" = at least one registered Free WiFi site in the barangay; "Deployed" = an active device
         deployment. Barangay totals come from the reference list in this application — reconcile against the
         PSA count for Region II and add missing barangays to keep the percentages exact.
@@ -101,8 +110,6 @@
         @endif
     </p>
 
-    <div class="footer">
-        Free Public Internet Access Program (FPIAP) — FreeWiFi Device Operations — Confidential
-    </div>
+    @include('reports.partials.footer')
 </body>
 </html>

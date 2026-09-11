@@ -177,11 +177,11 @@ Audience: **both** — one-page executive rollup, then detailed ops annexes in t
 - [x] PDF partials (`resources/views/reports/partials/`): cover (scope line, user, timestamp), KPI strip, CSS trend bars, numbered footer
 - [x] `GenerateScopedReportRequest`; persist period + geo in `report_exports.params`
 
-### Phase 2 — Complete the four existing PDFs
+### Phase 2 — Complete the four existing PDFs [done]
 - [x] **Project:** exec KPIs + annex site register (type, daily status, devices, CIR) + DOWN episodes/tickets
-- [ ] **Province:** municipality rollup (sites, UP, coverage %); print project filter on cover; daily status in the site list
-- [ ] **Site type:** coverage % bars; drop silent 200-row appendix cap (paginate); expose `site_type` + `status` on the form
-- [ ] **Barangay:** replace hardcoded `REGION II — TOTAL` with `describeScope()`; uncovered-barangay annex when municipality is set
+- [x] **Province:** municipality rollup (sites, UP, UP %); project filter printed on the cover scope line; daily status in the site list
+- [x] **Site type:** coverage % bars; silent 200-row appendix cap dropped (chunked, uncapped); `site_type` + `status` on the form
+- [x] **Barangay:** totals footer follows the scope (REGION II — TOTAL only unfiltered); uncovered-barangay annex when municipality is set
 
 ### Phase 3 — New packs (existing data)
 - [ ] `ops_period` — period health vs previous; site-days + open DOWN episodes

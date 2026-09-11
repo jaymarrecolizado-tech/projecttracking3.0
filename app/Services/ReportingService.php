@@ -11,6 +11,7 @@ use App\Models\SiteDailyStatus;
 use App\Models\SiteStatusEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 
 class ReportingService
 {
@@ -39,56 +40,96 @@ class ReportingService
         ]);
     }
 
-    public function generateProvinceReport(string $province, ?int $projectId = null): \Barryvdh\DomPDF\PDF
+    public function generateProvinceReport(string $province, ?int $projectId = null, array $params = [], string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
-        $query = Site::where('province', $province)->with('project');
-        if ($projectId) {
-            $query->where('project_id', $projectId);
-        }
+        $analytics = app(ReportAnalytics::class);
+        [$from, $to] = $analytics->period($params);
+        $projectName = $projectId ? Project::where('id', $projectId)->value('name') : null;
+        $scope = $analytics->describeScope($params + [
+            'province' => $province,
+            'project' => $projectName,
+            'project_id' => $projectId,
+        ]);
+
         $sites = collect();
         $query = Site::where('province', $province)->with('project');
         if ($projectId) {
             $query->where('project_id', $projectId);
         }
         $query->chunk(500, fn ($chunk) => $sites->push(...$chunk));
-        $grouped = $sites->groupBy(fn ($s) => $s->municipality ?? 'Unknown');
+        $grouped = $sites->sortBy('municipality')->groupBy(fn ($s) => $s->municipality ?? 'Unknown');
 
-        return Pdf::loadView('reports.province-summary', compact('province', 'sites', 'grouped'));
+        // One statuses query for the period end, keyed by site — feeds both
+        // the municipality rollup and the per-site daily-status column.
+        $statusesAtTo = SiteDailyStatus::whereIn('site_id', $sites->pluck('id'))
+            ->whereDate('date', $to)
+            ->pluck('status', 'site_id');
+
+        $rollup = $grouped->map(function ($municipalitySites, $municipality) use ($statusesAtTo) {
+            $up = $municipalitySites->filter(fn ($s) => $statusesAtTo->get($s->id) === 'UP')->count();
+            $total = $municipalitySites->count();
+
+            return [
+                'municipality' => $municipality,
+                'sites' => $total,
+                'up' => $up,
+                'up_pct' => $total > 0 ? round($up / $total * 100, 1) : 0.0,
+            ];
+        })->values();
+
+        return Pdf::loadView('reports.province-summary', compact(
+            'province', 'sites', 'grouped', 'rollup', 'statusesAtTo', 'scope', 'userName'
+        ));
     }
 
     /** Site Type coverage (actual vs registered) — same data as /map/coverage. */
-    public function generateSiteTypeCoverageReport(array $filters): \Barryvdh\DomPDF\PDF
+    public function generateSiteTypeCoverageReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $coverage = app(SiteCoverageService::class)->coverage($filters);
-        $sites = collect();
-        if (($coverage['totals']['actual'] ?? 0) <= 200) {
-            $query = Site::query()->whereHas('activeDeployments')->with(['project:id,code,name', 'activeDeployments.device:id,asset_tag']);
-            foreach (['province', 'district', 'municipality', 'barangay'] as $column) {
-                if (! empty($filters[$column])) {
-                    $query->where("sites.{$column}", $filters[$column]);
-                }
-            }
-            if (! empty($filters['project_id'])) {
-                $query->where('sites.project_id', $filters['project_id']);
-            }
-            $sites = $query->orderBy('site_type')->orderBy('location_name')->get();
-        }
 
         return Pdf::loadView('reports.site-type-coverage', [
             'coverage' => $coverage,
-            'sites' => $sites,
-            'filters' => $coverage['filters'],
+            'sites' => $this->siteTypeAppendix($filters),
+            'userName' => $userName,
         ]);
     }
 
+    /**
+     * Deployed-site appendix rows for the filters. Chunked and deliberately
+     * uncapped — an earlier 200-row gate silently dropped rows past the cap.
+     */
+    public function siteTypeAppendix(array $filters): Collection
+    {
+        $sites = collect();
+        $query = Site::query()->whereHas('activeDeployments')->with(['project:id,code,name', 'activeDeployments.device:id,asset_tag']);
+        foreach (['province', 'district', 'municipality', 'barangay'] as $column) {
+            if (! empty($filters[$column])) {
+                $query->where("sites.{$column}", $filters[$column]);
+            }
+        }
+        if (! empty($filters['project_id'])) {
+            $query->where('sites.project_id', $filters['project_id']);
+        }
+        if (! empty($filters['site_type'])) {
+            $query->where('sites.site_type', $filters['site_type']);
+        }
+        if (! empty($filters['status'])) {
+            $query->where('sites.status', $filters['status']);
+        }
+        $query->orderBy('site_type')->orderBy('location_name')
+            ->chunk(500, fn ($chunk) => $sites->push(...$chunk));
+
+        return $sites;
+    }
+
     /** Barangay coverage (installed/existing vs total) — same data as /map/barangay-coverage. */
-    public function generateBarangayCoverageReport(array $filters): \Barryvdh\DomPDF\PDF
+    public function generateBarangayCoverageReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $coverage = app(BarangayCoverageService::class)->coverage($filters);
 
         return Pdf::loadView('reports.barangay-coverage', [
             'coverage' => $coverage,
-            'filters' => $coverage['filters'],
+            'userName' => $userName,
         ]);
     }
 

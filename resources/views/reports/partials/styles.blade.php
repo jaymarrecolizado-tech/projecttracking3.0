@@ -14,6 +14,7 @@
     .bar-row td { border-bottom: none; padding: 2px 7px; }
     .bar-track { background: #e2e8f0; height: 10px; }
     .bar-fill-up { background: #15803d; height: 10px; }
+    .bar-fill-teal { background: #0E5E6F; height: 10px; }
     .bar-fill-down { background: #dc2626; height: 10px; }
     .bar-fill-other { background: #d97706; height: 10px; }
     .badge { padding: 2px 6px; border-radius: 10px; font-size: 8px; font-weight: bold; }

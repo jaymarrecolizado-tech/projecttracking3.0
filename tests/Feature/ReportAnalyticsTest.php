@@ -166,4 +166,44 @@ class ReportAnalyticsTest extends TestCase
         $this->assertNotEmpty($content);
         $this->assertStringStartsWith('%PDF', $content);
     }
+
+    public function test_remaining_pdfs_generate_with_filters(): void
+    {
+        $this->recordStatus($this->siteA, today()->toDateString(), 'UP');
+        $reporting = app(ReportingService::class);
+
+        foreach ([
+            $reporting->generateProvinceReport('Cagayan', $this->project->id, [], 'tester'),
+            $reporting->generateSiteTypeCoverageReport(['province' => 'Cagayan', 'site_type' => 'PES', 'status' => 'active'], 'tester'),
+            $reporting->generateBarangayCoverageReport(['province' => 'Cagayan', 'municipality' => 'Aparri'], 'tester'),
+        ] as $pdf) {
+            $this->assertStringStartsWith('%PDF', $pdf->output());
+        }
+    }
+
+    public function test_site_type_appendix_is_not_capped(): void
+    {
+        $model = DeviceModel::create([
+            'manufacturer' => 'U', 'model_name' => 'X', 'model_number' => 'M1',
+            'type' => 'router', 'is_active' => true,
+        ]);
+        for ($i = 0; $i < 205; $i++) {
+            $site = Site::create([
+                'project_id' => $this->project->id, 'location_name' => "Cap Site {$i}",
+                'ap_site_code' => "CAP-{$i}", 'province' => 'Cagayan',
+                'latitude' => 18.3, 'longitude' => 121.6, 'status' => 'active',
+            ]);
+            $device = Device::create([
+                'device_model_id' => $model->id, 'asset_tag' => "DEV-CAP-{$i}",
+                'serial_number' => "SN-CAP-{$i}", 'status' => 'deployed',
+            ]);
+            DeviceDeployment::create([
+                'device_id' => $device->id, 'site_id' => $site->id,
+                'role_at_site' => 'primary_ap', 'installed_at' => now(),
+            ]);
+        }
+
+        // The old 200-row gate would have returned an empty appendix here.
+        $this->assertCount(205, app(ReportingService::class)->siteTypeAppendix([]));
+    }
 }

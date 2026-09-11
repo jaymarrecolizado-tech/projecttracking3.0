@@ -58,6 +58,22 @@ class BarangayCoverageTest extends TestCase
         ], $attributes));
     }
 
+    public function test_municipality_scope_lists_uncovered_barangays(): void
+    {
+        $this->seedReferences('Aparri', ['Tobias', 'Zitanga', 'Dadapilan']);
+        $this->site(['barangay' => 'Tobias']);
+
+        // No municipality filter: no annex (nationwide it would be thousands).
+        $this->assertSame([], app(BarangayCoverageService::class)->coverage()['uncovered']);
+
+        $coverage = app(BarangayCoverageService::class)->coverage(['municipality' => 'Aparri']);
+
+        $this->assertSame(
+            ['Dadapilan', 'Zitanga'],
+            array_column($coverage['uncovered'], 'barangay'),
+        );
+    }
+
     public function test_coverage_counts_covered_and_remaining_barangays(): void
     {
         $this->seedReferences('Aparri', ['Tobias', 'Zitanga', 'Dadapilan', 'Mabanguc']);
