@@ -4,14 +4,11 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { usePage, useForm } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 
 defineProps({
     twoFactor: { type: Object, default: () => ({ enabled: false, setup: null }) },
 });
-
-const page = usePage();
-const canManage = page.props.auth.permissions?.includes('users.manage');
 
 const confirmForm = useForm({ code: '' });
 const disableForm = useForm({ code: '' });
@@ -22,7 +19,7 @@ const start = () => useForm({}).post(route('two-factor.enable'));
 </script>
 
 <template>
-  <section v-if="canManage" aria-labelledby="two-factor-heading">
+  <section aria-labelledby="two-factor-heading">
     <h2 id="two-factor-heading" class="text-lg font-medium text-slate-900">Two-Factor Authentication</h2>
 
     <!-- Enabled -->

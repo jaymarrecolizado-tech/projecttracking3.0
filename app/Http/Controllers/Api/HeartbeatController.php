@@ -58,6 +58,10 @@ class HeartbeatController extends Controller
 
         abort_if($site === null, 404, 'Unknown site code.');
 
+        // Probe tokens inherit the owner's project-scoped daily.create grant:
+        // a token minted by a project-A encoder cannot rewrite project-B rows.
+        abort_unless($request->user()->hasPermission('daily.create', $site->project_id), 403, 'Token owner lacks daily.create for this site.');
+
         // Approved and locked records are authoritative — probes must not
         // overwrite either (APPROVED used to be silently clobbered too).
         $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', today())->first();

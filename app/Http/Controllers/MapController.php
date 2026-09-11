@@ -30,6 +30,7 @@ class MapController extends Controller
     public function geojson(Request $request, GeoJsonService $geoJsonService)
     {
         $filters = $request->only(['project_id', 'status', 'region', 'province', 'district', 'municipality', 'barangay', 'site_type', 'island_group']);
+        $filters['project_scope'] = $request->user()->accessibleProjectIds('sites.view');
 
         if ($request->boolean('deployed_only')) {
             return response()->json($geoJsonService->getDeployedDevicesForMap($filters));

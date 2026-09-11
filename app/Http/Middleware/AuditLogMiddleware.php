@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Models\AuditLog;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuditLogMiddleware
@@ -23,9 +25,18 @@ class AuditLogMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
+        // One id per HTTP write, stamped before the controller runs so model
+        // observers fired mid-request can share it (see SiteObserver).
+        $requestId = in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true)
+            ? (string) Str::uuid()
+            : null;
+        if ($requestId !== null) {
+            Context::add('audit_request_id', $requestId);
+        }
+
         $response = $next($request);
 
-        if ($request->isMethod('post') || $request->isMethod('put') || $request->isMethod('patch') || $request->isMethod('delete')) {
+        if ($requestId !== null) {
             // Only log if user is authenticated AND it's not an auth route (login, register, etc.)
             $isAuthRoute = in_array($request->path(), ['login', 'logout', 'register', 'forgot-password', 'reset-password']);
             if ($request->user() && ! str_starts_with($request->path(), '_') && ! $isAuthRoute) {
@@ -35,7 +46,7 @@ class AuditLogMiddleware
                     'auditable_type' => 'general', // Fallback for generic HTTP actions
                     'auditable_id' => null,
                     'old_values' => null,
-                    'new_values' => $this->sanitize($request->except(['password', 'password_confirmation', '_token'])),
+                    'new_values' => $this->sanitize($request->except(['password', 'password_confirmation', '_token'])) + ['request_id' => $requestId],
                     'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent(),
                 ]);

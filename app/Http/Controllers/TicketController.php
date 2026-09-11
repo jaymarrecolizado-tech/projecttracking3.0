@@ -39,8 +39,9 @@ class TicketController extends Controller
             'users' => User::where('is_active', true)
                 ->whereHas('roles.permissions', fn ($q) => $q->where('permissions.name', 'tickets.manage'))
                 ->orderBy('name')->get(['id', 'name']),
-            'sites' => Site::orderBy('location_name')->get(['id', 'location_name']),
-            'devices' => Device::orderBy('asset_tag')->get(['id', 'asset_tag']),
+            // ponytail: dropdown caps at 500 rows; searchable async selects if the fleet outgrows it.
+            'sites' => Site::orderBy('location_name')->limit(500)->get(['id', 'location_name']),
+            'devices' => Device::orderBy('asset_tag')->limit(500)->get(['id', 'asset_tag']),
         ]);
     }
 

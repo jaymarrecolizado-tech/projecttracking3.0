@@ -34,6 +34,20 @@ echo "🎨 Building Vue frontend assets..."
 npm ci
 npm run build
 
+# 3b. Split-layout docroots (CloudPanel): the built app may live outside the
+# domain folder — sync public/build there when PUBLIC_BUILD_TARGET is set.
+if [[ -n "${PUBLIC_BUILD_TARGET:-}" ]]; then
+    echo "📂 Syncing built assets to ${PUBLIC_BUILD_TARGET}..."
+    mkdir -p "${PUBLIC_BUILD_TARGET}"
+    cp -r public/build/. "${PUBLIC_BUILD_TARGET}/"
+fi
+
+# 3c. Pre-migration safety net: best-effort DB dump before the schema moves.
+if command -v mysqldump >/dev/null 2>&1; then
+    echo "💾 Pre-deploy database backup..."
+    php artisan backup:run --only-db || echo "⚠️  Pre-deploy backup failed — continuing (check backup config)."
+fi
+
 # 4. Maintenance window: migrations + cutover happen with requests parked,
 #    so a half-migrated schema is never served (Plan_revision §Phase 4.2).
 echo "🛠️  Opening maintenance window..."

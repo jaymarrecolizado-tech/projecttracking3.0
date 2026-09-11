@@ -12,6 +12,9 @@ class DailyStatusApiController extends Controller
     public function index(Request $request)
     {
         $query = SiteDailyStatus::with('site:id,location_name');
+        if (($scope = $request->user()->accessibleProjectIds('daily.view')) !== null) {
+            $query->whereHas('site', fn ($q) => $q->whereIn('project_id', $scope));
+        }
         if ($request->date) {
             $query->whereDate('date', $request->date);
         }
@@ -27,6 +30,9 @@ class DailyStatusApiController extends Controller
 
     public function bySite(Site $site, Request $request)
     {
+        $scope = $request->user()->accessibleProjectIds('daily.view');
+        abort_if($scope !== null && ! in_array($site->project_id, $scope, true), 403);
+
         $statuses = $site->dailyStatuses()
             ->when($request->date, fn ($q, $d) => $q->whereDate('date', $d))
             ->latest('date')

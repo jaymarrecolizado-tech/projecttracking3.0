@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMaintenanceTicketRequest extends FormRequest
 {
@@ -20,7 +21,10 @@ class StoreMaintenanceTicketRequest extends FormRequest
             'description' => 'nullable|string',
             'priority' => 'required|in:low,medium,high,critical',
             'category' => 'required|in:connectivity,hardware,power,firmware,other',
-            'assigned_to' => 'nullable|exists:users,id',
+            // Assignees must be active accounts that can actually work tickets.
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($q) => $q
+                ->where('is_active', true)
+                ->whereHas('roles.permissions', fn ($p) => $p->where('permissions.name', 'tickets.manage')))],
         ];
     }
 }

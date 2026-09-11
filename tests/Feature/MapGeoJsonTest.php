@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\DeviceDeployment;
 use App\Models\DeviceModel;
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\Site;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
@@ -17,6 +18,15 @@ class MapGeoJsonTest extends TestCase
     use RefreshDatabase;
 
     private int $projectId;
+
+    /** Viewers hold global sites.view, so the map stays fully visible to them. */
+    private function viewer(): User
+    {
+        $viewer = User::factory()->create();
+        $viewer->roles()->attach(Role::where('name', 'viewer')->value('id'));
+
+        return $viewer;
+    }
 
     private function siteWith(array $attributes, bool $withDeployment = false): Site
     {
@@ -63,7 +73,7 @@ class MapGeoJsonTest extends TestCase
         $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri'], withDeployment: true);
         $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Ballesteros']);
 
-        $features = collect($this->actingAs(User::factory()->create())
+        $features = collect($this->actingAs($this->viewer())
             ->getJson('/map/geojson')->json('features'));
 
         $this->assertCount(2, $features);
@@ -73,12 +83,22 @@ class MapGeoJsonTest extends TestCase
         );
     }
 
+    public function test_geojson_is_empty_without_a_project_grant(): void
+    {
+        $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri']);
+
+        $features = collect($this->actingAs(User::factory()->create())
+            ->getJson('/map/geojson')->json('features'));
+
+        $this->assertCount(0, $features);
+    }
+
     public function test_deployed_only_layer_omits_sites_without_active_deployments(): void
     {
         $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri'], withDeployment: true);
         $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Ballesteros']);
 
-        $features = collect($this->actingAs(User::factory()->create())
+        $features = collect($this->actingAs($this->viewer())
             ->getJson('/map/geojson?deployed_only=1')->json('features'));
 
         $this->assertContains('Map Site', $features->pluck('properties.location_name'));
@@ -92,7 +112,7 @@ class MapGeoJsonTest extends TestCase
         $this->siteWith(['province' => 'Cagayan', 'municipality' => 'Aparri', 'site_type' => 'PES']);
         $this->siteWith(['province' => 'Isabela', 'municipality' => 'Palanan', 'site_type' => 'PHS']);
 
-        $features = collect($this->actingAs(User::factory()->create())
+        $features = collect($this->actingAs($this->viewer())
             ->getJson('/map/geojson?province=Isabela')->json('features'));
         $this->assertCount(1, $features);
         $this->assertSame('Palanan', $features[0]['properties']['municipality']);
@@ -118,7 +138,7 @@ class MapGeoJsonTest extends TestCase
             'role_at_site' => 'backup_ap', 'installed_at' => now(),
         ]);
 
-        $features = collect($this->actingAs(User::factory()->create())
+        $features = collect($this->actingAs($this->viewer())
             ->getJson('/map/geojson?deployed_only=1')->json('features'));
 
         $this->assertCount(1, $features);

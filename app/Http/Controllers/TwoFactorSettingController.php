@@ -10,9 +10,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * TOTP enrollment for privileged accounts (gated by users.manage on the
- * routes). Flow: start setup → scan QR → confirm with a live code → enabled.
- * Disabling requires a current valid code so a stolen session can't drop it.
+ * TOTP enrollment for any account. Flow: start setup → scan QR → confirm
+ * with a live code → enabled. Disabling requires a current valid code so a
+ * stolen session can't drop it.
  */
 class TwoFactorSettingController extends Controller
 {

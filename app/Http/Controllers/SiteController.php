@@ -49,9 +49,11 @@ class SiteController extends Controller
             'deviceModels' => DeviceModel::where('is_active', true)
                 ->orderBy('manufacturer')->orderBy('model_name')
                 ->get(['id', 'manufacturer', 'model_name', 'model_number']),
+            // ponytail: stock picker capped at 200 rows; searchable async select if stock outgrows it.
             'stockDevices' => Device::where('status', 'in_stock')
                 ->with('deviceModel:id,manufacturer,model_name')
                 ->orderBy('asset_tag')
+                ->limit(200)
                 ->get(['id', 'asset_tag', 'serial_number', 'device_model_id']),
         ]);
     }

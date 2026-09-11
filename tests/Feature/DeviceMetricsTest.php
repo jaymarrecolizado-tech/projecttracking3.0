@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\DeviceMetric;
 use App\Models\DeviceModel;
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
 use App\Models\User;
@@ -21,6 +22,7 @@ class DeviceMetricsTest extends TestCase
     {
         $this->seed(RolePermissionSeeder::class);
         $user = User::factory()->create();
+        $user->roles()->attach(Role::where('name', 'encoder')->value('id'));
 
         return $user->createToken('probe')->plainTextToken;
     }

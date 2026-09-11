@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateMaintenanceTicketRequest extends FormRequest
 {
@@ -16,7 +17,9 @@ class UpdateMaintenanceTicketRequest extends FormRequest
         return [
             'status' => 'sometimes|required|in:OPEN,IN_PROGRESS,RESOLVED,CLOSED',
             'priority' => 'sometimes|in:low,medium,high,critical',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($q) => $q
+                ->where('is_active', true)
+                ->whereHas('roles.permissions', fn ($p) => $p->where('permissions.name', 'tickets.manage')))],
             'resolution_notes' => 'nullable|string|required_if:status,RESOLVED',
         ];
     }

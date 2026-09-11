@@ -29,6 +29,6 @@ export default [
         },
     },
     {
-        ignores: ['node_modules/**', 'public/build/**', 'vendor/**', 'resources/js/Pages/Auth/**'],
+        ignores: ['node_modules/**', 'public/build/**', 'vendor/**'],
     },
 ]

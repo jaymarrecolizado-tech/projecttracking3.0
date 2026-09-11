@@ -40,16 +40,27 @@ class DeviceDeploymentService
     /**
      * Record an installation. $actorId lets queued contexts (imports) preserve
      * attribution; interactive requests fall back to the signed-in user.
+     *
+     * A device holds at most one open deployment: any still-open assignment
+     * is closed first (row-locked), so a concurrent import and UI edit cannot
+     * strand one unit as deployed in two places at once.
      */
     public function open(Device $device, array $data, ?int $actorId = null): DeviceDeployment
     {
-        return DeviceDeployment::create([
-            'device_id' => $device->id,
-            'site_id' => $data['site_id'],
-            'role_at_site' => $data['role_at_site'] ?? 'primary_ap',
-            'installed_at' => $data['installed_at'] ?? now(),
-            'installed_by' => $actorId ?? auth()->id(),
-        ]);
+        return DB::transaction(function () use ($device, $data, $actorId) {
+            DeviceDeployment::where('device_id', $device->id)
+                ->whereNull('removed_at')
+                ->lockForUpdate()
+                ->update(['removed_at' => $data['installed_at'] ?? now()]);
+
+            return DeviceDeployment::create([
+                'device_id' => $device->id,
+                'site_id' => $data['site_id'],
+                'role_at_site' => $data['role_at_site'] ?? 'primary_ap',
+                'installed_at' => $data['installed_at'] ?? now(),
+                'installed_by' => $actorId ?? auth()->id(),
+            ]);
+        });
     }
 
     /**

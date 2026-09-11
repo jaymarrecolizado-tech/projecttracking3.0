@@ -119,8 +119,7 @@ class DeviceRegistryTest extends TestCase
     }
 
     public function test_user_without_permission_cannot_create_devices(): void
-    {
-        $this->seed(RolePermissionSeeder::class);
+    {        $this->seed(RolePermissionSeeder::class);
         $viewer = User::factory()->create();
         $viewer->roles()->attach(4); // viewer
 
@@ -131,5 +130,30 @@ class DeviceRegistryTest extends TestCase
             'status' => 'in_stock',
         ])->assertForbidden();
         $this->assertDatabaseMissing('devices', ['asset_tag' => 'FW-X']);
+    }
+
+    public function test_opening_a_second_deployment_closes_the_first(): void
+    {
+        $admin = $this->admin();
+        $project = Project::create([
+            'code' => 'FREEWIFI', 'name' => 'Free WiFi for All', 'report_type' => 'freewifi',
+            'marker_color' => '#0ea5e9', 'marker_icon' => 'wifi',
+        ]);
+        $siteA = Site::create(['project_id' => $project->id, 'location_name' => 'Site A', 'latitude' => 16.5, 'longitude' => 121.3]);
+        $siteB = Site::create(['project_id' => $project->id, 'location_name' => 'Site B', 'latitude' => 16.6, 'longitude' => 121.4]);
+        $device = Device::create([
+            'device_model_id' => $this->deviceModel()->id,
+            'asset_tag' => 'FW-OPEN',
+            'serial_number' => 'SNOPEN',
+            'status' => 'in_stock',
+        ]);
+
+        $service = app(\App\Services\DeviceDeploymentService::class);
+        $service->open($device, ['site_id' => $siteA->id], $admin->id);
+        $service->open($device, ['site_id' => $siteB->id], $admin->id);
+
+        $open = DeviceDeployment::where('device_id', $device->id)->whereNull('removed_at')->get();
+        $this->assertCount(1, $open);
+        $this->assertSame($siteB->id, $open->first()->site_id);
     }
 }

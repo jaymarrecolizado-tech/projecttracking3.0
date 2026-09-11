@@ -20,53 +20,53 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Two-Factor Authentication" />
+  <GuestLayout>
+    <Head title="Two-Factor Authentication" />
 
-        <div class="mb-4 text-sm text-slate-600">
-            Your account is protected with an authenticator app. Enter the
-            6-digit code from your app to finish signing in.
-        </div>
+    <div class="mb-4 text-sm text-slate-600">
+      Your account is protected with an authenticator app. Enter the
+      6-digit code from your app to finish signing in.
+    </div>
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-emerald-700">
-            {{ status }}
-        </div>
+    <div v-if="status" class="mb-4 text-sm font-medium text-emerald-700">
+      {{ status }}
+    </div>
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="code" value="Authentication code" />
-                <TextInput
-                    id="code"
-                    v-model="form.code"
-                    type="text"
-                    inputmode="numeric"
-                    autocomplete="one-time-code"
-                    class="mt-1 block w-full tracking-[0.4em] font-mono"
-                    required
-                    autofocus
-                />
-                <InputError class="mt-2" :message="form.errors.code" />
-            </div>
+    <form @submit.prevent="submit">
+      <div>
+        <InputLabel for="code" value="Authentication code" />
+        <TextInput
+          id="code"
+          v-model="form.code"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          class="mt-1 block w-full tracking-[0.4em] font-mono"
+          required
+          autofocus
+        />
+        <InputError class="mt-2" :message="form.errors.code" />
+      </div>
 
-            <div class="mt-4 flex justify-end">
-                <PrimaryButton
-                    class="ms-4"
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
-                    Verify code
-                </PrimaryButton>
-            </div>
-        </form>
+      <div class="mt-4 flex justify-end">
+        <PrimaryButton
+          class="ms-4"
+          :class="{ 'opacity-25': form.processing }"
+          :disabled="form.processing"
+        >
+          Verify code
+        </PrimaryButton>
+      </div>
+    </form>
 
-        <form class="mt-6 text-center">
-            <a
-                href="#"
-                class="text-sm text-slate-600 underline hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded"
-                @click.prevent="router.post(route('logout'))"
-            >
-                Cancel and sign out
-            </a>
-        </form>
-    </GuestLayout>
+    <form class="mt-6 text-center">
+      <a
+        href="#"
+        class="text-sm text-slate-600 underline hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded"
+        @click.prevent="router.post(route('logout'))"
+      >
+        Cancel and sign out
+      </a>
+    </form>
+  </GuestLayout>
 </template>

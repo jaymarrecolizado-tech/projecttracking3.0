@@ -114,4 +114,9 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    // Public self-registration is off by default: this is an internal ops
+    // console, so accounts should be created by an administrator. Set
+    // REGISTRATION_ENABLED=true only for environments that need open signup.
+    'registration_enabled' => env('REGISTRATION_ENABLED', false),
+
 ];

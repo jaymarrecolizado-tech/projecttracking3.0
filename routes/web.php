@@ -44,8 +44,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('devices', DeviceController::class)->only(['destroy'])->middleware('can:devices.delete');
     Route::get('d/{tag}', [DeviceController::class, 'scan'])->name('devices.scan');
 
-    Route::resource('daily-statuses', DailyStatusController::class)->only(['store', 'update', 'destroy'])->middleware('can:daily.edit');
-    Route::resource('daily-statuses', DailyStatusController::class)->only(['index', 'show'])->middleware('can:daily.view');
+    Route::resource('daily-statuses', DailyStatusController::class)->only(['store'])->middleware('can:daily.edit');
+    Route::resource('daily-statuses', DailyStatusController::class)->only(['index'])->middleware('can:daily.view');
 
     // Workflow transitions — content edits stay on daily.edit, but moving a
     // row into APPROVED/LOCKED is an approver-only act (Plan_revision §Phase 2.2).
@@ -84,7 +84,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy'])
         ->middleware('can:users.manage');
 
-    Route::resource('accomplishments', AccomplishmentController::class)->only(['store', 'update', 'destroy'])->middleware('can:accomplishment.edit');
+    Route::resource('accomplishments', AccomplishmentController::class)->only(['store'])->middleware('can:accomplishment.edit');
     Route::resource('accomplishments', AccomplishmentController::class)->only(['index', 'show'])->middleware('can:accomplishment.view');
     Route::get('/sites/{site}/accomplishments', [AccomplishmentController::class, 'bySite'])->name('sites.accomplishments')->middleware('can:accomplishment.view');
 

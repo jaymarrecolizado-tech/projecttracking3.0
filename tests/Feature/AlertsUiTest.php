@@ -115,6 +115,20 @@ class AlertsUiTest extends TestCase
         $this->assertDatabaseMissing('alert_rules', ['id' => $rule->id]);
     }
 
+    public function test_admin_can_create_firmware_outdated_rule(): void
+    {
+        $admin = User::factory()->create();
+        $admin->roles()->attach(1);
+
+        $this->actingAs($admin)
+            ->post(route('alert-rules.store'), [
+                'name' => 'Firmware outdated', 'metric' => 'firmware_outdated', 'operator' => '>=',
+                'threshold' => 1, 'duration_minutes' => 0, 'severity' => 'info',
+                'notify_roles' => ['users.manage'], 'is_active' => true,
+            ])->assertRedirect()->assertSessionHas('success');
+        $this->assertDatabaseHas('alert_rules', ['name' => 'Firmware outdated', 'metric' => 'firmware_outdated']);
+    }
+
     public function test_wallboard_carries_active_alerts_feed(): void
     {
         $this->alert(['name' => 'Critical offline rule', 'severity' => 'critical']);

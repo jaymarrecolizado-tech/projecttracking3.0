@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Site;
+use App\Models\SiteStatusEvent;
 use App\Models\User;
 use App\Services\Telegram;
 use Illuminate\Console\Command;
@@ -29,7 +30,7 @@ class DispatchDownAlerts extends Command
     {
         $downSites = Site::query()
             ->with(['project:id,name,code', 'latestDailyStatus'])
-            ->whereHas('latestDailyStatus', fn ($q) => $q->where('status', 'DOWN'))
+            ->whereHas('latestDailyStatus', fn ($q) => $q->whereIn('status', SiteStatusEvent::DOWN_STATUSES))
             ->get(['id', 'location_name', 'municipality', 'province', 'project_id', 'last_alerted_at']);
 
         // Only fresh episodes: never alerted, or alerted before this DOWN started.

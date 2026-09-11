@@ -46,52 +46,69 @@ class EvaluateAlertRules extends Command
         $fired = 0;
         $resolved = 0;
 
-        foreach ($rules as $rule) {
-            foreach ($this->sitesUnderWatch($rule) as $site) {
-                $series = $this->seriesFor($rule, $site);
-                $violating = $this->violatingPoints($rule, $series);
-
-                // Instant rules (no duration) key off the LATEST reading only —
-                // a stale violating sample must not hold the alert open after a
-                // healthy one arrives.
-                if ($rule->duration_minutes === 0) {
-                    $latestPoint = $series === [] ? null : end($series);
-                    $held = $latestPoint !== null && $this->compare((float) $latestPoint['value'], $rule->operator, (float) $rule->threshold);
-                    $violating = $held ? [$latestPoint] : [];
-                }
-
-                $open = Alert::where('rule_id', $rule->id)->where('site_id', $site->id)->whereNull('resolved_at')->first();
-
-                if ($rule->duration_minutes > 0) {
-                    // "Held for N minutes": the earliest violating sample is at
-                    // least N minutes old, i.e. the condition has been true
-                    // continuously across the window.
-                    $windowStart = Carbon::now()->subMinutes($rule->duration_minutes);
-                    $earliest = collect($violating)->min(fn ($point) => $point['ts']);
-                    $held = $earliest !== null && $earliest->lte($windowStart);
-                } else {
-                    $held = $violating !== [];
-                }
-
-                if ($held && ! $open) {
-                    $this->fire($rule, $site, $violating);
-                    $fired++;
-                } elseif ($open && $violating === []) {
-                    $open->update(['resolved_at' => now()]);
-                    $resolved++;
+        // Chunk the fleet so a 5-minute cadence never tries to hold every
+        // active site in memory at once (see sitesUnderWatch).
+        $this->sitesUnderWatch()->chunk(200, function ($sites) use ($rules, &$fired, &$resolved) {
+            foreach ($rules as $rule) {
+                foreach ($sites as $site) {
+                    [$ruleFired, $ruleResolved] = $this->evaluate($rule, $site);
+                    $fired += $ruleFired;
+                    $resolved += $ruleResolved;
                 }
             }
-        }
+        });
 
         $this->info("alerts:evaluate — {$fired} fired, {$resolved} resolved.");
 
         return self::SUCCESS;
     }
 
-    /** Active sites are always watched (offline rule); metric rules need data. */
-    private function sitesUnderWatch(AlertRule $rule)
+    /** @return array{0: int, 1: int} fired/resolved flags for one rule+site. */
+    private function evaluate(AlertRule $rule, Site $site): array
     {
-        return Site::where('status', 'active')->get(['id', 'location_name', 'municipality', 'province', 'bw_download_cir']);
+        $series = $this->seriesFor($rule, $site);
+        $violating = $this->violatingPoints($rule, $series);
+
+        // Instant rules (no duration) key off the LATEST reading only —
+        // a stale violating sample must not hold the alert open after a
+        // healthy one arrives.
+        if ($rule->duration_minutes === 0) {
+            $latestPoint = $series === [] ? null : end($series);
+            $held = $latestPoint !== null && $this->compare((float) $latestPoint['value'], $rule->operator, (float) $rule->threshold);
+            $violating = $held ? [$latestPoint] : [];
+        }
+
+        $open = Alert::where('rule_id', $rule->id)->where('site_id', $site->id)->whereNull('resolved_at')->first();
+
+        if ($rule->duration_minutes > 0) {
+            // "Held for N minutes": the earliest violating sample is at
+            // least N minutes old, i.e. the condition has been true
+            // continuously across the window.
+            $windowStart = Carbon::now()->subMinutes($rule->duration_minutes);
+            $earliest = collect($violating)->min(fn ($point) => $point['ts']);
+            $held = $earliest !== null && $earliest->lte($windowStart);
+        } else {
+            $held = $violating !== [];
+        }
+
+        if ($held && ! $open) {
+            $this->fire($rule, $site, $violating);
+
+            return [1, 0];
+        }
+        if ($open && $violating === []) {
+            $open->update(['resolved_at' => now()]);
+
+            return [0, 1];
+        }
+
+        return [0, 0];
+    }
+
+    /** Active sites are always watched (offline rule); metric rules need data. */
+    private function sitesUnderWatch()
+    {
+        return Site::where('status', 'active')->select(['id', 'location_name', 'municipality', 'province', 'bw_download_cir']);
     }
 
     /** Ordered [(ts, value)] observations for the rule's metric+window. */

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
 use App\Models\SiteStatusEvent;
@@ -66,6 +67,7 @@ class SiteStatusEventsTest extends TestCase
     {
         $site = $this->site();
         $user = User::factory()->create();
+        $user->roles()->attach(Role::where('name', 'encoder')->value('id'));
         $token = $user->createToken('probe')->plainTextToken;
 
         SiteStatusEvent::create([
@@ -86,6 +88,7 @@ class SiteStatusEventsTest extends TestCase
     {
         $site = $this->site();
         $user = User::factory()->create();
+        $user->roles()->attach(Role::where('name', 'encoder')->value('id'));
         $token = $user->createToken('probe')->plainTextToken;
 
         // Encoder marked the site DOWN — episode open.

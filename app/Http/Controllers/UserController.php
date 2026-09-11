@@ -81,7 +81,15 @@ class UserController extends Controller
             return redirect()->route('users.index')->with('error', 'You cannot delete your own account.');
         }
 
+        // Never orphan administration: a project-scoped grant still passes
+        // the global users.manage gate, so check the victim, not the actor.
+        if ($user->is_active && $user->hasPermission('users.manage') && User::activeAdminCount() <= 1) {
+            return redirect()->route('users.index')->with('error', 'You cannot delete the last administrator.');
+        }
+
         $email = $user->email;
+        $user->tokens()->delete();
+        DB::table('sessions')->where('user_id', $user->id)->delete();
         $user->delete();
 
         return redirect()->route('users.index')->with('success', "User {$email} deleted.");

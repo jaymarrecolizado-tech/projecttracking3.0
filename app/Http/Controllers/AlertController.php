@@ -14,7 +14,7 @@ use Inertia\Inertia;
  */
 class AlertController extends Controller
 {
-    private const METRICS = ['offline_minutes', 'latency_ms', 'cpu_pct', 'mem_pct', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'bandwidth_pct'];
+    private const METRICS = ['offline_minutes', 'latency_ms', 'cpu_pct', 'mem_pct', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'bandwidth_pct', 'firmware_outdated'];
 
     public function index(Request $request)
     {

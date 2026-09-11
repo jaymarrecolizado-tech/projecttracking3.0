@@ -16,7 +16,7 @@ class DownAlertsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function downSite(): Site
+    private function downSite(string $status = 'DOWN'): Site
     {
         $this->seed(RolePermissionSeeder::class);
         $project = Project::create([
@@ -33,7 +33,7 @@ class DownAlertsTest extends TestCase
             'longitude' => 121.7,
             'status' => 'active',
         ]);
-        SiteDailyStatus::create(['site_id' => $site->id, 'date' => today()->toDateString(), 'status' => 'DOWN']);
+        SiteDailyStatus::create(['site_id' => $site->id, 'date' => today()->toDateString(), 'status' => $status]);
 
         return $site;
     }
@@ -60,6 +60,21 @@ class DownAlertsTest extends TestCase
         Mail::shouldReceive('raw')->never();
         $this->artisan('alerts:down')->expectsOutputToContain('No new DOWN episodes');
         Http::assertSentCount(1);
+    }
+
+    public function test_down_server_episode_notifies(): void
+    {
+        Mail::shouldReceive('raw')->once()->andReturnNull();
+        Http::fake();
+        config()->set('monitoring.telegram.bot_token', null);
+        config()->set('monitoring.telegram.chat_id', null);
+
+        $site = $this->downSite('DOWN_SERVER');
+        $approver = User::factory()->create();
+        $approver->roles()->attach(1);
+
+        $this->artisan('alerts:down')->expectsOutputToContain('Dispatched alerts for 1 site');
+        $this->assertNotNull($site->fresh()->last_alerted_at);
     }
 
     public function test_telegram_channel_skipped_when_unconfigured(): void

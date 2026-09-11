@@ -4,6 +4,7 @@ defineProps({
     coverage: { type: Object, default: null },
     plotted: { type: Number, default: 0 },
     deployedOnly: { type: Boolean, default: false },
+    truncated: { type: Boolean, default: false },
 });
 const emit = defineEmits(['generate-pdf']);
 </script>
@@ -21,6 +22,9 @@ const emit = defineEmits(['generate-pdf']);
         <span v-else-if="plotted !== coverage.totals.registered" class="text-slate-500">
           {{ coverage.totals.registered }} registered in this filter
           (sites without coordinates are listed but not plotted).
+        </span>
+        <span v-if="truncated" class="block mt-1 text-amber-700">
+          Showing the first {{ plotted }} markers — narrow the filters to see the rest.
         </span>
       </p>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">

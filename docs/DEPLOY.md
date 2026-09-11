@@ -14,16 +14,25 @@ the one-time setup and the things only a human with server access can do.
    resolve on the site user's PATH. `mysqldump` is required by the nightly
    `backup:run` (02:15); `deploy.sh` warns when it is missing.
 4. **Get the code** — clone/upload the repo into the site dir, copy
-   `.env.production.example` to `.env` and fill it in:
-   - `APP_KEY` — generate with `php artisan key:generate` after copying.
-   - `APP_URL` — the real domain. Set `ASSET_URL` only if assets come from a
-     CDN or alternate host (route links are relative via Ziggy, so they work
-     from any host).
-   - Mail, `WATCHDOG_EMAIL`, `TELEGRAM_*` when used.
+    `.env.production.example` to `.env` and fill it in:
+    - `APP_KEY` — generate with `php artisan key:generate` after copying.
+    - `APP_URL` — the real domain. Set `ASSET_URL` only if assets come from a
+      CDN or alternate host (route links are relative via Ziggy, so they work
+      from any host).
+    - Keep `REGISTRATION_ENABLED=false` (accounts are provisioned by admins).
+    - Keep `SESSION_ENCRYPT=true` and `SESSION_SECURE_COOKIE=true`.
+    - Set `SANCTUM_EXPIRATION` (probe-token lifetime, minutes) to a rotation
+      your field team can live with.
+    - Leave `CORS_ALLOWED_ORIGINS` empty unless a browser app calls `/api/*`.
+    - Mail, `WATCHDOG_EMAIL`, `TELEGRAM_*` when used.
 5. **First provisioning** — `bash deploy.sh` (it runs composer --no-dev,
-   `npm ci && npm run build`, `migrate --force`, caches, `queue:restart`).
-   Then seed baseline roles/permissions if a fresh DB:
-   `php artisan db:seed --force`.
+    `npm ci && npm run build`, an optional pre-migration DB backup,
+    `migrate --force`, caches, `queue:restart`).
+    On the split CloudPanel layout, export `PUBLIC_BUILD_TARGET` to the domain
+    folder so `deploy.sh` syncs `public/build` there, e.g.
+    `PUBLIC_BUILD_TARGET=/home/<site-user>/htdocs/<domain>/build bash deploy.sh`.
+    Then seed baseline roles/permissions if a fresh DB:
+    `php artisan db:seed --force`.
 
 ## 2. Cron (user crontab, every minute)
 
@@ -57,8 +66,14 @@ new code after every deploy. If supervisor is not available, a fallback cron
 | 01:30 | report export cleanup                 |
 | 02:00 | backup cleanup                        |
 | 02:15 | DB backup (`mysqldump` required)      |
+| 03:00 | telemetry prune                       |
+| monthly (1st 03:30) | audit log prune           |
+| monthly (1st 04:00) | expired token prune         |
 | 07:00 | encoder reminder / warranty digest (Mon) |
+| 08:00 | backup health monitor                 |
 | 15 min| DOWN alerts, import cleanup, Telegram alerts |
+| hourly :10 | device metric aggregation        |
+| 5 min | alert rule evaluation                 |
 | 23:00 | NO_DATA snapshot                      |
 
 ## 5. Post-deploy smoke test

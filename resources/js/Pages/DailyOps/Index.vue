@@ -47,6 +47,16 @@ const reportedCount = computed(() => {
     return base + editedIds.size;
 });
 
+// Grouped without Object.groupBy so older field browsers keep working.
+const groupedRows = computed(() => {
+    const groups = {};
+    for (const row of props.rows ?? []) {
+        const key = row.municipality || 'Unknown';
+        (groups[key] ??= []).push(row);
+    }
+    return groups;
+});
+
 function applyFilter() {
     router.get(route('daily-ops.index'), { date: props.date, ...filterForm.data() }, { preserveState: true });
 }
@@ -143,7 +153,7 @@ function markRemainingUp() {
     </div>
 
     <!-- Rows grouped by municipality -->
-    <div v-for="(groupRows, municipality) in Object.groupBy(rows, (r) => r.municipality || 'Unknown')" :key="municipality" class="mb-6">
+    <div v-for="(groupRows, municipality) in groupedRows" :key="municipality" class="mb-6">
       <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 px-1">
         {{ municipality }} <span class="text-slate-400">({{ groupRows.length }})</span>
       </h3>

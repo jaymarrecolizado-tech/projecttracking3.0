@@ -91,6 +91,21 @@ class UserManagementTest extends TestCase
         $this->assertTrue($admin->fresh()->is_active);
     }
 
+    public function test_admin_cannot_demote_own_account(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->put("/users/{$admin->id}", [
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'password' => null,
+            'is_active' => true,
+            'roles' => [],
+        ])->assertRedirect();
+
+        $this->assertTrue($admin->fresh()->hasPermission('users.manage'));
+    }
+
     public function test_admin_cannot_delete_own_account(): void
     {
         $admin = $this->admin();
@@ -100,5 +115,21 @@ class UserManagementTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_deleting_user_revokes_tokens(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->create();
+        $target->createToken('old-probe', ['heartbeat']);
+
+        $this->assertDatabaseHas('personal_access_tokens', ['tokenable_id' => $target->id]);
+
+        $this->actingAs($admin)->delete("/users/{$target->id}")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $target->id]);
+        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $target->id]);
     }
 }

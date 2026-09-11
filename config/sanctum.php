@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EncryptCookies;
-use App\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Laravel\Sanctum\Sanctum;
 
 return [
@@ -14,7 +14,9 @@ return [
 
     'guard' => ['web'],
 
-    'expiration' => null,
+    // Probe-token lifetime in minutes. Null means never expire; the default
+    // rotates field tokens every 30 days (see ProbeTokenController).
+    'expiration' => env('SANCTUM_EXPIRATION', 43200),
 
     'token_prefix' => '',
 

@@ -81,8 +81,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/probe-tokens', [ProbeTokenController::class, 'store'])->name('probe-tokens.store');
     Route::delete('/profile/probe-tokens/{tokenId}', [ProbeTokenController::class, 'destroy'])->name('probe-tokens.destroy');
 
-    // TOTP enrollment — privileged accounts only (users.manage).
-    Route::post('/profile/two-factor', [TwoFactorSettingController::class, 'store'])->name('two-factor.enable')->middleware('can:users.manage');
-    Route::post('/profile/two-factor/confirm', [TwoFactorSettingController::class, 'confirm'])->name('two-factor.confirm')->middleware('can:users.manage');
-    Route::delete('/profile/two-factor', [TwoFactorSettingController::class, 'destroy'])->name('two-factor.disable')->middleware('can:users.manage');
+    // TOTP enrollment — every account may protect itself. Disabling still
+    // requires a current valid code so a stolen session can't drop it.
+    Route::post('/profile/two-factor', [TwoFactorSettingController::class, 'store'])->name('two-factor.enable')->middleware('throttle:10,1');
+    Route::post('/profile/two-factor/confirm', [TwoFactorSettingController::class, 'confirm'])->name('two-factor.confirm')->middleware('throttle:10,1');
+    Route::delete('/profile/two-factor', [TwoFactorSettingController::class, 'destroy'])->name('two-factor.disable')->middleware('throttle:10,1');
 });

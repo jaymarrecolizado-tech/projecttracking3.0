@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -120,13 +121,21 @@ class ImportService
                     $device->update(['mac_address' => $macAddress]);
                 }
             } else {
-                // New unit: auto asset tag (FW-####) when the sheet leaves it blank.
-                $device = Device::create($attributes + [
-                    'serial_number' => $serialNumber,
-                    'asset_tag' => trim($data['ASSET TAG'] ?? '') ?: $this->nextAssetTag(),
-                    'mac_address' => $macAddress,
-                    'status' => 'in_stock',
-                ]);
+                // New unit: explicit tag from the sheet, or an auto FW-#### tag
+                // with one retry if a concurrent import grabbed the same number.
+                $tag = trim($data['ASSET TAG'] ?? '');
+                $device = $tag !== ''
+                    ? Device::create($attributes + [
+                        'serial_number' => $serialNumber,
+                        'asset_tag' => $tag,
+                        'mac_address' => $macAddress,
+                        'status' => 'in_stock',
+                    ])
+                    : $this->createDeviceWithUniqueTag($attributes + [
+                        'serial_number' => $serialNumber,
+                        'mac_address' => $macAddress,
+                        'status' => 'in_stock',
+                    ]);
             }
 
             // Optional immediate assignment via site code
@@ -147,8 +156,7 @@ class ImportService
     }
 
     protected function nextAssetTag(): string
-    {
-        // SUBSTRING/UNSIGNED on MySQL & friends, SUBSTR/INTEGER elsewhere (SQLite).
+    {        // SUBSTRING/UNSIGNED on MySQL & friends, SUBSTR/INTEGER elsewhere (SQLite).
         $isMysql = in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
         $expression = $isMysql
             ? DB::raw('MAX(CAST(SUBSTRING(asset_tag, 4) AS UNSIGNED))')
@@ -158,6 +166,17 @@ class ImportService
             ->value($expression);
 
         return 'FW-'.str_pad((string) ((int) $max + 1), 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Auto-tagged device creation with one retry: two imports racing on the
+     * same MAX(asset_tag)+1 hit the unique index, so regenerate and retry
+     * instead of failing the row.
+     */
+    protected function createDeviceWithUniqueTag(array $attributes): Device
+    {
+        return retry(3, fn () => Device::create($attributes + ['asset_tag' => $this->nextAssetTag()]), 0,
+            fn ($e) => $e instanceof QueryException && str_contains($e->getMessage(), 'asset_tag'));
     }
 
     protected function parseDateCell(mixed $value): ?string
@@ -198,13 +217,14 @@ class ImportService
                 return;
             }
             $dateColumns = $this->parseDateColumns($headers);
+            $protectedSkipped = 0;
             foreach ($rows as $rowIndex => $row) {
                 try {
                     $rowData = array_combine($headers, $row);
-                    $site = DB::transaction(function () use ($rowData, $freewifi, $dateColumns) {
+                    $site = DB::transaction(function () use ($rowData, $freewifi, $dateColumns, &$protectedSkipped) {
                         $site = $this->upsertSite($rowData, $freewifi->id);
                         if ($site && $dateColumns) {
-                            $this->upsertDailyStatuses($site->id, $rowData, $dateColumns);
+                            $protectedSkipped += $this->upsertDailyStatuses($site->id, $rowData, $dateColumns);
                         }
 
                         return $site;
@@ -221,6 +241,9 @@ class ImportService
                         'message' => $e->getMessage(),
                     ];
                 }
+            }
+            if ($protectedSkipped > 0) {
+                $errors[] = ['message' => "Left {$protectedSkipped} APPROVED/LOCKED row(s) untouched"];
             }
             $batch->update([
                 'job_status' => 'DONE',
@@ -270,8 +293,9 @@ class ImportService
         );
     }
 
-    protected function upsertDailyStatuses(int $siteId, array $data, array $dateColumns): void
+    protected function upsertDailyStatuses(int $siteId, array $data, array $dateColumns): int
     {
+        $protectedSkipped = 0;
         foreach ($dateColumns as $col) {
             $date = $col['date'];
             $statusValue = $data[$col['header']] ?? '';
@@ -282,6 +306,12 @@ class ImportService
             };
             $bwCol = str_replace('Status', 'BW', $col['header']);
             $usersCol = str_replace('Status', 'Users', $col['header']);
+            $existing = SiteDailyStatus::where('site_id', $siteId)->whereDate('date', $date)->first();
+            if ($existing && in_array($existing->entry_status, ['APPROVED', 'LOCKED'], true)) {
+                $protectedSkipped++;
+
+                continue;
+            }
             SiteDailyStatus::updateOrCreate(
                 ['site_id' => $siteId, 'date' => $date],
                 [
@@ -291,6 +321,8 @@ class ImportService
                 ]
             );
         }
+
+        return $protectedSkipped;
     }
 
     protected function parseDateColumns(array $headers): array
@@ -337,6 +369,7 @@ class ImportService
             $sitesTouched = 0;
             $devicesUpserted = 0;
             $statusesUpserted = 0;
+            $protectedSkipped = 0;
             $skipped = [];
             $errors = [];
 
@@ -355,7 +388,7 @@ class ImportService
                 try {
                     match ($kind) {
                         'roster' => $this->importRosterSheet($grid, $headers, $actorId, $sitesTouched, $devicesUpserted),
-                        'telemetry' => $this->importTelemetrySheet($grid, $headers, $actorId, $sitesTouched, $statusesUpserted),
+                        'telemetry' => $this->importTelemetrySheet($grid, $headers, $actorId, $sitesTouched, $statusesUpserted, $protectedSkipped),
                         default => $skipped[] = ['sheet' => $title, 'reason' => 'not a roster/telemetry sheet'],
                     };
                 } catch (\Throwable $e) {
@@ -363,12 +396,16 @@ class ImportService
                 }
             }
 
+            $log = array_merge($errors, array_map(fn ($s) => ['message' => "Skipped sheet '{$s['sheet']}': {$s['reason']}"], $skipped));
+            if ($protectedSkipped > 0) {
+                $log[] = ['message' => "Left {$protectedSkipped} APPROVED/LOCKED row(s) untouched"];
+            }
             $batch->update([
                 'job_status' => $errors && $sitesTouched + $devicesUpserted + $statusesUpserted === 0 ? 'FAILED' : 'DONE',
                 'rows_total' => $sitesTouched + $statusesUpserted,
                 'rows_success' => $sitesTouched + $devicesUpserted + $statusesUpserted,
                 'rows_failed' => count($errors),
-                'error_log' => array_merge($errors, array_map(fn ($s) => ['message' => "Skipped sheet '{$s['sheet']}': {$s['reason']}"], $skipped)),
+                'error_log' => $log,
                 'completed_at' => now(),
             ]);
         } catch (\Exception $e) {
@@ -539,7 +576,7 @@ class ImportService
      * Month sheets: metadata block + per-day triplets whose status column header
      * is an Excel serial date, followed by Bandwidth and Total Users columns.
      */
-    protected function importTelemetrySheet(array $grid, array $headers, ?int $actorId, int &$sitesTouched, int &$statusesUpserted): void
+    protected function importTelemetrySheet(array $grid, array $headers, ?int $actorId, int &$sitesTouched, int &$statusesUpserted, int &$protectedSkipped): void
     {
         $index = $this->headerIndexes($headers);
         $days = $this->serialDateColumns($headers);
@@ -592,7 +629,7 @@ class ImportService
 
             // One transaction per AP row: ~30 day-upserts commit together instead of
             // each hitting its own fsync — minutes saved across 1,500-row month sheets.
-            DB::transaction(function () use ($site, $days, $row, &$statusesUpserted) {
+            DB::transaction(function () use ($site, $days, $row, &$statusesUpserted, &$protectedSkipped) {
                 foreach ($days as $colIdx => $date) {
                     $raw = strtoupper(trim((string) ($row[$colIdx] ?? '')));
                     if ($raw === '' || str_starts_with($raw, '=')) {
@@ -619,6 +656,13 @@ class ImportService
                     ];
 
                     $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', $date)->first();
+                    // APPROVED/LOCKED rows are authoritative — imports must not
+                    // clobber human-reviewed history (matches heartbeat/NMS).
+                    if ($existing && in_array($existing->entry_status, ['APPROVED', 'LOCKED'], true)) {
+                        $protectedSkipped++;
+
+                        continue;
+                    }
                     if ($existing) {
                         $existing->fill($attributes)->save();
                     } else {
@@ -693,9 +737,8 @@ class ImportService
                 ['manufacturer' => $manufacturer, 'model_number' => $brand ?: 'AP'],
                 ['model_name' => $brand ?: 'Unspecified Access Point', 'type' => 'outdoor_ap', 'is_active' => true],
             );
-            $device = Device::create([
+            $device = $this->createDeviceWithUniqueTag([
                 'device_model_id' => $model->id,
-                'asset_tag' => $this->nextAssetTag(),
                 'serial_number' => 'MAC-'.$mac,
                 'mac_address' => $mac,
                 'status' => 'in_stock',

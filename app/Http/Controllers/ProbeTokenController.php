@@ -13,11 +13,25 @@ class ProbeTokenController extends Controller
 {
     public function store(Request $request)
     {
+        // Probe tokens can rewrite operational status, so issuance requires an
+        // existing daily-write permission — not merely an authenticated account.
+        abort_unless($request->user()->hasPermission('daily.create'), 403);
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
         ]);
 
-        $token = Auth::user()->createToken($validated['name'], ['heartbeat']);
+        // Rotation hygiene: drop this account's expired tokens on each
+        // issuance (plus the monthly sanctum:prune-expired sweep) so the
+        // token table cannot grow stale rows forever.
+        Auth::user()->tokens()->where('expires_at', '<', now())->delete();
+
+        $lifetime = config('sanctum.expiration');
+        $token = Auth::user()->createToken(
+            $validated['name'],
+            ['heartbeat'],
+            $lifetime ? now()->addMinutes((int) $lifetime) : null,
+        );
 
         return back()
             ->with('success', 'Probe token created — copy it now, it will not be shown again.')

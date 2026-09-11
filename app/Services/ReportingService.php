@@ -16,7 +16,10 @@ class ReportingService
 {
     public function generateProjectSummaryPdf(Project $project): \Barryvdh\DomPDF\PDF
     {
-        $sites = $project->sites()->with('latestDailyStatus')->get();
+        // Chunk the fleet so a province-sized project never hydrates every
+        // site row into memory at once.
+        $sites = collect();
+        $project->sites()->with('latestDailyStatus')->chunk(500, fn ($chunk) => $sites->push(...$chunk));
         $stats = [
             'total' => $sites->count(),
             'active' => $sites->where('status', 'active')->count(),
@@ -38,7 +41,12 @@ class ReportingService
         if ($projectId) {
             $query->where('project_id', $projectId);
         }
-        $sites = $query->get();
+        $sites = collect();
+        $query = Site::where('province', $province)->with('project');
+        if ($projectId) {
+            $query->where('project_id', $projectId);
+        }
+        $query->chunk(500, fn ($chunk) => $sites->push(...$chunk));
         $grouped = $sites->groupBy(fn ($s) => $s->municipality ?? 'Unknown');
 
         return Pdf::loadView('reports.province-summary', compact('province', 'sites', 'grouped'));

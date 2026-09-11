@@ -35,8 +35,26 @@ class UpdateUserRequest extends FormRequest
 
         if ($this->user()->id === $target->id) {
             $data['is_active'] = true;
+            // Role changes to your own account must come from another admin.
+            $data['roles'] = $this->currentAssignments($target);
+
+            return $data;
+        }
+
+        // Nor may anyone deactivate or demote the last active administrator.
+        if ($target->is_active && $target->hasPermission('users.manage') && User::activeAdminCount() <= 1) {
+            $data['is_active'] = true;
+            $data['roles'] = $this->currentAssignments($target);
         }
 
         return $data;
+    }
+
+    private function currentAssignments(User $target): array
+    {
+        return $target->roles->map(fn ($role) => [
+            'role_id' => $role->id,
+            'project_id' => data_get($role, 'pivot.project_id'),
+        ])->all();
     }
 }

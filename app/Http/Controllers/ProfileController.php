@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,8 +58,15 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Never orphan administration: the last active account that can
+        // manage users cannot delete itself.
+        if ($user->hasPermission('users.manage') && User::activeAdminCount() <= 1) {
+            return Redirect::route('profile.edit')->with('error', 'You are the last administrator — hand over access before deleting this account.');
+        }
+
         Auth::logout();
 
+        $user->tokens()->delete();
         $user->delete();
 
         $request->session()->invalidate();

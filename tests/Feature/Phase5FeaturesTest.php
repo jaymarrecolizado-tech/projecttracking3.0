@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\MaintenanceTicket;
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
 use App\Models\User;
@@ -57,6 +58,7 @@ class Phase5FeaturesTest extends TestCase
             'status' => 'active',
         ]);
         $tokenUser = User::factory()->create();
+        $tokenUser->roles()->attach(Role::where('name', 'encoder')->value('id'));
         $token = $tokenUser->createToken('probe')->plainTextToken;
 
         // First beat: DOWN.
@@ -121,6 +123,26 @@ class Phase5FeaturesTest extends TestCase
         $viewer = User::factory()->create();
         $viewer->roles()->attach(4);
         $this->actingAs($viewer)->get('/tickets')->assertForbidden();
+    }
+
+    public function test_tickets_reject_ineligible_assignees(): void
+    {
+        $admin = $this->admin();
+        $project = $this->project();
+        $site = Site::create([
+            'project_id' => $project->id,
+            'location_name' => 'Assignee Site',
+            'latitude' => 14.6,
+            'longitude' => 120.9,
+        ]);
+        $viewer = User::factory()->create();
+        $viewer->roles()->attach(Role::where('name', 'viewer')->value('id'));
+
+        $this->actingAs($admin)->post('/tickets', [
+            'title' => 'Bad assignee', 'site_id' => $site->id,
+            'priority' => 'high', 'category' => 'hardware', 'assigned_to' => $viewer->id,
+        ])->assertSessionHasErrors('assigned_to');
+        $this->assertDatabaseMissing('maintenance_tickets', ['title' => 'Bad assignee']);
     }
 
     public function test_device_asset_tag_survives_mysql_mode_import(): void

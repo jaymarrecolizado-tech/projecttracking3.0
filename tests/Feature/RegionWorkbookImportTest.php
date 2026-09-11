@@ -104,8 +104,7 @@ class RegionWorkbookImportTest extends TestCase
     }
 
     public function test_reimport_is_idempotent_and_fills_blanks(): void
-    {
-        $this->seed(RolePermissionSeeder::class);
+    {        $this->seed(RolePermissionSeeder::class);
         $admin = User::factory()->create();
         $admin->roles()->attach(1);
 
@@ -121,5 +120,32 @@ class RegionWorkbookImportTest extends TestCase
         $this->assertSame(1, Site::count());
         $this->assertSame(1, Device::count());
         $this->assertSame(2, SiteDailyStatus::count());
+    }
+
+    public function test_import_leaves_approved_rows_untouched(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $admin = User::factory()->create();
+        $admin->roles()->attach(1);
+
+        $path = $this->fixtureWorkbook();
+        $service = app(ImportService::class);
+        $first = FreewifiImportBatch::create(['filename' => 'a.xlsx', 'type' => 'region_workbook', 'imported_by' => $admin->id]);
+        $service->processRegionWorkbook($first, $path, $admin->id);
+
+        // Human approves the first day as DOWN with telemetry.
+        $site = Site::where('ap_site_code', 'GIDA-R2-001A')->first();
+        $row = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', '2026-01-08')->first();
+        $row->update(['status' => 'DOWN', 'entry_status' => 'APPROVED', 'bandwidth_utilization_mbps' => 9.5]);
+
+        $second = FreewifiImportBatch::create(['filename' => 'b.xlsx', 'type' => 'region_workbook', 'imported_by' => $admin->id]);
+        $service->processRegionWorkbook($second, $path, $admin->id);
+        unlink($path);
+
+        $this->assertSame('DONE', $second->fresh()->job_status);
+        $this->assertSame('DOWN', $row->fresh()->status);
+        $this->assertSame('APPROVED', $row->fresh()->entry_status);
+        $this->assertEquals('9.5', $row->fresh()->bandwidth_utilization_mbps);
+        $this->assertStringContainsString('APPROVED/LOCKED', collect($second->fresh()->error_log)->pluck('message')->implode(' '));
     }
 }

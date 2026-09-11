@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\AuditLog;
 use App\Models\Site;
 use App\Support\CoverageCache;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Request;
 
 class SiteObserver
@@ -58,13 +59,15 @@ class SiteObserver
 
     protected function log(string $action, Site $site, ?array $old, ?array $new): void
     {
+        // request_id matches the HTTP-write audit row for the same request
+        // (null for queue/console writes), so duplicates collapse by request.
         AuditLog::create([
             'user_id' => auth()->id(),
             'action' => $action,
             'auditable_type' => Site::class,
             'auditable_id' => $site->id,
             'old_values' => $old,
-            'new_values' => $new,
+            'new_values' => is_array($new) ? $new + ['request_id' => Context::get('audit_request_id')] : $new,
             'ip_address' => Request::ip(),
             'user_agent' => Request::userAgent(),
         ]);

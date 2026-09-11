@@ -71,17 +71,55 @@ class DailyStatusController extends Controller
 
     public function batchStore(BatchStoreDailyStatusRequest $request)
     {
+        $user = $request->user();
         $data = $request->validated();
+        $saved = 0;
+        $skipped = [];
 
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () use ($data, $user, &$saved, &$skipped) {
             foreach ($data['entries'] as $entry) {
+                $site = Site::find($entry['site_id']);
+                if (! $site) {
+                    continue;
+                }
+
+                $existing = SiteDailyStatus::where('site_id', $site->id)->whereDate('date', $entry['date'])->first();
+
+                // Same guards as the Daily Ops board: LOCKED rows are
+                // immutable, APPROVED rows need an approver, and everything
+                // else resolves through per-project create/edit grants.
+                if ($existing && $existing->entry_status === 'LOCKED') {
+                    $skipped[] = $site->ap_site_code.' is locked';
+
+                    continue;
+                }
+                if ($existing && $existing->entry_status === 'APPROVED') {
+                    if (! $user->hasPermission('daily.approve', $site->project_id)) {
+                        $skipped[] = $site->ap_site_code.' is approved and locked for you';
+
+                        continue;
+                    }
+                } elseif (! $user->hasPermission($existing ? 'daily.edit' : 'daily.create', $site->project_id)) {
+                    $skipped[] = $site->ap_site_code.' not permitted';
+
+                    continue;
+                }
+
                 SiteDailyStatus::updateOrCreate(
                     ['site_id' => $entry['site_id'], 'date' => $entry['date']],
                     $entry + ['created_by' => auth()->id()]
                 );
+                $saved++;
             }
         });
 
-        return redirect()->back()->with('success', 'Batch statuses saved.');
+        $message = "Saved {$saved} entr".($saved === 1 ? 'y' : 'ies').'.';
+        if ($skipped) {
+            $message .= ' Skipped: '.implode('; ', array_slice($skipped, 0, 5)).(count($skipped) > 5 ? '…' : '');
+
+            return redirect()->back()->with('error', $message);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }

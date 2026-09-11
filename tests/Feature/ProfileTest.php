@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -79,6 +81,19 @@ class ProfileTest extends TestCase
         $this->assertNull($user->fresh());
     }
 
+    public function test_last_admin_cannot_delete_their_account(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $admin = User::factory()->create();
+        $admin->roles()->attach(Role::where('name', 'admin')->value('id'));
+
+        $this->actingAs($admin)->delete('/profile', ['password' => 'password'])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHas('error');
+
+        $this->assertNotNull($admin->fresh());
+    }
+
     public function test_correct_password_must_be_provided_to_delete_account(): void
     {
         $user = User::factory()->create();
@@ -95,5 +110,23 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_issuing_probe_token_prunes_expired_tokens(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $admin = User::factory()->create();
+        $admin->roles()->attach(Role::where('name', 'admin')->value('id'));
+
+        $admin->createToken('stale', ['heartbeat'], now()->subDay());
+        $admin->createToken('fresh', ['heartbeat'], now()->addMonth());
+
+        $this->actingAs($admin)->post(route('probe-tokens.store'), ['name' => 'field-probe'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $admin->id, 'name' => 'stale']);
+        $this->assertDatabaseHas('personal_access_tokens', ['tokenable_id' => $admin->id, 'name' => 'fresh']);
+        $this->assertDatabaseHas('personal_access_tokens', ['tokenable_id' => $admin->id, 'name' => 'field-probe']);
     }
 }

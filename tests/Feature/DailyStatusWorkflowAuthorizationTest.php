@@ -66,11 +66,12 @@ class DailyStatusWorkflowAuthorizationTest extends TestCase
         ]);
     }
 
-    private function userWithRole(string $role): User
+    private function userWithRole(string $role, ?int $projectId = null): User
     {
         $user = User::factory()->create();
         $user->roles()->attach(
             Role::where('name', $role)->value('id'),
+            ['project_id' => $projectId],
         );
 
         return $user;
@@ -165,6 +166,83 @@ class DailyStatusWorkflowAuthorizationTest extends TestCase
             'site_code' => $this->site->ap_site_code,
             'status' => 'UP',
         ])->assertForbidden();
+    }
+
+    public function test_removed_resource_actions_are_not_routed(): void
+    {
+        $viewer = $this->userWithRole('viewer');
+
+        $this->actingAs($viewer)->get("/daily-statuses/{$this->site->id}")->assertNotFound();
+        $this->actingAs($viewer)->put("/daily-statuses/{$this->site->id}", ['status' => 'UP'])->assertNotFound();
+        $this->actingAs($viewer)->delete("/daily-statuses/{$this->site->id}")->assertNotFound();
+        $this->actingAs($viewer)->put('/accomplishments/1', ['status' => 'UP'])->assertMethodNotAllowed();
+        $this->actingAs($viewer)->delete('/accomplishments/1')->assertMethodNotAllowed();
+    }
+
+    public function test_probe_tokens_require_daily_create_permission(): void
+    {
+        $roleless = User::factory()->create();
+        $this->actingAs($roleless)->post('/profile/probe-tokens', ['name' => 'field'])->assertForbidden();
+
+        $encoder = $this->userWithRole('encoder');
+        $this->actingAs($encoder)->post('/profile/probe-tokens', ['name' => 'field'])
+            ->assertRedirect();
+        $this->assertSame(1, $encoder->tokens()->count());
+        $this->assertNotNull($encoder->tokens()->first()->expires_at);
+    }
+
+    public function test_heartbeat_token_is_scoped_to_the_owners_projects(): void
+    {
+        $otherProject = Project::create([
+            'code' => 'OTHER', 'name' => 'Other Project', 'report_type' => 'freewifi',
+            'marker_color' => '#0ea5e9', 'marker_shape' => 'circle', 'marker_icon' => 'wifi',
+            'is_active' => true,
+        ]);
+        $otherSite = Site::create([
+            'project_id' => $otherProject->id, 'location_name' => 'Other Site',
+            'ap_site_code' => 'AP-OTHER-1', 'latitude' => 18.0, 'longitude' => 121.0,
+            'status' => 'active',
+        ]);
+
+        $encoder = $this->userWithRole('encoder', $this->project->id);
+        $token = $encoder->createToken('probe', ['heartbeat'])->plainTextToken;
+
+        // Own project: allowed.
+        $this->withToken($token)->postJson('/api/heartbeat', [
+            'site_code' => $this->site->ap_site_code, 'status' => 'UP',
+        ])->assertOk();
+
+        // Other project: forbidden, nothing written.
+        $this->withToken($token)->postJson('/api/heartbeat', [
+            'site_code' => $otherSite->ap_site_code, 'status' => 'DOWN',
+        ])->assertForbidden();
+        $this->assertSame(0, $otherSite->dailyStatuses()->count());
+    }
+
+    public function test_batch_store_enforces_project_scope_and_locked_rows(): void
+    {
+        $encoder = $this->userWithRole('encoder', $this->project->id);
+        $otherProject = Project::create([
+            'code' => 'OTHER', 'name' => 'Other Project', 'report_type' => 'freewifi',
+            'marker_color' => '#0ea5e9', 'marker_shape' => 'circle', 'marker_icon' => 'wifi',
+            'is_active' => true,
+        ]);
+        $otherSite = Site::create([
+            'project_id' => $otherProject->id, 'location_name' => 'Other Site',
+            'latitude' => 18.0, 'longitude' => 121.0, 'status' => 'active',
+        ]);
+        $locked = $this->statusRow('LOCKED');
+        $date = today()->subDay()->toDateString();
+
+        $this->actingAs($encoder)->post('/daily-statuses/batch', ['entries' => [
+            ['site_id' => $this->site->id, 'date' => today()->toDateString(), 'status' => 'DOWN'],
+            ['site_id' => $this->site->id, 'date' => $date, 'status' => 'UP'],
+            ['site_id' => $otherSite->id, 'date' => $date, 'status' => 'UP'],
+        ]])->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame('UP', $locked->fresh()->status);
+        $this->assertSame('UP', SiteDailyStatus::where('site_id', $this->site->id)->whereDate('date', $date)->first()->status);
+        $this->assertSame(0, $otherSite->dailyStatuses()->count());
     }
 
     public function test_read_routes_require_view_permissions(): void

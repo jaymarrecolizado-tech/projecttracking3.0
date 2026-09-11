@@ -55,6 +55,38 @@ class User extends Authenticatable
         return $this->roles->contains('name', $roleName);
     }
 
+    /** Active accounts holding users.manage — administration is orphaned at zero. */
+    public static function activeAdminCount(): int
+    {
+        return static::where('is_active', true)
+            ->whereHas('roles.permissions', fn ($q) => $q->where('permissions.name', 'users.manage'))
+            ->count();
+    }
+
+    /**
+     * Project ids this user may access for a permission. Null means
+     * unrestricted (a global grant); otherwise only the listed projects.
+     * An empty array means no access.
+     */
+    public function accessibleProjectIds(string $permission): ?array
+    {
+        $this->loadMissing('roles.permissions');
+
+        $ids = [];
+        foreach ($this->roles as $role) {
+            if (! $role->permissions->contains('name', $permission)) {
+                continue;
+            }
+            $pivotProjectId = data_get($role, 'pivot.project_id');
+            if ($pivotProjectId === null) {
+                return null;
+            }
+            $ids[] = (int) $pivotProjectId;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
     public function hasTwoFactorEnabled(): bool
     {
         return $this->two_factor_enabled_at !== null && $this->two_factor_secret !== null;

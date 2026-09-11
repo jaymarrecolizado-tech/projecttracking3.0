@@ -7,12 +7,18 @@ use App\Http\Controllers\Api\SiteApiController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/sites', [SiteApiController::class, 'index']);
-    Route::get('/sites/{site}', [SiteApiController::class, 'show']);
-    Route::get('/map/sites', [MapApiController::class, 'sites']);
-    Route::get('/map/project/{project}', [MapApiController::class, 'projectSites']);
-    Route::get('/daily-statuses', [DailyStatusApiController::class, 'index']);
-    Route::get('/daily-statuses/site/{site}', [DailyStatusApiController::class, 'bySite']);
+    // Read endpoints resolve through the same view permissions as the web
+    // console — a bare Sanctum token is not a read grant by itself.
+    Route::middleware('can:sites.view')->group(function () {
+        Route::get('/sites', [SiteApiController::class, 'index']);
+        Route::get('/sites/{site}', [SiteApiController::class, 'show']);
+        Route::get('/map/sites', [MapApiController::class, 'sites']);
+        Route::get('/map/project/{project}', [MapApiController::class, 'projectSites']);
+    });
+    Route::middleware('can:daily.view')->group(function () {
+        Route::get('/daily-statuses', [DailyStatusApiController::class, 'index']);
+        Route::get('/daily-statuses/site/{site}', [DailyStatusApiController::class, 'bySite']);
+    });
 
     // Field-probe heartbeat ingest.
     Route::post('/heartbeat', [HeartbeatController::class, 'store'])->middleware('throttle:60,1');

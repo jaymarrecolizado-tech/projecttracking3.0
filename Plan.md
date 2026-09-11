@@ -1,8 +1,10 @@
 # Plan — DICT FreeWiFi Monitor
 
-Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = not built, or built locally but not on production.
+Living roadmap. **Done** = in the local repo. **Open** = not built, or built locally but not on production.
 
-**Production (`fpiapr2.dictr2.cloud`):** still the older deploy. Missing 2FA, map geo/coverage, geo files, Phase 2 alert engine. Shipping the local tree is backlog #1.
+**Production (`fpiapr2.dictr2.cloud`):** still an older tree. GitHub `main` is ahead (`2829662` and later). Shipping the local tree is backlog #1. `route:cache` is now safe (single `dashboard` name; `/dashboard` 301s to `/`).
+
+Companion docs: `Plan_revision.md` (2026-09-08 hardening log) · `Plan_ui.md` (visual roadmap).
 
 ---
 
@@ -12,7 +14,7 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] Scoped RBAC (`can:` + policies), transactional writes, MySQL-safe SQL
 - [x] Audit log redaction + payload caps, throttled auth routes, random `setup.ps1` admin password
 - [x] Queued Excel imports (atomic per row) and queued PDF reports with tracked exports
-- [x] CI: GitHub Actions, PHPStan L4, Pint, ESLint, PHPUnit — **122 tests**
+- [x] CI: GitHub Actions, PHPStan + larastan L5, Pint, ESLint (`--max-warnings=0`), PHPUnit
 
 ### Data platform
 - [x] Region II workbook importer (`php scripts/import-region-workbook.php`)
@@ -96,22 +98,114 @@ Living roadmap. **Done** = in the local repo (verified 2026-09-01). **Open** = n
 - [x] `barangay_references` + `barangays:sync-reference` (upsert-only)
 - [x] **PSGC reconciliation: 2,311 barangays — exact PSA match** (`barangays:import-psgc`, 2026-07 publication; per province: Batanes 29 · Cagayan 820 · Isabela 1,055 · NV 275 · Quirino 132; every barangay stamped with its PSGC code)
 
+### Reports today (pipeline exists; PDFs are still thin)
+- [x] Four queued PDF types: project summary, province, site-type coverage, barangay coverage (`ReportController` → `GenerateReport` → `ReportingService` → DomPDF)
+- [x] Export tracking: PENDING → PROCESSING → DONE/FAILED, download, retry, 7-day cleanup
+- [x] Map “Generate PDF” posts current geo filters to `/reports/site-type`
+- [x] Project summary UI: dropdown + Generate (no longer a full-height project list)
+- [x] Dashboard already computes the KPIs that belong in a complete report (`getDashboardStats`: UP/DOWN mix, 7-day uptime, 14-day trend, coverage, fleet, DOWN episodes, alerts) — **not yet exported to PDF**
+
+### Hardening pass (2026-09-08, on `main`)
+- [x] Report area filters no longer return empty; coverage includes unspecified site types
+- [x] Site region backfill + filter indexes; `sites:backfill-regions`
+- [x] Daily-status workflow (`daily.approve` / lock); coverage cache
+- [x] Teal ops UI tokens (`accent` / `ink`); `public/build` gitignored
+- [x] Duplicate `dashboard` route name removed — `route:cache` allowed
+
+### Remediation plan (2026-09-10 audit)
+
+Skills: Ponytail governs every phase — shortest working diff, deletion before addition, reuse existing services/policies, one runnable check per non-trivial change. `design-taste-frontend` is explicitly not for dashboards/data tables/product UI, so it is limited to small safe auth/form/empty/error-state polish only; no visual redesign.
+
+Phase 1 — stop unsafe/broken writes [done]
+- [x] Remove dead `daily-statuses.show/update/destroy` and `accomplishments.update/destroy` resource routes; add route regression tests.
+- [x] Gate probe-token issuance on an existing daily-write permission; add authorization tests.
+- [x] Include `DOWN_SERVER` in `alerts:down`; add regression coverage.
+- [x] Allow the seeded `firmware_outdated` alert metric in rule validation; add coverage.
+- [x] Remove stale Sanctum middleware class references; verify API/token tests.
+- [x] Run PHPUnit, PHPStan, Pint, ESLint, and Vite build.
+
+Phase 2 — auth/token hardening [done]
+- [x] Public registration off by default (`REGISTRATION_ENABLED=false`); self-registered accounts start inactive pending admin activation (approval queue).
+- [x] Email verification decided: admin activation replaces it (internal ops console; verification routes stay harmless, `MustVerifyEmail` not enforced).
+- [x] Sanctum token expiry (30d default, `SANCTUM_EXPIRATION`) + rotation hygiene (expired pruned on issuance, monthly `sanctum:prune-expired`); heartbeat-only ability; owner's project scope enforced per beat.
+- [x] View permissions + project scoping on map/API reads (`can:sites.view`/`daily.view`, `accessibleProjectIds`, GeoJSON `project_scope`).
+- [x] TOTP enrollment for all accounts; confirm/disable throttled (10/min); disable requires a current code. Hard-require for admins/approvers deferred — needs an owner rollout so existing accounts are not locked out.
+- [x] Last-admin guards (self + victim, profile + admin console), self-delete/demote/deactivate blocks, token + session cleanup on user deletion.
+
+Phase 3 — data integrity [open]
+- [ ] Centralize daily-status mutations; enforce per-project and APPROVED/LOCKED rules everywhere.
+- [ ] Make workbook imports respect authoritative rows and report conflicts.
+- [ ] Add uniqueness/locking for open deployments and asset-tag allocation.
+- [ ] Add audit retention/pruning and deduplicate HTTP/observer audit rows.
+
+Phase 4 — reliability/performance/ops [open]
+- [ ] Bound map GeoJSON, PDF generation, ticket/site selectors, and alert evaluation.
+- [ ] Add scheduler overlap guards and queue sizing/leases.
+- [ ] Verify offsite encrypted backups with restore tests.
+- [ ] Fix split-layout deployment and production cutover checklist.
+
+Phase 5 — frontend taste/tests/docs [open]
+- [ ] Escape map-popup values; add map/API error and empty states.
+- [ ] Remove ESLint auth exclusion; add Vitest and accessibility checks.
+- [ ] Update README/scheduler/permission docs; clean tracked scratch files and repo hygiene.
+
+Dependency track — urgent, isolated lock updates [open]
+- [ ] Patch `maatwebsite/excel`, `phpspreadsheet`, `dompdf`, Guzzle/Symfony, `postcss`, `nanoid`.
+- [ ] Plan Laravel 11 → 12 and Inertia adapter upgrades.
+- [ ] Add `composer audit` / `npm audit` to CI.
+
 Out of scope (not started, not promised this slice): nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
 
 ---
 
 ## Open (backlog)
 
-1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate, `LegislativeDistrictSeeder` + `AlertRuleSeeder`, `sites:backfill-districts`, `storage/app/geo`, Vite to **both** web root `build/` and `fpiap-app/public/build`, `cache:clear` / `view:clear`. Do not `route:cache`.
-2. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway).
-3. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
-4. **Phase 3 ops** (docs): SLA PDF vs target, firmware fleet view, solar power analytics, field inspection form, public unauthenticated map.
+1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate (`2026_09_08_*`), `sites:backfill-regions`, Vite to **both** web root `build/` and `fpiap-app/public/build` (`public/build` is gitignored). Preserve `.env`. `route:cache` is OK. Split CloudPanel layout: do not run `deploy.sh` as-is without copying `public/build` to the domain folder.
+2. **Analytics PDF reports** (exec summary + ops annexes) — phased below. Uses data already in the DB. No live NMS required for phases 1–4.
+3. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway). Reports keep using `site_daily_statuses` until then.
+4. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
+5. **Later ops** (docs): firmware fleet *UI*, solar power analytics (sparse `solar_w`), field inspection form, public unauthenticated map. SLA-vs-target PDF is phase 5 of reports, after DICT sets a target.
+
+---
+
+## Analytics PDF reports (open)
+
+Audience: **both** — one-page executive rollup, then detailed ops annexes in the same PDF family. Uptime formula stays `UP / (UP + DOWN + NO_NMS + DOWN_SERVER)` in `config/daily_status.php`. Keep DomPDF; charts as HTML/CSS bars (no Chart.js — DomPDF cannot run JS). Prefer **one combined PDF** with selected sections in `params.sections`.
+
+### Phase 1 — Shared kit + scoped analytics
+- [ ] `ReportAnalytics`: period (`from`/`to`, default 7d) + geo/project filters; KPIs = site mix, daily-status mix, uptime, trend, coverage, fleet, DOWN episodes, alerts, tickets
+- [ ] PDF partials (`resources/views/reports/partials/`): cover (scope line, user, timestamp), KPI strip, CSS trend bars, numbered footer
+- [ ] `GenerateScopedReportRequest`; persist period + geo in `report_exports.params`
+
+### Phase 2 — Complete the four existing PDFs
+- [ ] **Project:** exec KPIs + annex site register (type, daily status, devices, CIR) + DOWN episodes/tickets
+- [ ] **Province:** municipality rollup (sites, UP, coverage %); print project filter on cover; daily status in the site list
+- [ ] **Site type:** coverage % bars; drop silent 200-row appendix cap (paginate); expose `site_type` + `status` on the form
+- [ ] **Barangay:** replace hardcoded `REGION II — TOTAL` with `describeScope()`; uncovered-barangay annex when municipality is set
+
+### Phase 3 — New packs (existing data)
+- [ ] `ops_period` — period health vs previous; site-days + open DOWN episodes
+- [ ] `fleet` — deployed/stock/repair, warranty ≤90d, firmware vs `APPROVED_FIRMWARE`; device register
+- [ ] `incidents` — alert severity, ticket backlog, MTTA/MTTR; open lists
+- [ ] `progress` — weighted accomplishment %; overdue milestones
+
+### Phase 4 — Reports builder UI
+- [ ] Replace disconnected cards with: period presets + `GeoFilterFields` + section checkboxes + one Generate
+- [ ] Optional Excel/CSV companion for annex tables (Maatwebsite already in composer)
+- [ ] Paginated export history with scope line on each row; show flash success
+
+### Phase 5 — After product input (do not block 1–4)
+- [ ] SLA vs target (`SLA_UPTIME_TARGET`, pass/fail column) — confirm target and whether `NO_NMS` stays in the denominator
+- [ ] `reports:scheduled` monthly provincial pack + mail/Telegram recipients
+- [ ] Solar / GB-delivered sections only once probe data is populated
+
+Build order: analytics + kit → enrich the four PDFs → `ops_period` + `fleet` → builder UI → incidents/progress → SLA/schedule.
 
 ---
 
 ## Deploy notes (when shipping #1)
 
 - Copy app + `storage/app/geo` (not into the nginx document root as PHP).
-- Sync Vite `public/build` to the domain folder **and** `fpiap-app/public`.
-- Duplicate route name `dashboard` — never `php artisan route:cache`.
-- Runbook: `docs/DEPLOY.md`.
+- Sync Vite `public/build` to the domain folder **and** `fpiap-app/public` (not in git).
+- `php artisan route:cache` is allowed.
+- Runbook: `docs/DEPLOY.md`. `deploy.sh` assumes a standard `public/` docroot — extra copy step required on this CloudPanel split layout.

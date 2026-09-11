@@ -8,6 +8,7 @@ use App\Models\Site;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 /**
@@ -86,6 +87,30 @@ class RbacAuthorizationTest extends TestCase
             ->put(route('sites.update', $siteB), ['location_name' => 'Hacked'])
             ->assertForbidden();
         $this->assertSame('Site B', $siteB->fresh()->location_name);
+    }
+
+    public function test_scoped_manager_api_reads_stay_within_assigned_project(): void
+    {
+        $projectA = $this->project('PROJ-API-A');
+        $projectB = $this->project('PROJ-API-B');
+        $siteA = $this->site($projectA, 'Site A');
+        $siteB = $this->site($projectB, 'Site B');
+
+        $manager = $this->userWithRole('project_manager', $projectA->id);
+        $token = $manager->createToken('api')->plainTextToken;
+
+        $this->withToken($token)->getJson('/api/sites')
+            ->assertOk()
+            ->assertJsonFragment(['location_name' => 'Site A'])
+            ->assertJsonMissing(['location_name' => 'Site B']);
+
+        $this->withToken($token)->getJson("/api/sites/{$siteA->id}")->assertOk();
+        $this->withToken($token)->getJson("/api/sites/{$siteB->id}")->assertForbidden();
+
+        $roleless = User::factory()->create();
+        $rolelessToken = $roleless->createToken('api')->plainTextToken;
+        Auth::guard('sanctum')->forgetUser(); // guard caches the user per app instance
+        $this->withToken($rolelessToken)->getJson('/api/sites')->assertForbidden();
     }
 
     public function test_encoder_cannot_delete_sites(): void

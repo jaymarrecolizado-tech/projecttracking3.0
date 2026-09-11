@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Models\Project;
 use App\Models\Site;
+use Illuminate\Support\Facades\Cache;
 
 class GeoJsonService
 {
+    /** Hard ceiling per response so an unfiltered fleet can't OOM the worker. */
+    private const MAX_FEATURES = 10000;
     public function getSitesForProject(Project $project): array
     {
         $sites = $project->sites()->with('latestDailyStatus')->get();
@@ -15,6 +18,17 @@ class GeoJsonService
     }
 
     public function getSitesForMap(array $filters = []): array
+    {
+        // Marker payloads are filter-deterministic, so a short cache survives
+        // filter-ping-pong without recomputing the fleet on every pan.
+        return Cache::remember(
+            'map.sites.v1.'.md5(serialize($filters)),
+            now()->addMinutes(5),
+            fn () => $this->buildSitesForMap($filters),
+        );
+    }
+
+    private function buildSitesForMap(array $filters): array
     {
         // Hydrate only the project fields the marker payload uses — the
         // full model (logo blob metadata, timestamps) is dead weight per row.
@@ -27,7 +41,13 @@ class GeoJsonService
         $this->applyGeoFilters($query, $filters);
         $query->whereNotNull(['latitude', 'longitude']);
 
-        return $this->buildFeatureCollection($query->get());
+        // Fetch one past the ceiling to detect truncation without a COUNT(*).
+        $sites = $query->limit(self::MAX_FEATURES + 1)->get();
+        $truncated = $sites->count() > self::MAX_FEATURES;
+        $collection = $this->buildFeatureCollection($sites->take(self::MAX_FEATURES));
+        $collection['truncated'] = $truncated;
+
+        return $collection;
     }
 
     /**
@@ -101,7 +121,20 @@ class GeoJsonService
     /** Geo/project filters shared by the site and device layers. */
     private function applyGeoFilters($query, array $filters): void
     {
-        if (! empty($filters['project_id'])) {
+        if (array_key_exists('project_scope', $filters)) {
+            // Null scope = unrestricted; otherwise confine markers to the
+            // caller's assigned projects (empty scope matches nothing).
+            if ($filters['project_scope'] === null) {
+                unset($filters['project_scope']);
+            } elseif ($filters['project_scope'] === []) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            } else {
+                $query->where('sites.project_id', $filters['project_scope']);
+                unset($filters['project_scope']);
+            }
+        }        if (! empty($filters['project_id'])) {
             $query->where('sites.project_id', $filters['project_id']);
         }
         foreach (['status', 'region', 'province', 'district', 'municipality', 'barangay', 'island_group'] as $column) {

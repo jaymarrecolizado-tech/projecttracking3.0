@@ -17,9 +17,26 @@ const provinceForm = useForm({
     project_id: '',
 });
 
-function submitProject(project) {
-    router.post(route('reports.project', project.id), {}, { preserveScroll: true });
+const projectForm = useForm({ project_id: '' });
+
+function submitProject() {
+    if (!projectForm.project_id) {
+        return;
+    }
+    router.post(route('reports.project', projectForm.project_id), {}, {
+        preserveScroll: true,
+        onSuccess: () => projectForm.reset(),
+    });
 }
+
+const provinceOptions = computed(() => props.initialOptions?.provinces ?? []);
+
+const typeLabels = {
+    project: 'Project summary',
+    province: 'Province report',
+    site_type: 'Site type coverage',
+    barangay_coverage: 'Barangay coverage',
+};
 
 const coverageForm = useForm({
     project_id: '',
@@ -140,15 +157,25 @@ const statusStyles = {
             </div>
           </div>
         </div>
-        <div class="p-6 space-y-2">
-          <button
-            v-for="project in projects" :key="project.id" type="button" class="w-full text-left p-3 rounded-lg hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 transition flex items-center gap-3 group"
-            @click="submitProject(project)"
-          >
-            <div class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: project.marker_color || '#64748b' }"></div>
-            <span class="text-sm text-slate-700 group-hover:text-accent-500 font-medium">{{ project.name }}</span>
-          </button>
-          <div v-if="!projects?.length" class="text-sm text-slate-400 text-center py-4">No projects available.</div>
+        <div class="p-6">
+          <form @submit.prevent="submitProject">
+            <label for="project-summary" class="block text-sm font-medium text-slate-700 mb-1.5">Project</label>
+            <select
+              id="project-summary" v-model="projectForm.project_id"
+              class="w-full rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40 mb-4"
+            >
+              <option value="">Select a project…</option>
+              <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
+            </select>
+            <div v-if="!projects?.length" class="text-sm text-slate-400 mb-4">No projects available.</div>
+            <button
+              type="submit" :disabled="projectForm.processing || !projectForm.project_id"
+              class="inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+            >
+              <IconLoader2 v-if="projectForm.processing" class="w-4 h-4 animate-spin" />
+              {{ projectForm.processing ? 'Submitting…' : 'Generate PDF' }}
+            </button>
+          </form>
         </div>
       </div>
 

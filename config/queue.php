@@ -39,7 +39,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest job timeout (Excel imports: 600s) or a
+            // still-running job gets picked up twice.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 660),
             'after_commit' => false,
         ],
 

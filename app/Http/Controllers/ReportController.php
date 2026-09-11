@@ -31,7 +31,6 @@ class ReportController extends Controller
 
     public function index(Request $request)
     {
-        // marker_color is rendered as the legend dot on each project button.
         $projects = Project::where('is_active', true)->get(['id', 'code', 'name', 'marker_color']);
         $exports = ReportExport::where('user_id', $request->user()->id)
             ->latest()

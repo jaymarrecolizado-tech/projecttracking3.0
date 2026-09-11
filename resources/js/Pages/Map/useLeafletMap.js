@@ -1,6 +1,18 @@
 import { ref } from 'vue';
 import { INK } from '../../theme';
 
+// Leaflet popups render HTML strings, so every database-derived value is
+// escaped first — site/device names arrive from manual entry and Excel
+// imports and must never become markup.
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
 // Leaflet wiring for Map View (Plan §Map 3): init, deployed-device markers
 // with clustering, and the boundary polygon layer with highlight +
 // click-to-filter. Leaflet loads globally via app.blade.php.
@@ -60,21 +72,22 @@ export function useLeafletMap(containerRef) {
             onEachFeature: (feature, layer) => {
                 const p = feature.properties;
                 const isDevice = p.device_count !== undefined;
-                const where = [p.barangay, p.municipality, p.province].filter(Boolean).join(', ');
+                const where = [p.barangay, p.municipality, p.province].filter(Boolean).map(escapeHtml).join(', ');
+                const status = escapeHtml((p.daily_status ?? '').replace('_', ' '));
                 const lines = isDevice
                     ? [
-                        `<strong>${p.location_name}</strong>`,
-                        `${typeLabel[p.site_type] ?? p.site_type ?? ''}`,
+                        `<strong>${escapeHtml(p.location_name)}</strong>`,
+                        `${escapeHtml(typeLabel[p.site_type] ?? p.site_type ?? '')}`,
                         where,
-                        `Site health: <span style="color:${statusColors[p.daily_status] ?? '#334155'};font-weight:600">${(p.daily_status ?? '').replace('_', ' ')}</span>`,
+                        `Site health: <span style="color:${statusColors[p.daily_status] ?? '#334155'};font-weight:600">${status}</span>`,
                         `<strong>${p.device_count}</strong> deployed unit${p.device_count === 1 ? '' : 's'}`,
-                        ...(p.devices ?? []).map((d) => `&nbsp;· ${d.asset_tag} — ${d.model}`),
+                        ...(p.devices ?? []).map((d) => `&nbsp;· ${escapeHtml(d.asset_tag)} — ${escapeHtml(d.model)}`),
                         `<a href="${route('sites.show', p.site_id)}">Site</a>`,
                     ]
                     : [
-                        `<strong>${p.location_name}</strong>`,
-                        p.project_name,
-                        `Status: ${p.status}`,
+                        `<strong>${escapeHtml(p.location_name)}</strong>`,
+                        escapeHtml(p.project_name),
+                        `Status: ${escapeHtml(p.status)}`,
                         where,
                         `<a href="${route('sites.show', p.id)}">Site</a>`,
                     ];
@@ -118,7 +131,7 @@ export function useLeafletMap(containerRef) {
                 ? { fillColor: INK, fillOpacity: 0.3, color: INK, weight: 2 }
                 : { fill: false, color: '#64748b', weight: 1, opacity: 0.55 }),
             onEachFeature: (feature, layer) => {
-                layer.bindTooltip(feature.properties.name, { sticky: true });
+                layer.bindTooltip(escapeHtml(feature.properties.name), { sticky: true });
                 layer.on('click', () => onPick(feature.properties.name));
                 layer.on('mouseover', () => layer.setStyle({ weight: 2, opacity: 1 }));
                 layer.on('mouseout', () => boundaryLayer.resetStyle(layer));

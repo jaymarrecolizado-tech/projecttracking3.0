@@ -62,14 +62,16 @@ class TwoFactorAuthenticationTest extends TestCase
         $this->assertNull($admin->refresh()->two_factor_secret);
     }
 
-    public function test_non_admin_cannot_enable_two_factor(): void
+    public function test_any_user_can_enable_two_factor(): void
     {
         $this->seed(RolePermissionSeeder::class);
         $viewer = User::factory()->create();
         $viewer->roles()->attach(4);
 
-        $this->actingAs($viewer)->post(route('two-factor.enable'))->assertForbidden();
-        $this->assertNull($viewer->refresh()->two_factor_secret);
+        $this->actingAs($viewer)->post(route('two-factor.enable'))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertNotNull($viewer->refresh()->two_factor_secret);
     }
 
     public function test_login_with_two_factor_requires_challenge_code(): void

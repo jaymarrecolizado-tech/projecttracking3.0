@@ -27,7 +27,9 @@ const filters = reactive({
 const options = ref(props.initialOptions);
 const coverage = ref(null);
 const plotted = ref(0);
+const truncated = ref(false);
 const busy = ref(false);
+const loadError = ref('');
 
 const mapContainer = ref(null);
 const leaflet = useLeafletMap(mapContainer);
@@ -66,11 +68,15 @@ function apiParams(extra = {}) {
 
 async function fetchJson(url, params) {
     const response = await fetch(`${url}?${params}`);
+    if (!response.ok) {
+        throw new Error(`Request failed (${response.status})`);
+    }
     return response.json();
 }
 
 async function refresh({ syncUrl = false } = {}) {
     busy.value = true;
+    loadError.value = '';
     try {
         if (syncUrl) {
             router.get(route('map.index'), { ...filters }, { preserveState: true, replace: true });
@@ -84,6 +90,7 @@ async function refresh({ syncUrl = false } = {}) {
         ]);
 
         plotted.value = markerData.features?.length ?? 0;
+        truncated.value = markerData.truncated === true;
         leaflet.renderMarkers(markerData, { typeLabel: typeLabel.value });
 
         const scope = boundaryScope();
@@ -98,6 +105,8 @@ async function refresh({ syncUrl = false } = {}) {
         }
 
         coverage.value = coverageData;
+    } catch {
+        loadError.value = 'Map data failed to load — adjust the filters and try again.';
     } finally {
         busy.value = false;
     }
@@ -211,12 +220,14 @@ onBeforeUnmount(() => leaflet.destroy());
       </div>
 
       <!-- Map -->
+      <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ loadError }}</div>
       <div ref="mapContainer" class="rounded-lg overflow-hidden border border-slate-200" style="height: 600px;"></div>
 
       <MapStatsPanel
         :coverage="coverage"
         :plotted="plotted"
         :deployed-only="filters.deployed_only === '1'"
+        :truncated="truncated"
         @generate-pdf="generatePdf"
       />
     </div>
