@@ -76,13 +76,25 @@ new code after every deploy. If supervisor is not available, a fallback cron
 | 5 min | alert rule evaluation                 |
 | 23:00 | NO_DATA snapshot                      |
 
-## 5. Post-deploy smoke test
+## 5. Production cutover checklist (each release)
 
-1. `GET /up` returns 200 (health probe).
-2. Log in — deactivated users must be rejected at login.
-3. Daily Ops board loads with today's date; submit a batch entry.
-4. `php artisan tinker --execute="echo config('app.name');"` shows the FPIAP name.
-5. `php artisan backup:run` once manually — verifies `mysqldump` end-to-end.
+1. **Pre-flight** — `git pull` (or upload) the release; confirm `.env` is
+   preserved; `PUBLIC_BUILD_TARGET` points at the domain folder on the split
+   layout (see §1.5).
+2. **Deploy** — `bash deploy.sh` (pre-migration DB dump when `mysqldump`
+   exists → maintenance window → `migrate --force` → caches → `queue:restart`).
+3. **Backfills** — `php artisan sites:backfill-regions` (region filter
+   coverage); `php artisan sites:backfill-districts` only after a fresh
+   workbook import.
+4. **Assets** — `public/build` synced to **both** the app dir and the domain
+   folder; `php artisan route:cache` is safe (single `dashboard` name).
+5. **Smoke** — `GET /up` 200; log in (deactivated users rejected); Daily Ops
+   board loads with today's date; submit one batch entry; `backup:run` once
+   manually to verify `mysqldump` end-to-end.
+6. **Restore rehearsal** (quarterly, owner) — download the latest encrypted
+   backup off the offsite disk (`BACKUP_OFFSITE_DISK`), decrypt with
+   `BACKUP_ARCHIVE_PASSWORD` on a non-production host, restore, boot, and
+   confirm login + dashboard KPIs. A backup never restored is not a backup.
 
 ## 6. Map boundary polygons
 

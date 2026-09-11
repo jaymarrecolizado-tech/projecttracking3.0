@@ -138,21 +138,21 @@ Phase 3 — data integrity [done]
 - [x] One open deployment per device (row-locked close-then-open); asset-tag allocation retries on unique collision.
 - [x] Monthly `audit:prune` (90d default); HTTP + observer audit rows share one `request_id`.
 
-Phase 4 — reliability/performance/ops [open]
-- [ ] Bound map GeoJSON, PDF generation, ticket/site selectors, and alert evaluation.
-- [ ] Add scheduler overlap guards and queue sizing/leases.
-- [ ] Verify offsite encrypted backups with restore tests.
-- [ ] Fix split-layout deployment and production cutover checklist.
+Phase 4 — reliability/performance/ops [done, backup rehearsal owner-side]
+- [x] Bounds: GeoJSON 10k-feature cap + 5-min cache, chunked PDF queries, ticket/site/stock selectors capped, alert evaluation chunked.
+- [x] Scheduler `withoutOverlapping()` everywhere; queue sizing (`tries`/`timeout`/`backoff` per job, `retry_after` 660 > longest job).
+- [x] Offsite encrypted backups wired (second destination + archive password); the restore rehearsal itself is owner-side — quarterly steps in `docs/DEPLOY.md` §5.6.
+- [x] Split-layout deploy (`PUBLIC_BUILD_TARGET`, pre-migration dump) + cutover checklist (`docs/DEPLOY.md` §5).
 
 Phase 5 — frontend taste/tests/docs [open]
 - [ ] Escape map-popup values; add map/API error and empty states.
 - [ ] Remove ESLint auth exclusion; add Vitest and accessibility checks.
 - [ ] Update README/scheduler/permission docs; clean tracked scratch files and repo hygiene.
 
-Dependency track — urgent, isolated lock updates [open]
-- [ ] Patch `maatwebsite/excel`, `phpspreadsheet`, `dompdf`, Guzzle/Symfony, `postcss`, `nanoid`.
-- [ ] Plan Laravel 11 → 12 and Inertia adapter upgrades.
-- [ ] Add `composer audit` / `npm audit` to CI.
+Dependency track [open, audited 2026-09-11]
+- [x] `composer audit` / `npm audit` run clean except laravel/framework; both wired into CI (composer non-blocking until the upgrade, npm blocking).
+- [ ] `maatwebsite/excel`, `phpspreadsheet`, `dompdf`, Guzzle/Symfony, `postcss`, `nanoid`: no advisories — fold updates into the Laravel 12 pass, not isolated churn.
+- [ ] Laravel 11.52 → 12 (plus Inertia adapter): required, not optional — 11.x carries CVE-2026-48019 (CRLF in email rule, high) + a signed-URL advisory, fixed only in 12.60+. Exposure here is narrow (mail flows; signed verification links unenforced), but schedule the upgrade.
 
 Out of scope (not started, not promised this slice): nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
 
