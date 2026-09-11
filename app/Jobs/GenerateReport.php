@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\AuditLog;
 use App\Models\Project;
 use App\Models\ReportExport;
+use App\Models\User;
 use App\Services\ReportingService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -40,6 +41,8 @@ class GenerateReport implements ShouldQueue
             $pdf = match ($this->export->type) {
                 'project' => $reportingService->generateProjectSummaryPdf(
                     Project::findOrFail($this->export->params['project_id']),
+                    $this->export->params,
+                    User::whereKey($this->export->user_id)->value('name') ?? 'system',
                 ),
                 'province' => $reportingService->generateProvinceReport(
                     $this->export->params['province'],

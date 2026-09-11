@@ -14,25 +14,29 @@ use Carbon\CarbonInterface;
 
 class ReportingService
 {
-    public function generateProjectSummaryPdf(Project $project): \Barryvdh\DomPDF\PDF
+    public function generateProjectSummaryPdf(Project $project, array $params = [], string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
-        // Chunk the fleet so a province-sized project never hydrates every
-        // site row into memory at once.
-        $sites = collect();
-        $project->sites()->with('latestDailyStatus')->chunk(500, fn ($chunk) => $sites->push(...$chunk));
-        $stats = [
-            'total' => $sites->count(),
-            'active' => $sites->where('status', 'active')->count(),
-            'inactive' => $sites->where('status', 'inactive')->count(),
-            'planned' => $sites->where('status', 'planned')->count(),
-        ];
-        if ($project->report_type === 'freewifi') {
-            $upCount = SiteDailyStatus::whereHas('site', fn ($q) => $q->where('project_id', $project->id))
-                ->where('status', 'UP')->whereDate('date', today())->count();
-            $stats['up_today'] = $upCount;
-        }
+        $analytics = app(ReportAnalytics::class)->for(
+            $params + ['project_id' => $project->id, 'project' => $project->name]
+        );
 
-        return Pdf::loadView('reports.project-summary', compact('project', 'sites', 'stats'));
+        // Chunk the fleet so a province-sized project never hydrates every
+        // site row into memory at once; statuses at the period end resolve
+        // in one query instead of N+1.
+        $register = collect();
+        $project->sites()->with(['activeDeployments.device:id,asset_tag'])
+            ->chunk(500, fn ($chunk) => $register->push(...$chunk));
+        $statusesAtTo = SiteDailyStatus::whereIn('site_id', $register->pluck('id'))
+            ->whereDate('date', $analytics['to'])
+            ->pluck('status', 'site_id');
+
+        return Pdf::loadView('reports.project-summary', [
+            'project' => $project,
+            'analytics' => $analytics,
+            'register' => $register->sortBy('location_name')->values(),
+            'statusesAtTo' => $statusesAtTo,
+            'userName' => $userName,
+        ]);
     }
 
     public function generateProvinceReport(string $province, ?int $projectId = null): \Barryvdh\DomPDF\PDF

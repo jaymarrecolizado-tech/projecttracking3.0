@@ -172,13 +172,13 @@ Out of scope (not started, not promised this slice): nationwide shapefiles, live
 
 Audience: **both** — one-page executive rollup, then detailed ops annexes in the same PDF family. Uptime formula stays `UP / (UP + DOWN + NO_NMS + DOWN_SERVER)` in `config/daily_status.php`. Keep DomPDF; charts as HTML/CSS bars (no Chart.js — DomPDF cannot run JS). Prefer **one combined PDF** with selected sections in `params.sections`.
 
-### Phase 1 — Shared kit + scoped analytics
-- [ ] `ReportAnalytics`: period (`from`/`to`, default 7d) + geo/project filters; KPIs = site mix, daily-status mix, uptime, trend, coverage, fleet, DOWN episodes, alerts, tickets
-- [ ] PDF partials (`resources/views/reports/partials/`): cover (scope line, user, timestamp), KPI strip, CSS trend bars, numbered footer
-- [ ] `GenerateScopedReportRequest`; persist period + geo in `report_exports.params`
+### Phase 1 — Shared kit + scoped analytics [done]
+- [x] `ReportAnalytics`: period (`from`/`to`, default 7d) + geo/project filters; KPIs = site mix, daily-status mix, uptime, trend, coverage, fleet, DOWN episodes, alerts, tickets
+- [x] PDF partials (`resources/views/reports/partials/`): cover (scope line, user, timestamp), KPI strip, CSS trend bars, numbered footer
+- [x] `GenerateScopedReportRequest`; persist period + geo in `report_exports.params`
 
 ### Phase 2 — Complete the four existing PDFs
-- [ ] **Project:** exec KPIs + annex site register (type, daily status, devices, CIR) + DOWN episodes/tickets
+- [x] **Project:** exec KPIs + annex site register (type, daily status, devices, CIR) + DOWN episodes/tickets
 - [ ] **Province:** municipality rollup (sites, UP, coverage %); print project filter on cover; daily status in the site list
 - [ ] **Site type:** coverage % bars; drop silent 200-row appendix cap (paginate); expose `site_type` + `status` on the form
 - [ ] **Barangay:** replace hardcoded `REGION II — TOTAL` with `describeScope()`; uncovered-barangay annex when municipality is set

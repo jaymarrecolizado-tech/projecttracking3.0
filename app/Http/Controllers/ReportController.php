@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\GenerateProvinceReportRequest;
+use App\Http\Requests\GenerateScopedReportRequest;
 use App\Jobs\GenerateReport;
 use App\Models\AuditLog;
 use App\Models\Project;
@@ -47,12 +48,12 @@ class ReportController extends Controller
         ]);
     }
 
-    public function projectPdf(Request $request, Project $project)
+    public function projectPdf(GenerateScopedReportRequest $request, Project $project)
     {
         $export = ReportExport::create([
             'user_id' => $request->user()->id,
             'type' => 'project',
-            'params' => ['project_id' => $project->id],
+            'params' => ['project_id' => $project->id] + $request->scope(),
             'download_name' => $this->downloadName(['project', $project->code, 'summary']),
         ]);
         GenerateReport::dispatch($export);
@@ -69,6 +70,8 @@ class ReportController extends Controller
             'params' => [
                 'province' => $validated['province'],
                 'project_id' => $validated['project_id'] ?? null,
+                'from' => $validated['from'] ?? null,
+                'to' => $validated['to'] ?? null,
             ],
             'download_name' => $this->downloadName(['province', $validated['province'], 'summary']),
         ]);
@@ -77,16 +80,9 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function siteTypePdf(Request $request)
+    public function siteTypePdf(GenerateScopedReportRequest $request)
     {
-        $validated = $request->validate([
-            'project_id' => 'nullable|integer|exists:projects,id',
-            'province' => 'nullable|string|max:100',
-            'district' => 'nullable|string|max:100',
-            'municipality' => 'nullable|string|max:100',
-            'barangay' => 'nullable|string|max:100',
-        ]);
-        $filters = collect($validated)->filter()->all();
+        $filters = $request->scope();
         $scope = $filters['province'] ?? 'nationwide';
 
         $export = ReportExport::create([
@@ -100,15 +96,9 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function barangayCoveragePdf(Request $request)
+    public function barangayCoveragePdf(GenerateScopedReportRequest $request)
     {
-        $validated = $request->validate([
-            'project_id' => 'nullable|integer|exists:projects,id',
-            'province' => 'nullable|string|max:100',
-            'district' => 'nullable|string|max:100',
-            'municipality' => 'nullable|string|max:100',
-        ]);
-        $filters = collect($validated)->filter()->all();
+        $filters = $request->scope();
         $scope = $filters['province'] ?? 'region-ii';
 
         $export = ReportExport::create([

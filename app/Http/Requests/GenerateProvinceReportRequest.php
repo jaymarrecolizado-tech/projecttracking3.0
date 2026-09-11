@@ -16,6 +16,8 @@ class GenerateProvinceReportRequest extends FormRequest
         return [
             'province' => 'required|string',
             'project_id' => 'nullable|exists:projects,id',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date|after_or_equal:from',
         ];
     }
 }
