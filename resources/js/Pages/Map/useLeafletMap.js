@@ -4,7 +4,7 @@ import { INK } from '../../theme';
 // Leaflet popups render HTML strings, so every database-derived value is
 // escaped first — site/device names arrive from manual entry and Excel
 // imports and must never become markup.
-function escapeHtml(value) {
+export function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')

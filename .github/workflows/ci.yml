@@ -52,6 +52,9 @@ jobs:
       - name: ESLint (zero warnings allowed)
         run: npm run lint
 
+      - name: Vitest
+        run: npm test
+
       - name: Build
         run: npm run build
 

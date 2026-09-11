@@ -144,10 +144,10 @@ Phase 4 — reliability/performance/ops [done, backup rehearsal owner-side]
 - [x] Offsite encrypted backups wired (second destination + archive password); the restore rehearsal itself is owner-side — quarterly steps in `docs/DEPLOY.md` §5.6.
 - [x] Split-layout deploy (`PUBLIC_BUILD_TARGET`, pre-migration dump) + cutover checklist (`docs/DEPLOY.md` §5).
 
-Phase 5 — frontend taste/tests/docs [open]
-- [ ] Escape map-popup values; add map/API error and empty states.
-- [ ] Remove ESLint auth exclusion; add Vitest and accessibility checks.
-- [ ] Update README/scheduler/permission docs; clean tracked scratch files and repo hygiene.
+Phase 5 — frontend taste/tests/docs [done]
+- [x] Map popups escape every DB-derived value (`escapeHtml`, stored-XSS shut); map/API error (`role=alert`) and empty states in place.
+- [x] ESLint auth exclusion removed (0/0 gated); Vitest added (`npm test`, CI) with a runnable check on the popup escaper. Component/a11y harness deferred — existing a11y (focus trap, aria-live, sr-only captions, keyboard row links) is covered by convention, not automation.
+- [x] README/scheduler/permission docs current; tracked scratch files removed; repo hygiene via CI audits.
 
 Dependency track [open, audited 2026-09-11]
 - [x] `composer audit` / `npm audit` run clean except laravel/framework; both wired into CI (composer non-blocking until the upgrade, npm blocking).
