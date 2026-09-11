@@ -98,12 +98,14 @@ Companion docs: `Plan_revision.md` (2026-09-08 hardening log) · `Plan_ui.md` (v
 - [x] `barangay_references` + `barangays:sync-reference` (upsert-only)
 - [x] **PSGC reconciliation: 2,311 barangays — exact PSA match** (`barangays:import-psgc`, 2026-07 publication; per province: Batanes 29 · Cagayan 820 · Isabela 1,055 · NV 275 · Quirino 132; every barangay stamped with its PSGC code)
 
-### Reports today (pipeline exists; PDFs are still thin)
+### Analytics PDF reports (2026-09-11 kit + enriched four)
 - [x] Four queued PDF types: project summary, province, site-type coverage, barangay coverage (`ReportController` → `GenerateReport` → `ReportingService` → DomPDF)
 - [x] Export tracking: PENDING → PROCESSING → DONE/FAILED, download, retry, 7-day cleanup
 - [x] Map “Generate PDF” posts current geo filters to `/reports/site-type`
 - [x] Project summary UI: dropdown + Generate (no longer a full-height project list)
-- [x] Dashboard already computes the KPIs that belong in a complete report (`getDashboardStats`: UP/DOWN mix, 7-day uptime, 14-day trend, coverage, fleet, DOWN episodes, alerts) — **not yet exported to PDF**
+- [x] Shared kit: `ReportAnalytics` (period + geo/project scope → site mix, daily mix, uptime, trend, coverage, fleet, DOWN episodes, alerts, tickets) + `reports/partials/` (cover, KPI strip, CSS trend bars, numbered footer, teal lock)
+- [x] Project PDF: exec KPIs + site register (type, daily status, devices, CIR) + DOWN episodes/tickets; province PDF: municipality rollup + scope cover + daily status; site-type PDF: coverage bars + uncapped appendix + `site_type`/`status` form fields; barangay PDF: scope-aware totals + uncovered annex per municipality
+- [x] Period + geo persisted in `report_exports.params` (`GenerateScopedReportRequest`)
 
 ### Hardening pass (2026-09-08, on `main`)
 - [x] Report area filters no longer return empty; coverage includes unspecified site types
@@ -161,7 +163,7 @@ Out of scope (not started, not promised this slice): nationwide shapefiles, live
 ## Open (backlog)
 
 1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate (`2026_09_08_*`), `sites:backfill-regions`, Vite to **both** web root `build/` and `fpiap-app/public/build` (`public/build` is gitignored). Preserve `.env`. `route:cache` is OK. Split CloudPanel layout: do not run `deploy.sh` as-is without copying `public/build` to the domain folder.
-2. **Analytics PDF reports** (exec summary + ops annexes) — phased below. Uses data already in the DB. No live NMS required for phases 1–4.
+2. **Analytics PDF reports** (exec summary + ops annexes) — phases 1–2 done (kit + enriched four); phases 3–5 open below. Uses data already in the DB. No live NMS required for phases 1–4.
 3. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway). Reports keep using `site_daily_statuses` until then.
 4. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
 5. **Later ops** (docs): firmware fleet *UI*, solar power analytics (sparse `solar_w`), field inspection form, public unauthenticated map. SLA-vs-target PDF is phase 5 of reports, after DICT sets a target.
