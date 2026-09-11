@@ -123,6 +123,8 @@ class ReportExportTest extends TestCase
         $this->actingAs($viewer)->post(route('reports.province'), ['province' => 'Cagayan'])->assertForbidden();
         $this->actingAs($viewer)->post(route('reports.site-type'))->assertForbidden();
         $this->actingAs($viewer)->post(route('reports.barangay-coverage'))->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.ops-period'))->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.fleet'))->assertForbidden();
 
         $this->assertSame(0, ReportExport::count());
     }

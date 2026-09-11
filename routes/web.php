@@ -93,12 +93,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/import/{batch}', [ImportController::class, 'show'])->name('import.show')->middleware('can:import.excel');
 
     // Viewing the console needs reports.view; queueing a PDF consumes storage
-    // and CPU, so the four generators require reports.export.
+    // and CPU, so the generators require reports.export.
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')->middleware('can:reports.view');
     Route::post('/reports/project/{project}', [ReportController::class, 'projectPdf'])->name('reports.project')->middleware('can:reports.export');
     Route::post('/reports/province', [ReportController::class, 'provincePdf'])->name('reports.province')->middleware('can:reports.export');
     Route::post('/reports/site-type', [ReportController::class, 'siteTypePdf'])->name('reports.site-type')->middleware('can:reports.export');
     Route::post('/reports/barangay-coverage', [ReportController::class, 'barangayCoveragePdf'])->name('reports.barangay-coverage')->middleware('can:reports.export');
+    Route::post('/reports/ops-period', [ReportController::class, 'opsPeriodPdf'])->name('reports.ops-period')->middleware('can:reports.export');
+    Route::post('/reports/fleet', [ReportController::class, 'fleetPdf'])->name('reports.fleet')->middleware('can:reports.export');
     Route::get('/reports/exports/{export}/download', [ReportController::class, 'download'])->name('reports.download')->middleware('can:reports.view');
     Route::post('/reports/exports/{export}/retry', [ReportController::class, 'retry'])->name('reports.retry')->middleware('can:reports.export');
 

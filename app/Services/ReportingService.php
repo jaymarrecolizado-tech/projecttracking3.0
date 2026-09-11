@@ -133,6 +133,99 @@ class ReportingService
         ]);
     }
 
+    /**
+     * Operations-period comparison: current window vs the equal-length window
+     * before it. Pure data (tested); the PDF wrapper below only renders it.
+     */
+    public function opsPeriodComparison(array $filters): array
+    {
+        $analytics = app(ReportAnalytics::class);
+        [$from, $to] = $analytics->period($filters);
+        $days = $from->diffInDays($to) + 1;
+        $prevTo = $from->copy()->subDay()->toDateString();
+        $prevFrom = $from->copy()->subDays($days)->toDateString();
+
+        $current = $analytics->for($filters);
+        $previous = $analytics->for(array_merge($filters, ['from' => $prevFrom, 'to' => $prevTo]));
+
+        $delta = fn (float $now, float $was) => round($now - $was, 1);
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'previous_range' => $prevFrom.' – '.$prevTo,
+            'delta_uptime' => $delta($current['uptime_pct'], $previous['uptime_pct']),
+            'delta_down' => $current['daily']['down'] + $current['daily']['down_server']
+                - $previous['daily']['down'] - $previous['daily']['down_server'],
+            'delta_sitedays' => $current['uptime_base'] - $previous['uptime_base'],
+        ];
+    }
+
+    public function generateOpsPeriodReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
+    {
+        $comparison = $this->opsPeriodComparison($filters);
+
+        return Pdf::loadView('reports.ops-period', $comparison + ['userName' => $userName]);
+    }
+
+    /**
+     * Fleet inventory data: counts, firmware compliance vs APPROVED_FIRMWARE,
+     * full device register. Fleet-wide except deployed scope, which follows
+     * the project filter (stock has no geography).
+     */
+    public function fleetInventory(array $filters): array
+    {
+        $projectId = $filters['project_id'] ?? null;
+        $siteIds = Site::query()->select('sites.id')
+            ->when($projectId, fn ($q) => $q->where('sites.project_id', $projectId));
+        $deployed = Device::where('status', 'deployed')
+            ->when($projectId, fn ($q) => $q->whereHas(
+                'currentDeployment', fn ($d) => $d->whereIn('site_id', (clone $siteIds))
+            ));
+
+        $approved = (array) config('monitoring.approved_firmware', []);
+        $firmwareRows = (clone $deployed)
+            ->selectRaw('firmware_version, COUNT(*) AS n')
+            ->groupBy('firmware_version')
+            ->get()
+            ->map(fn ($row) => [
+                'version' => $row->firmware_version ?: 'Unknown',
+                'count' => (int) $row->getAttribute('n'),
+                'approved' => $row->firmware_version !== null && in_array($row->firmware_version, $approved, true),
+            ])
+            ->sortByDesc('count')->values()->all();
+
+        $register = collect();
+        Device::with(['deviceModel:id,manufacturer,model_name', 'currentDeployment.site:id,location_name'])
+            ->orderBy('status')->orderBy('asset_tag')
+            ->chunk(500, fn ($chunk) => $register->push(...$chunk));
+
+        return [
+            'deployed' => (clone $deployed)->count(),
+            'in_stock' => Device::where('status', 'in_stock')->count(),
+            'under_repair' => Device::where('status', 'under_repair')->count(),
+            'warranty_expiring' => Device::where('status', 'deployed')
+                ->whereBetween('warranty_until', [now(), now()->addDays(90)])->count(),
+            'approved_firmware' => $approved,
+            'firmware_rows' => $firmwareRows,
+            'outdated' => $approved === []
+                ? null
+                : array_sum(array_column(array_filter($firmwareRows, fn ($r) => ! $r['approved']), 'count')),
+            'register' => $register,
+        ];
+    }
+
+    public function generateFleetReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
+    {
+        $scope = app(ReportAnalytics::class)->describeScope($filters);
+
+        return Pdf::loadView('reports.fleet', [
+            'inventory' => $this->fleetInventory($filters),
+            'scope' => $scope,
+            'userName' => $userName,
+        ]);
+    }
+
     public function getDashboardStats(): array
     {
         $activeSites = Site::where('status', 'active')->count();

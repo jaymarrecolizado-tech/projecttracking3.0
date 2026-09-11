@@ -181,6 +181,45 @@ class ReportAnalyticsTest extends TestCase
         }
     }
 
+    public function test_ops_comparison_deltas_across_windows(): void
+    {
+        $curr = today()->toDateString();
+        $this->recordStatus($this->siteA, today()->subDays(10)->toDateString(), 'UP');
+        $this->recordStatus($this->siteA, $curr, 'DOWN');
+
+        $comparison = app(ReportingService::class)->opsPeriodComparison([
+            'project_id' => $this->project->id,
+            'from' => today()->subDays(6)->toDateString(), 'to' => $curr,
+        ]);
+
+        $this->assertSame(0.0, $comparison['current']['uptime_pct']);
+        $this->assertSame(100.0, $comparison['previous']['uptime_pct']);
+        $this->assertSame(-100.0, $comparison['delta_uptime']);
+        $this->assertSame(1, $comparison['delta_down']);
+    }
+
+    public function test_fleet_inventory_flags_outdated_firmware(): void
+    {
+        config()->set('monitoring.approved_firmware', ['v2.0']);
+        $model = DeviceModel::create([
+            'manufacturer' => 'U', 'model_name' => 'X', 'model_number' => 'M1',
+            'type' => 'router', 'is_active' => true,
+        ]);
+        foreach ([['t1', 'v2.0', 'deployed'], ['t2', 'v2.0', 'deployed'], ['t3', 'v1.0', 'deployed'], ['t4', null, 'in_stock']] as [$tag, $fw, $status]) {
+            Device::create([
+                'device_model_id' => $model->id, 'asset_tag' => "DEV-FW-{$tag}",
+                'serial_number' => "SN-FW-{$tag}", 'firmware_version' => $fw, 'status' => $status,
+            ]);
+        }
+
+        $inventory = app(ReportingService::class)->fleetInventory([]);
+
+        $this->assertSame(3, $inventory['deployed']);
+        $this->assertSame(1, $inventory['in_stock']);
+        $this->assertSame(1, $inventory['outdated']);
+        $this->assertCount(4, $inventory['register']);
+    }
+
     public function test_site_type_appendix_is_not_capped(): void
     {
         $model = DeviceModel::create([
@@ -205,5 +244,15 @@ class ReportAnalyticsTest extends TestCase
 
         // The old 200-row gate would have returned an empty appendix here.
         $this->assertCount(205, app(ReportingService::class)->siteTypeAppendix([]));
+    }
+
+    public function test_ops_and_fleet_pdfs_generate(): void
+    {
+        $this->recordStatus($this->siteA, today()->toDateString(), 'UP');
+        $reporting = app(ReportingService::class);
+
+        $this->assertStringStartsWith('%PDF', $reporting->generateOpsPeriodReport(
+            ['project_id' => $this->project->id], 'tester')->output());
+        $this->assertStringStartsWith('%PDF', $reporting->generateFleetReport([], 'tester')->output());
     }
 }

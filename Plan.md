@@ -186,8 +186,8 @@ Audience: **both** — one-page executive rollup, then detailed ops annexes in t
 - [x] **Barangay:** totals footer follows the scope (REGION II — TOTAL only unfiltered); uncovered-barangay annex when municipality is set
 
 ### Phase 3 — New packs (existing data)
-- [ ] `ops_period` — period health vs previous; site-days + open DOWN episodes
-- [ ] `fleet` — deployed/stock/repair, warranty ≤90d, firmware vs `APPROVED_FIRMWARE`; device register
+- [x] `ops_period` — period health vs previous; site-days + open DOWN episodes
+- [x] `fleet` — deployed/stock/repair, warranty ≤90d, firmware vs `APPROVED_FIRMWARE`; device register
 - [ ] `incidents` — alert severity, ticket backlog, MTTA/MTTR; open lists
 - [ ] `progress` — weighted accomplishment %; overdue milestones
 

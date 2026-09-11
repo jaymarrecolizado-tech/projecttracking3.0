@@ -36,6 +36,8 @@ const typeLabels = {
     province: 'Province report',
     site_type: 'Site type coverage',
     barangay_coverage: 'Barangay coverage',
+    ops_period: 'Operations period',
+    fleet: 'Fleet inventory',
 };
 
 const coverageForm = useForm({
@@ -107,6 +109,31 @@ function submitProvince() {
     provinceForm.post(route('reports.province'), {
         preserveScroll: true,
         onSuccess: () => provinceForm.reset('province', 'project_id'),
+    });
+}
+
+const packsForm = useForm({
+    project_id: '',
+    province: '',
+    district: '',
+    municipality: '',
+    barangay: '',
+});
+
+const packsOptions = ref(props.initialOptions);
+
+function onPacksFilters(next) {
+    Object.assign(packsForm, next);
+    loadOptions(next, packsOptions);
+}
+
+function submitPack(routeName) {
+    packsForm.post(route(routeName), {
+        preserveScroll: true,
+        onSuccess: () => {
+            packsForm.reset();
+            packsOptions.value = props.initialOptions;
+        },
     });
 }
 
@@ -290,6 +317,48 @@ const statusStyles = {
               <IconLoader2 v-if="coverageForm.processing" class="w-4 h-4 animate-spin" />
               {{ coverageForm.processing ? 'Submitting…' : 'Generate PDF' }}
             </button>
+          </form>
+        </div>
+      </div>
+      <!-- Operations packs: period health + fleet inventory -->
+      <div class="dict-card overflow-hidden lg:col-span-2">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center shrink-0">
+              <IconFileDescription class="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-800">Operations packs</h3>
+              <p class="text-sm text-slate-500">Period health vs the previous window, and the equipment fleet register</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-6">
+          <form @submit.prevent="submitPack('reports.ops-period')">
+            <GeoFilterFields
+              :projects="projects"
+              :site-types="siteTypes"
+              :options="packsOptions"
+              :filters="packsForm.data()"
+              :show-site-type="false"
+              @update:filters="onPacksFilters"
+            />
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button
+                type="submit" :disabled="packsForm.processing"
+                class="inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+              >
+                <IconLoader2 v-if="packsForm.processing" class="w-4 h-4 animate-spin" />
+                {{ packsForm.processing ? 'Submitting…' : 'Period health PDF' }}
+              </button>
+              <button
+                type="button" :disabled="packsForm.processing"
+                class="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+                @click="submitPack('reports.fleet')"
+              >
+                Fleet inventory PDF
+              </button>
+            </div>
           </form>
         </div>
       </div>

@@ -58,6 +58,14 @@ class GenerateReport implements ShouldQueue
                     $this->export->params['filters'] ?? [],
                     User::whereKey($this->export->user_id)->value('name') ?? 'system',
                 ),
+                'ops_period' => $reportingService->generateOpsPeriodReport(
+                    $this->export->params['filters'] ?? [],
+                    User::whereKey($this->export->user_id)->value('name') ?? 'system',
+                ),
+                'fleet' => $reportingService->generateFleetReport(
+                    $this->export->params['filters'] ?? [],
+                    User::whereKey($this->export->user_id)->value('name') ?? 'system',
+                ),
                 default => throw new InvalidArgumentException("Unknown report type '{$this->export->type}'."),
             };
 
