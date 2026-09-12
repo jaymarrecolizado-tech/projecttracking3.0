@@ -10,6 +10,7 @@ const props = defineProps({
     projects: Array,
     exports: { type: Object, default: () => ({ data: [], links: [] }) },
     siteTypes: { type: Array, default: () => [] },
+    queueNotice: { type: String, default: null },
     initialOptions: { type: Object, default: () => ({ provinces: [], districts: [], municipalities: [], barangays: [] }) },
 });
 
@@ -194,7 +195,7 @@ let pollTimer = null;
 onMounted(() => {
     pollTimer = setInterval(() => {
         if (hasPending.value) {
-            router.reload({ only: ['exports'], preserveScroll: true });
+            router.reload({ only: ['exports', 'queueNotice'], preserveScroll: true });
         }
     }, 3000);
 });
@@ -223,6 +224,10 @@ const statusStyles = {
     <template #header>
       <h2 class="font-bold text-xl text-slate-900 tracking-tight leading-tight">Reports</h2>
     </template>
+
+    <div v-if="queueNotice" role="alert" class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      {{ queueNotice }} Locally: run <code>php artisan queue:work</code>. On production: check the supervisor worker.
+    </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Project Summary Report -->

@@ -220,6 +220,23 @@ class ReportExportTest extends TestCase
         $this->actingAs($admin)->get(route('reports.csv', $pack))->assertStatus(422);
     }
 
+    public function test_stale_queue_notice_fires_only_for_old_pending_exports(): void
+    {
+        $admin = $this->admin();
+        $this->assertNull(ReportExport::staleQueueMessage());
+
+        $export = ReportExport::create([
+            'user_id' => $admin->id, 'type' => 'project',
+            'params' => ['project_id' => 1],
+            'download_name' => 'x.pdf', 'status' => 'PENDING',
+        ]);
+        $this->assertNull(ReportExport::staleQueueMessage());
+
+        $export->created_at = now()->subMinutes(10);
+        $export->save();
+        $this->assertStringContainsString('10 minutes', ReportExport::staleQueueMessage());
+    }
+
     public function test_failed_generation_is_recorded_on_the_export(): void
     {
         Storage::fake('local');

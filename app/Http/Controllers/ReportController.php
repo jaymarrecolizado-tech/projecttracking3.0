@@ -53,6 +53,7 @@ class ReportController extends Controller
         return Inertia::render('Reports/Index', [
             'projects' => $projects,
             'exports' => $exports,
+            'queueNotice' => ReportExport::staleQueueMessage(),
             'siteTypes' => $geoOptions->siteTypes(),
             'initialOptions' => $geoOptions->for(),
         ]);
