@@ -8,6 +8,8 @@
 <body>
     @include('reports.partials.cover', ['title' => 'Province Report: '.$province, 'scope' => $scope, 'userName' => $userName])
 
+    @include('reports.partials.summary', ['bullets' => $bullets])
+
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$sites->count(), 'Sites'],
         [$rollup->sum('up').' UP', 'Reporting UP'],

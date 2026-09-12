@@ -1,4 +1,5 @@
-{{-- Period-health section body. Expects $comparison (opsPeriodComparison). --}}
+{{-- Period-health section body. Expects $comparison (opsPeriodComparison) + $bullets. --}}
+    @include('reports.partials.summary', ['bullets' => $bullets])
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$comparison['current']['uptime_pct'].'% ('.($comparison['delta_uptime'] >= 0 ? '+' : '').$comparison['delta_uptime'].' pts)', 'Uptime vs previous'],
         [$comparison['current']['uptime_base'].' site-days ('.($comparison['delta_sitedays'] >= 0 ? '+' : '').$comparison['delta_sitedays'].')', 'Observed volume'],

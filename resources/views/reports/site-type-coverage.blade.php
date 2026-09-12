@@ -8,6 +8,8 @@
 <body>
     @include('reports.partials.cover', ['title' => 'Site Type Coverage — Actual vs Registered', 'scope' => $coverage['scope'] ?? 'All areas', 'userName' => $userName])
 
+    @include('reports.partials.summary', ['bullets' => $bullets])
+
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$coverage['totals']['registered'], 'Registered sites'],
         [$coverage['totals']['actual'], 'With deployed device'],

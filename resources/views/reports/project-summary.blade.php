@@ -8,6 +8,8 @@
 <body>
     @include('reports.partials.cover', ['title' => $project->name.' — Executive Summary', 'scope' => $analytics['scope'], 'userName' => $userName])
 
+    @include('reports.partials.summary', ['bullets' => $bullets])
+
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$analytics['sites']['active'].' / '.$analytics['sites']['total'], 'Active / total sites'],
         [$analytics['daily']['up'].' UP · '.$analytics['daily']['down'].' DOWN', 'Today ('.$analytics['to'].')'],

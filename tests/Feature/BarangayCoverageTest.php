@@ -58,20 +58,25 @@ class BarangayCoverageTest extends TestCase
         ], $attributes));
     }
 
-    public function test_municipality_scope_lists_uncovered_barangays(): void
+    public function test_municipality_scope_lists_per_barangay_breakdown(): void
     {
         $this->seedReferences('Aparri', ['Tobias', 'Zitanga', 'Dadapilan']);
         $this->site(['barangay' => 'Tobias']);
 
-        // No municipality filter: no annex (nationwide it would be thousands).
-        $this->assertSame([], app(BarangayCoverageService::class)->coverage()['uncovered']);
+        // No municipality filter: no breakdown (nationwide it would be thousands).
+        $this->assertSame([], app(BarangayCoverageService::class)->coverage()['details']);
 
         $coverage = app(BarangayCoverageService::class)->coverage(['municipality' => 'Aparri']);
 
         $this->assertSame(
-            ['Dadapilan', 'Zitanga'],
-            array_column($coverage['uncovered'], 'barangay'),
+            ['Dadapilan', 'Tobias', 'Zitanga'],
+            array_column($coverage['details'], 'barangay'),
         );
+        $tobias = collect($coverage['details'])->firstWhere('barangay', 'Tobias');
+        $this->assertTrue($tobias['covered']);
+        $this->assertSame(1, $tobias['sites']);
+        $zitanga = collect($coverage['details'])->firstWhere('barangay', 'Zitanga');
+        $this->assertFalse($zitanga['covered']);
     }
 
     public function test_coverage_counts_covered_and_remaining_barangays(): void

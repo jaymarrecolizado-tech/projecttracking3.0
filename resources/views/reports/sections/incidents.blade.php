@@ -1,4 +1,5 @@
-{{-- Incidents section body. Expects $incidents (incidentsData). --}}
+{{-- Incidents section body. Expects $incidents (incidentsData) + $bullets. --}}
+    @include('reports.partials.summary', ['bullets' => $bullets])
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$incidents['alerts_triggered'], 'Alerts triggered'],
         [($incidents['mtta_h'] === null ? '—' : $incidents['mtta_h'].'h'), 'MTTA (acknowledge)'],

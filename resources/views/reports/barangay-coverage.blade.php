@@ -8,6 +8,8 @@
 <body>
     @include('reports.partials.cover', ['title' => 'Barangay Coverage — Installed/Existing vs Total', 'scope' => $coverage['scope'] ?? 'All areas', 'userName' => $userName])
 
+    @include('reports.partials.summary', ['bullets' => $bullets])
+
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$coverage['totals']['covered'].' / '.$coverage['totals']['barangays'], 'Barangays with Free WiFi'],
         [$coverage['totals']['deployed'], 'With deployed device'],
@@ -40,6 +42,7 @@
             @endforeach
         </tbody>
         <tfoot>
+            @if($byProvince->count() > 1 || ($coverage['scope'] ?? 'All areas') === 'All areas')
             <tr style="font-weight:bold;background:#e2e8f0">
                 <td>{{ ($coverage['scope'] ?? 'All areas') === 'All areas' ? 'REGION II — TOTAL' : $coverage['scope'] }}</td>
                 <td class="num">{{ $coverage['totals']['covered'] }}</td>
@@ -48,6 +51,7 @@
                 <td class="num">{{ $coverage['totals']['barangays'] }}</td>
                 <td class="num">{{ $coverage['totals']['coverage_pct'] }}%</td>
             </tr>
+            @endif
         </tfoot>
     </table>
 
@@ -79,18 +83,19 @@
     </table>
     @endforeach
 
-    @if (! empty($coverage['uncovered']))
-    <h2>Uncovered barangays ({{ count($coverage['uncovered']) }})</h2>
+    @if (! empty($coverage['details']))
+    <h2>Barangay breakdown ({{ count($coverage['details']) }})</h2>
     <table class="grid">
         <thead>
-            <tr><th>Barangay</th><th>Municipality / City</th><th>Province</th></tr>
+            <tr><th>Barangay</th><th>Covered</th><th>Deployed</th><th>Sites</th></tr>
         </thead>
         <tbody>
-            @foreach ($coverage['uncovered'] as $place)
+            @foreach ($coverage['details'] as $place)
             <tr>
                 <td>{{ $place['barangay'] }}</td>
-                <td>{{ $place['municipality'] }}</td>
-                <td>{{ $place['province'] }}</td>
+                <td><span class="badge {{ $place['covered'] ? 'b-green' : 'b-slate' }}">{{ $place['covered'] ? 'Yes' : 'No' }}</span></td>
+                <td><span class="badge {{ $place['deployed'] ? 'b-green' : 'b-slate' }}">{{ $place['deployed'] ? 'Yes' : 'No' }}</span></td>
+                <td>{{ $place['sites'] }}</td>
             </tr>
             @endforeach
         </tbody>

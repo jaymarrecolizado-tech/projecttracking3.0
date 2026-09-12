@@ -135,24 +135,31 @@ class BarangayCoverageService
             'unattributed_sites' => $unattributed,
             'scope' => $this->describeScope($filters),
             'district_blank_sites' => $districtBlank,
-            'uncovered' => $this->uncoveredNames($filters, $references, $siteIndex),
+            'details' => $this->detailRows($filters, $references, $siteIndex),
         ];
     }
 
     /**
-     * Names of reference barangays with no site — only when a municipality is
-     * selected, so the annex stays one town long (the uncovered-barangay
-     * annex for the PDF; nationwide it would be thousands of rows).
+     * Per-barangay breakdown — only when a municipality is selected, so the
+     * table stays one town long instead of thousands of rows.
      */
-    private function uncoveredNames(array $filters, $references, array $siteIndex): array
+    private function detailRows(array $filters, $references, array $siteIndex): array
     {
         if (empty($filters['municipality'])) {
             return [];
         }
 
         return $references
-            ->reject(fn ($r) => isset($siteIndex[$r->province.'|'.$r->municipality.'|'.$r->name_normalized]))
-            ->map(fn ($r) => ['province' => $r->province, 'municipality' => $r->municipality, 'barangay' => $r->name])
+            ->map(function ($r) use ($siteIndex) {
+                $entry = $siteIndex[$r->province.'|'.$r->municipality.'|'.$r->name_normalized] ?? null;
+
+                return [
+                    'barangay' => $r->name,
+                    'covered' => $entry !== null,
+                    'deployed' => (bool) ($entry['deployed'] ?? false),
+                    'sites' => (int) ($entry['sites'] ?? 0),
+                ];
+            })
             ->sortBy('barangay')
             ->values()->all();
     }

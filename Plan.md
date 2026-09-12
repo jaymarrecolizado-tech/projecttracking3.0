@@ -104,7 +104,8 @@ Companion docs: `Plan_revision.md` (2026-09-08 hardening log) · `Plan_ui.md` (v
 - [x] Map “Generate PDF” posts current geo filters to `/reports/site-type`
 - [x] Project summary UI: dropdown + Generate (no longer a full-height project list)
 - [x] Shared kit: `ReportAnalytics` (period + geo/project scope → site mix, daily mix, uptime, trend, coverage, fleet, DOWN episodes, alerts, tickets) + `reports/partials/` (cover, KPI strip, CSS trend bars, numbered footer, teal lock)
-- [x] Project PDF: exec KPIs + site register (type, daily status, devices, CIR) + DOWN episodes/tickets; province PDF: municipality rollup + scope cover + daily status; site-type PDF: coverage bars + uncapped appendix + `site_type`/`status` form fields; barangay PDF: scope-aware totals + uncovered annex per municipality
+- [x] Project PDF: exec KPIs + site register (type, daily status, devices, CIR) + DOWN episodes/tickets; province PDF: municipality rollup + scope cover + daily status; site-type PDF: coverage bars + uncapped appendix + `site_type`/`status` form fields; barangay PDF: scope-aware totals + per-barangay breakdown per municipality (totals footer no longer repeats a narrowed scope)
+- [x] Every PDF opens with an executive summary (`ReportNarrative`: plain-sentence bullets from the page's own numbers, correctly pluralized) before the KPI strip
 - [x] Period + geo persisted in `report_exports.params` (`GenerateScopedReportRequest`)
 
 ### Hardening pass (2026-09-08, on `main`)

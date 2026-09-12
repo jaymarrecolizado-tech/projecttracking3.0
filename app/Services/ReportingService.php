@@ -39,6 +39,7 @@ class ReportingService
             'analytics' => $analytics,
             'register' => $register,
             'statusesAtTo' => $statusesAtTo,
+            'bullets' => app(ReportNarrative::class)->forProject($analytics),
             'userName' => $userName,
         ]);
     }
@@ -82,7 +83,7 @@ class ReportingService
 
         return Pdf::loadView('reports.province-summary', compact(
             'province', 'sites', 'grouped', 'rollup', 'statusesAtTo', 'scope', 'userName'
-        ));
+        ) + ['bullets' => app(ReportNarrative::class)->forProvince($rollup)]);
     }
 
     /** Site Type coverage (actual vs registered) — same data as /map/coverage. */
@@ -93,6 +94,7 @@ class ReportingService
         return Pdf::loadView('reports.site-type-coverage', [
             'coverage' => $coverage,
             'sites' => $this->siteTypeAppendix($filters),
+            'bullets' => app(ReportNarrative::class)->forSiteType($coverage),
             'userName' => $userName,
         ]);
     }
@@ -132,6 +134,7 @@ class ReportingService
 
         return Pdf::loadView('reports.barangay-coverage', [
             'coverage' => $coverage,
+            'bullets' => app(ReportNarrative::class)->forBarangay($coverage),
             'userName' => $userName,
         ]);
     }
@@ -294,8 +297,11 @@ class ReportingService
 
     public function generateOpsPeriodReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
+        $comparison = $this->opsPeriodComparison($filters);
+
         return Pdf::loadView('reports.ops-period', [
-            'comparison' => $this->opsPeriodComparison($filters),
+            'comparison' => $comparison,
+            'bullets' => app(ReportNarrative::class)->forOps($comparison),
             'userName' => $userName,
         ]);
     }
@@ -350,10 +356,12 @@ class ReportingService
     public function generateFleetReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $scope = app(ReportAnalytics::class)->describeScope($filters);
+        $inventory = $this->fleetInventory($filters);
 
         return Pdf::loadView('reports.fleet', [
-            'inventory' => $this->fleetInventory($filters),
+            'inventory' => $inventory,
             'scope' => $scope,
+            'bullets' => app(ReportNarrative::class)->forFleet($inventory),
             'userName' => $userName,
         ]);
     }
@@ -441,8 +449,11 @@ class ReportingService
 
     public function generateIncidentsReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
+        $incidents = $this->incidentsData($filters);
+
         return Pdf::loadView('reports.incidents', [
-            'incidents' => $this->incidentsData($filters),
+            'incidents' => $incidents,
+            'bullets' => app(ReportNarrative::class)->forIncidents($incidents),
             'userName' => $userName,
         ]);
     }
@@ -523,8 +534,11 @@ class ReportingService
 
     public function generateProgressReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
+        $progress = $this->progressData($filters);
+
         return Pdf::loadView('reports.progress', [
-            'progress' => $this->progressData($filters),
+            'progress' => $progress,
+            'bullets' => app(ReportNarrative::class)->forProgress($progress),
             'userName' => $userName,
         ]);
     }
@@ -555,12 +569,16 @@ class ReportingService
         foreach ($sections as $section) {
             if ($section === 'ops_period') {
                 $data['comparison'] = $this->opsPeriodComparison($filters);
+                $data['bullets']['ops_period'] = app(ReportNarrative::class)->forOps($data['comparison']);
             } elseif ($section === 'fleet') {
                 $data['inventory'] = $this->fleetInventory($filters);
+                $data['bullets']['fleet'] = app(ReportNarrative::class)->forFleet($data['inventory']);
             } elseif ($section === 'incidents') {
                 $data['incidents'] = $this->incidentsData($filters);
+                $data['bullets']['incidents'] = app(ReportNarrative::class)->forIncidents($data['incidents']);
             } elseif ($section === 'progress') {
                 $data['progress'] = $this->progressData($filters);
+                $data['bullets']['progress'] = app(ReportNarrative::class)->forProgress($data['progress']);
             }
         }
 

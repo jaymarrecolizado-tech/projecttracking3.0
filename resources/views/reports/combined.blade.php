@@ -15,13 +15,13 @@
     @endif
     <h1 style="font-size:17px">{{ $titles[$section] ?? $section }}</h1>
     @if($section === 'ops_period')
-    @include('reports.sections.ops', ['comparison' => $comparison])
+    @include('reports.sections.ops', ['comparison' => $comparison, 'bullets' => $bullets['ops_period']])
     @elseif($section === 'fleet')
-    @include('reports.sections.fleet', ['inventory' => $inventory])
+    @include('reports.sections.fleet', ['inventory' => $inventory, 'bullets' => $bullets['fleet']])
     @elseif($section === 'incidents')
-    @include('reports.sections.incidents', ['incidents' => $incidents])
+    @include('reports.sections.incidents', ['incidents' => $incidents, 'bullets' => $bullets['incidents']])
     @elseif($section === 'progress')
-    @include('reports.sections.progress', ['progress' => $progress])
+    @include('reports.sections.progress', ['progress' => $progress, 'bullets' => $bullets['progress']])
     @endif
     @endforeach
 

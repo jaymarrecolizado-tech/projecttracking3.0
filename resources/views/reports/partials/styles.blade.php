@@ -25,4 +25,6 @@
     .b-blue { background: #dbeafe; color: #1d4ed8; }
     .footer { margin-top: 24px; font-size: 8px; color: #94a3b8; text-align: center; }
     .muted { color: #64748b; }
+    ul.summary { margin: 8px 0 12px; padding-left: 18px; }
+    ul.summary li { margin-bottom: 3px; font-size: 10px; }
 </style>

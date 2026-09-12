@@ -1,4 +1,5 @@
-{{-- Progress section body. Expects $progress (progressData). --}}
+{{-- Progress section body. Expects $progress (progressData) + $bullets. --}}
+    @include('reports.partials.summary', ['bullets' => $bullets])
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$progress['overall_pct'].'%', 'Weighted accomplishment'],
         [count($progress['projects']), 'Projects tracked'],

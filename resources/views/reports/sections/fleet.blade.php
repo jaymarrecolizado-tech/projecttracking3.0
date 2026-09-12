@@ -1,4 +1,5 @@
-{{-- Fleet section body. Expects $inventory (fleetInventory). --}}
+{{-- Fleet section body. Expects $inventory (fleetInventory) + $bullets. --}}
+    @include('reports.partials.summary', ['bullets' => $bullets])
     @include('reports.partials.kpi-strip', ['kpis' => [
         [$inventory['deployed'], 'Deployed'],
         [$inventory['in_stock'], 'In stock'],
