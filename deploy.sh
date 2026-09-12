@@ -57,6 +57,11 @@ php artisan down --retry=15
 echo "🗄️ Running database migrations..."
 php artisan migrate --force
 
+# 5b. Region backfill (idempotent): the region filter silently returns almost
+# nothing until sites.region is stamped (Plan.md backlog #1).
+echo "🗺️ Backfilling site regions..."
+php artisan sites:backfill-regions
+
 # 6. Clear and Cache Laravel Data
 echo "🧹 Clearing and caching application state..."
 php artisan optimize:clear

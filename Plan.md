@@ -160,7 +160,7 @@ Out of scope (not started, not promised this slice): nationwide shapefiles, live
 
 ## Open (backlog)
 
-1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate (`2026_09_08_*`), `sites:backfill-regions`, Vite to **both** web root `build/` and `fpiap-app/public/build` (`public/build` is gitignored). Preserve `.env`. `route:cache` is OK. Split CloudPanel layout: do not run `deploy.sh` as-is without copying `public/build` to the domain folder.
+1. **Ship local tree to production** (`fpiapr2.dictr2.cloud`) — migrate (`2026_09_08_*`), `deploy.sh` now runs `sites:backfill-regions` itself, Vite to **both** web root `build/` and `fpiap-app/public/build` (`public/build` is gitignored). Preserve `.env`. `route:cache` is OK. Split CloudPanel layout: do not run `deploy.sh` as-is without copying `public/build` to the domain folder.
 2. **Analytics PDF reports** (exec summary + ops annexes) — phases 1–2 done (kit + enriched four); phases 3–5 open below. Uses data already in the DB. No live NMS required for phases 1–4.
 3. **Live NMS polling** — bind a real SNMP/REST `NmsClient` and schedule `nms:pull` (needs a reachable NMS/gateway). Reports keep using `site_daily_statuses` until then.
 4. **SMS** — if Telegram is not enough (ClickSend/Twilio), beside `App\Services\Telegram`.
@@ -217,8 +217,9 @@ Skills: Ponytail governs — reuse `ReportAnalytics`/partials/`GenerateScopedRep
 ### R3 — Laravel 11 → 12 upgrade [done 2026-09-11]
 - Framework now 12.69.2 (`laravel/framework: ^12.0`, companions resolved, `composer audit` clean — CVE-2026-48019 + signed-URL advisory gone); Pint normalizations from the new fixer version; CI `composer audit` is blocking again.
 
-### R4 — cutover readiness [open]
-- Everything short of the server: `deploy.sh` review, `route:cache` + production build verified, restore steps in runbook, local smoke. The actual cutover stays owner-side (`docs/DEPLOY.md` §5).
+### R4 — cutover readiness [done 2026-09-11, cutover itself owner-side]
+- `deploy.sh` reviewed: maintenance window + trap rollback, pre-migration dump, caches (`config`/`event`/`route`/`view` all verified), scoped permissions, `queue:restart`; `sites:backfill-regions` (idempotent) runs post-migrate so the region filter works from first boot.
+- Frontend rebuilt on the final tree; dev-server smoke 200/200 on Laravel 12. Handoff = `docs/DEPLOY.md` §5 + tag the release before `--pull` deploy.
 
 Blocked on owner input (not scheduled): live NMS bind, SMS provider, SLA target, TOTP hard-require rollout, backup restore rehearsal.
 
