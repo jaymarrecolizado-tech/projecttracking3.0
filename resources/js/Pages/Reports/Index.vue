@@ -41,6 +41,7 @@ const typeLabels = {
     fleet: 'Fleet inventory',
     incidents: 'Incidents',
     progress: 'Progress',
+    combined: 'Operations pack',
 };
 
 const coverageForm = useForm({
@@ -202,6 +203,10 @@ onBeforeUnmount(() => clearInterval(pollTimer));
 
 function download(exportItem) {
     window.location = route('reports.download', exportItem.id);
+}
+
+function downloadCsv(exportItem) {
+    window.location = route('reports.csv', exportItem.id);
 }
 
 const statusStyles = {
@@ -524,6 +529,12 @@ const statusStyles = {
             @click="download(exportItem)"
           >
             <IconDownload class="w-4 h-4" /> Download
+          </button>
+          <button
+            v-if="exportItem.status === 'DONE' && exportItem.type !== 'combined'" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 rounded font-medium transition-colors"
+            @click="downloadCsv(exportItem)"
+          >
+            CSV
           </button>
         </li>
       </ul>

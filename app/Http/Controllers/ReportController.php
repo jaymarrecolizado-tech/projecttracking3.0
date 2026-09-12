@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\ReportExport;
 use App\Services\GeoFilterOptions;
 use App\Services\ReportAnalytics;
+use App\Services\ReportingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -216,6 +217,39 @@ class ReportController extends Controller
         GenerateReport::dispatch($export->fresh());
 
         return redirect()->route('reports.index')->with('success', 'Report requeued.');
+    }
+
+    /** CSV companion for an export's annex table — regenerated, never stored. */
+    public function downloadCsv(Request $request, ReportExport $export)
+    {
+        abort_unless(
+            (int) $export->user_id === (int) $request->user()->id || $request->user()->hasPermission('reports.export'),
+            403,
+        );
+        abort_unless($export->status === 'DONE', 404);
+        abort_unless($export->type !== 'combined', 422, 'Combined packs have no single table — use a single-pack CSV.');
+
+        $csv = app(ReportingService::class)->exportCsv($export);
+
+        AuditLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'download csv',
+            'auditable_type' => ReportExport::class,
+            'auditable_id' => $export->id,
+            'old_values' => null,
+            'new_values' => ['filename' => $csv['name']],
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return response()->streamDownload(function () use ($csv) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, $csv['headings']);
+            foreach ($csv['rows'] as $row) {
+                fputcsv($out, $row);
+            }
+            fclose($out);
+        }, $csv['name'], ['Content-Type' => 'text/csv']);
     }
 
     public function download(Request $request, ReportExport $export)

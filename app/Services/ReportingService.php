@@ -8,6 +8,7 @@ use App\Models\FreewifiImportBatch;
 use App\Models\MaintenanceTicket;
 use App\Models\Project;
 use App\Models\ProjectMilestone;
+use App\Models\ReportExport;
 use App\Models\Site;
 use App\Models\SiteAccomplishment;
 use App\Models\SiteDailyStatus;
@@ -28,9 +29,7 @@ class ReportingService
         // Chunk the fleet so a province-sized project never hydrates every
         // site row into memory at once; statuses at the period end resolve
         // in one query instead of N+1.
-        $register = collect();
-        $project->sites()->with(['activeDeployments.device:id,asset_tag'])
-            ->chunk(500, fn ($chunk) => $register->push(...$chunk));
+        $register = $this->projectRegister($project);
         $statusesAtTo = SiteDailyStatus::whereIn('site_id', $register->pluck('id'))
             ->whereDate('date', $analytics['to'])
             ->pluck('status', 'site_id');
@@ -38,7 +37,7 @@ class ReportingService
         return Pdf::loadView('reports.project-summary', [
             'project' => $project,
             'analytics' => $analytics,
-            'register' => $register->sortBy('location_name')->values(),
+            'register' => $register,
             'statusesAtTo' => $statusesAtTo,
             'userName' => $userName,
         ]);
@@ -138,9 +137,137 @@ class ReportingService
     }
 
     /**
-     * Operations-period comparison: current window vs the equal-length window
-     * before it. Pure data (tested); the PDF wrapper below only renders it.
+     * CSV companion for an export's primary annex table (Plan.md Phase 4).
+     * Regenerated live from the export params — no stored file to clean up.
+     * Combined packs have no single table, so they get none.
+     *
+     * @return array{name: string, headings: array<int, string>, rows: array<int, array<int, mixed>>}
      */
+    public function exportCsv(ReportExport $export): array
+    {
+        $params = $export->params ?? [];
+        $filters = $params['filters'] ?? $params;
+
+        return match ($export->type) {
+            'project' => $this->projectRegisterCsv(
+                Project::findOrFail($params['project_id']), $params
+            ),
+            'province' => $this->provinceRegisterCsv(
+                $params['province'], $params['project_id'] ?? null, $params
+            ),
+            'site_type' => [
+                'name' => 'site-type-coverage.csv',
+                'headings' => ['Site type', 'Registered', 'Actual', 'Gap', 'Devices', 'Coverage %'],
+                'rows' => array_map(
+                    fn ($r) => [$r['label'], $r['registered'], $r['actual'], $r['gap'], $r['devices'], $r['coverage_pct']],
+                    app(SiteCoverageService::class)->coverage($filters)['rows']
+                ),
+            ],
+            'barangay_coverage' => [
+                'name' => 'barangay-coverage.csv',
+                'headings' => ['Province', 'Municipality', 'Covered', 'Deployed', 'Remaining', 'Total', 'Coverage %'],
+                'rows' => array_map(
+                    fn ($r) => [$r['province'], $r['municipality'], $r['covered'], $r['deployed'], $r['remaining'], $r['total_barangays'], $r['coverage_pct']],
+                    app(BarangayCoverageService::class)->coverage($filters)['rows']
+                ),
+            ],
+            'ops_period' => [
+                'name' => 'open-down-episodes.csv',
+                'headings' => ['Site', 'Where', 'Status', 'Since', 'Duration (h)'],
+                'rows' => $this->opsPeriodComparison($filters)['current']['down_episodes']
+                    ->map(fn ($e) => [$e['site'], $e['where'], $e['status'], $e['started_at'], $e['duration_h']])->all(),
+            ],
+            'fleet' => [
+                'name' => 'device-register.csv',
+                'headings' => ['Asset tag', 'Model', 'Status', 'Firmware', 'Site', 'Warranty until'],
+                'rows' => $this->fleetInventory($filters)['register']
+                    ->map(fn ($d) => [
+                        $d->asset_tag,
+                        trim(($d->deviceModel->manufacturer ?? '').' '.($d->deviceModel->model_name ?? '')),
+                        $d->status,
+                        $d->firmware_version ?? '',
+                        data_get($d->currentDeployment, 'site.location_name', ''),
+                        $d->warranty_until?->toDateString() ?? '',
+                    ])->all(),
+            ],
+            'incidents' => [
+                'name' => 'open-alerts.csv',
+                'headings' => ['Severity', 'Rule', 'Site', 'Triggered', 'Age (h)'],
+                'rows' => array_map(
+                    fn ($a) => [$a['severity'], $a['rule'], $a['site'], $a['triggered_at'], $a['age_h']],
+                    $this->incidentsData($filters)['open_alerts']
+                ),
+            ],
+            'progress' => [
+                'name' => 'overdue.csv',
+                'headings' => ['Site', 'Milestone', 'Status', '%', 'Target', 'Days overdue'],
+                'rows' => array_map(
+                    fn ($r) => [$r['site'], $r['milestone'], $r['status'], $r['pct'], $r['target_date'], $r['days_overdue']],
+                    $this->progressData($filters)['overdue']
+                ),
+            ],
+            default => throw new InvalidArgumentException("No CSV companion for '{$export->type}' reports."),
+        };
+    }
+
+    private function projectRegisterCsv(Project $project, array $params): array
+    {
+        $to = app(ReportAnalytics::class)->period($params)[1];
+        $register = $this->projectRegister($project);
+        $statuses = SiteDailyStatus::whereIn('site_id', $register->pluck('id'))
+            ->whereDate('date', $to)->pluck('status', 'site_id');
+
+        return [
+            'name' => "project-{$project->code}-register.csv",
+            'headings' => ['Location', 'Municipality', 'Province', 'Type', 'Daily status', 'Devices', 'CIR (Mbps)'],
+            'rows' => $register->map(fn ($site) => [
+                $site->location_name,
+                $site->municipality ?? '',
+                $site->province ?? '',
+                $site->site_type ?? '',
+                $statuses->get($site->id, 'NO DATA'),
+                $site->activeDeployments->count(),
+                $site->bw_download_cir ?? '',
+            ])->all(),
+        ];
+    }
+
+    private function provinceRegisterCsv(string $province, ?int $projectId, array $params): array
+    {
+        $to = app(ReportAnalytics::class)->period($params)[1];
+        $query = Site::where('province', $province);
+        if ($projectId) {
+            $query->where('project_id', $projectId);
+        }
+        $sites = collect();
+        $query->orderBy('municipality')->orderBy('location_name')
+            ->chunk(500, fn ($chunk) => $sites->push(...$chunk));
+        $statuses = SiteDailyStatus::whereIn('site_id', $sites->pluck('id'))
+            ->whereDate('date', $to)->pluck('status', 'site_id');
+
+        return [
+            'name' => 'province-register.csv',
+            'headings' => ['Municipality', 'Location', 'Barangay', 'Status', 'Daily status'],
+            'rows' => $sites->map(fn ($site) => [
+                $site->municipality ?? '',
+                $site->location_name,
+                $site->barangay ?? '',
+                $site->status,
+                $statuses->get($site->id, 'NO DATA'),
+            ])->all(),
+        ];
+    }
+
+    /** Chunked site register shared by the project PDF and its CSV. */
+    private function projectRegister(Project $project): Collection
+    {
+        $register = collect();
+        $project->sites()->with(['activeDeployments.device:id,asset_tag'])
+            ->chunk(500, fn ($chunk) => $register->push(...$chunk));
+
+        return $register->sortBy('location_name')->values();
+    }
+
     public function opsPeriodComparison(array $filters): array
     {
         $analytics = app(ReportAnalytics::class);

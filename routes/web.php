@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reports/progress', [ReportController::class, 'progressPdf'])->name('reports.progress')->middleware('can:reports.export');
     Route::post('/reports/combined', [ReportController::class, 'combinedPdf'])->name('reports.combined')->middleware('can:reports.export');
     Route::get('/reports/exports/{export}/download', [ReportController::class, 'download'])->name('reports.download')->middleware('can:reports.view');
+    Route::get('/reports/exports/{export}/csv', [ReportController::class, 'downloadCsv'])->name('reports.csv')->middleware('can:reports.view');
     Route::post('/reports/exports/{export}/retry', [ReportController::class, 'retry'])->name('reports.retry')->middleware('can:reports.export');
 
     // Maintenance tickets — plan §Phase 3 (SLA groundwork)

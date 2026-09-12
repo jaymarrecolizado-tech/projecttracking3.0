@@ -189,9 +189,9 @@ Audience: **both** — one-page executive rollup, then detailed ops annexes in t
 - [x] `incidents` — alert severity, ticket backlog, MTTA/MTTR; open lists
 - [x] `progress` — weighted accomplishment %; overdue milestones
 
-### Phase 4 — Reports builder UI [done, Excel companion deferred]
+### Phase 4 — Reports builder UI [done]
 - [x] Report builder card: period presets (7/14/30d) + `GeoFilterFields` + section checkboxes + one Generate → `combined` pack (`ops_period`, `fleet`, `incidents`, `progress` in one PDF via `params.sections`)
-- [ ] Optional Excel/CSV companion for annex tables (Maatwebsite already in composer)
+- [x] CSV companion for every single-pack annex table (regenerated live, `reports.csv`; combined packs excluded — no single table)
 - [x] Paginated export history (10/page) with scope line on each row; flash success already shown
 
 ### Phase 5 — After product input (do not block 1–4)

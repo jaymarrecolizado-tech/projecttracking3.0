@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Jobs\GenerateReport;
 use App\Models\Project;
 use App\Models\ReportExport;
+use App\Models\Site;
+use App\Models\SiteDailyStatus;
 use App\Models\User;
 use App\Services\ReportingService;
 use Database\Seeders\RolePermissionSeeder;
@@ -167,6 +169,55 @@ class ReportExportTest extends TestCase
             ->assertSessionHasErrors('sections.0');
 
         $this->assertSame(0, ReportExport::where('type', 'combined')->count());
+    }
+
+    public function test_done_export_has_csv_companion(): void
+    {
+        $admin = $this->admin();
+        $project = $this->project();
+        $site = Site::create([
+            'project_id' => $project->id, 'location_name' => 'Csv Site',
+            'province' => 'Cagayan', 'municipality' => 'Aparri',
+            'latitude' => 18.3, 'longitude' => 121.6, 'status' => 'active',
+        ]);
+        SiteDailyStatus::create([
+            'site_id' => $site->id, 'date' => today()->toDateString(), 'status' => 'UP',
+            'entry_status' => 'DRAFT', 'created_by' => $admin->id,
+        ]);
+        $export = ReportExport::create([
+            'user_id' => $admin->id, 'type' => 'project',
+            'params' => ['project_id' => $project->id],
+            'download_name' => 'project-summary.pdf', 'status' => 'DONE',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('reports.csv', $export));
+        $response->assertOk();
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('Location,Municipality', $content);
+        $this->assertStringContainsString('Csv Site', $content);
+        $this->assertStringContainsString('UP', $content);
+    }
+
+    public function test_csv_is_forbidden_to_strangers_and_missing_for_combined(): void
+    {
+        $owner = User::factory()->create();
+        $admin = $this->admin();
+        $export = ReportExport::create([
+            'user_id' => $owner->id, 'type' => 'project',
+            'params' => ['project_id' => 1],
+            'download_name' => 'x.pdf', 'status' => 'DONE',
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('reports.csv', $export))
+            ->assertForbidden();
+
+        $pack = ReportExport::create([
+            'user_id' => $admin->id, 'type' => 'combined',
+            'params' => ['filters' => [], 'sections' => ['fleet']],
+            'download_name' => 'pack.pdf', 'status' => 'DONE',
+        ]);
+        $this->actingAs($admin)->get(route('reports.csv', $pack))->assertStatus(422);
     }
 
     public function test_failed_generation_is_recorded_on_the_export(): void
