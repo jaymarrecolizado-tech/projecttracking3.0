@@ -185,11 +185,11 @@ Audience: **both** — one-page executive rollup, then detailed ops annexes in t
 - [x] **Site type:** coverage % bars; silent 200-row appendix cap dropped (chunked, uncapped); `site_type` + `status` on the form
 - [x] **Barangay:** totals footer follows the scope (REGION II — TOTAL only unfiltered); uncovered-barangay annex when municipality is set
 
-### Phase 3 — New packs (existing data)
+### Phase 3 — New packs (existing data) [done]
 - [x] `ops_period` — period health vs previous; site-days + open DOWN episodes
 - [x] `fleet` — deployed/stock/repair, warranty ≤90d, firmware vs `APPROVED_FIRMWARE`; device register
-- [ ] `incidents` — alert severity, ticket backlog, MTTA/MTTR; open lists
-- [ ] `progress` — weighted accomplishment %; overdue milestones
+- [x] `incidents` — alert severity, ticket backlog, MTTA/MTTR; open lists
+- [x] `progress` — weighted accomplishment %; overdue milestones
 
 ### Phase 4 — Reports builder UI
 - [ ] Replace disconnected cards with: period presets + `GeoFilterFields` + section checkboxes + one Generate
@@ -202,6 +202,29 @@ Audience: **both** — one-page executive rollup, then detailed ops annexes in t
 - [ ] Solar / GB-delivered sections only once probe data is populated
 
 Build order: analytics + kit → enrich the four PDFs → `ops_period` + `fleet` → builder UI → incidents/progress → SLA/schedule.
+
+---
+
+## Execution plan — finish everything (2026-09-11)
+
+Skills: Ponytail governs — reuse `ReportAnalytics`/partials/`GenerateScopedReportRequest`, one runnable check per pack, gates green before each commit.
+
+### R1 — incidents + progress packs [open]
+- `incidents`: alert severity breakdown, ticket backlog, MTTA/MTTR from `triggered_at`/`acknowledged_at`/`resolved_at` (+ tickets `created_at`/`resolved_at`); open alert + ticket lists. Route/job/view/tests, same pattern as `ops_period`/`fleet`.
+- `progress`: weighted accomplishment % (`weight_pct` × `pct_complete`), per-milestone bars, overdue list (`target_date` past + incomplete). Route/job/view/tests.
+
+### R2 — builder UI + combined PDF [open]
+- Reports page: period presets (7/14/30d) + shared `GeoFilterFields` + section checkboxes + one Generate; keep per-pack cards until the builder proves out, then remove them.
+- `combined` report type: cover + selected analytic sections (`ops_period`, `fleet`, `incidents`, `progress`) in one PDF via `params.sections`.
+- Export history: scope line on each row (computed from params), paginated when it outgrows 10.
+
+### R3 — Laravel 11 → 12 upgrade [open]
+- Baseline gates green + git checkpoint; bump `laravel/framework` to `^12.0` with companions per the official guide; fix breaks; full gates; dedicated commit. Rollback = revert that commit. (Closes CVE-2026-48019 + signed-URL advisory; then CI `composer audit` becomes blocking.)
+
+### R4 — cutover readiness [open]
+- Everything short of the server: `deploy.sh` review, `route:cache` + production build verified, restore steps in runbook, local smoke. The actual cutover stays owner-side (`docs/DEPLOY.md` §5).
+
+Blocked on owner input (not scheduled): live NMS bind, SMS provider, SLA target, TOTP hard-require rollout, backup restore rehearsal.
 
 ---
 

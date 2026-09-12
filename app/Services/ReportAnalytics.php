@@ -62,7 +62,7 @@ class ReportAnalytics
     }
 
     /** Site ids in scope as a subquery — every KPI below reads through it. */
-    private function siteIds(array $params)
+    public function siteIds(array $params)
     {
         $query = Site::query()->select('sites.id');
         if (! empty($params['project_id'])) {

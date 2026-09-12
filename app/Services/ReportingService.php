@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Alert;
 use App\Models\Device;
 use App\Models\FreewifiImportBatch;
+use App\Models\MaintenanceTicket;
 use App\Models\Project;
+use App\Models\ProjectMilestone;
 use App\Models\Site;
+use App\Models\SiteAccomplishment;
 use App\Models\SiteDailyStatus;
 use App\Models\SiteStatusEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -224,6 +227,171 @@ class ReportingService
             'scope' => $scope,
             'userName' => $userName,
         ]);
+    }
+
+    /**
+     * Incident pack data: alert severity for the window, ticket backlog,
+     * MTTA/MTTR in hours, open lists. Pure data (tested).
+     */
+    public function incidentsData(array $filters): array
+    {
+        $analytics = app(ReportAnalytics::class);
+        [$from, $to] = $analytics->period($filters);
+        $ids = $analytics->siteIds($filters);
+        // Timestamp bounds run to end-of-day: the period end is midnight, and
+        // intraday alerts/tickets still belong to the window.
+        $window = [$from, $to->copy()->endOfDay()];
+
+        $bySeverity = Alert::query()->whereIn('site_id', (clone $ids))
+            ->whereBetween('triggered_at', $window)
+            ->join('alert_rules', 'alert_rules.id', '=', 'alerts.rule_id')
+            ->selectRaw('alert_rules.severity, COUNT(*) AS n')
+            ->groupBy('alert_rules.severity')
+            ->pluck('n', 'severity');
+
+        $samples = Alert::query()->whereIn('site_id', (clone $ids))
+            ->where(fn ($q) => $q
+                ->whereBetween('acknowledged_at', $window)
+                ->orWhereBetween('resolved_at', $window))
+            ->take(1000)
+            ->get(['triggered_at', 'acknowledged_at', 'resolved_at']);
+        $avgHours = fn ($rows, string $col) => ($n = $rows->whereNotNull($col)->count()) > 0
+            ? round($rows->whereNotNull($col)->average(
+                fn ($r) => $r->triggered_at->diffInSeconds($r->{$col}) / 3600
+            ), 1)
+            : null;
+
+        $ticketBase = MaintenanceTicket::query()->whereIn('site_id', (clone $ids));
+        $backlog = (clone $ticketBase)->whereIn('status', ['OPEN', 'IN_PROGRESS']);
+        $byPriority = (clone $backlog)
+            ->selectRaw('priority, COUNT(*) AS n')->groupBy('priority')->pluck('n', 'priority');
+        $ticketSamples = (clone $ticketBase)
+            ->whereNotNull('resolved_at')->whereBetween('resolved_at', $window)
+            ->take(1000)->get(['created_at', 'resolved_at']);
+        $ticketMttr = $ticketSamples->isNotEmpty()
+            ? round($ticketSamples->average(
+                fn ($t) => $t->created_at->diffInSeconds($t->resolved_at) / 3600
+            ), 1)
+            : null;
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'scope' => $analytics->describeScope($filters),
+            'alerts_triggered' => (int) $bySeverity->sum(),
+            'by_severity' => $bySeverity->all(),
+            'mtta_h' => $avgHours($samples, 'acknowledged_at'),
+            'mttr_alerts_h' => $avgHours($samples, 'resolved_at'),
+            'tickets_open' => (clone $backlog)->count(),
+            'tickets_by_priority' => $byPriority->all(),
+            'mttr_tickets_h' => $ticketMttr,
+            'open_alerts' => Alert::query()->whereIn('site_id', (clone $ids))->whereNull('resolved_at')
+                ->with(['rule:id,name,severity', 'site:id,location_name'])
+                ->orderBy('triggered_at')->take(10)
+                ->get(['id', 'rule_id', 'site_id', 'triggered_at'])
+                ->map(fn ($alert) => [
+                    'severity' => data_get($alert->rule, 'severity', 'info'),
+                    'rule' => data_get($alert->rule, 'name', '—'),
+                    'site' => data_get($alert->site, 'location_name', '—'),
+                    'triggered_at' => $alert->triggered_at->toDateTimeString(),
+                    'age_h' => (int) $alert->triggered_at->diffInHours(now()),
+                ])->all(),
+            'open_tickets' => (clone $backlog)
+                ->with('site:id,location_name')
+                ->orderBy('created_at')->take(10)
+                ->get(['id', 'site_id', 'title', 'status', 'priority', 'created_at'])
+                ->map(fn ($ticket) => [
+                    'site' => data_get($ticket->site, 'location_name', '—'),
+                    'title' => $ticket->title,
+                    'status' => $ticket->status,
+                    'priority' => $ticket->priority,
+                    'age_h' => (int) $ticket->created_at->diffInHours(now()),
+                ])->all(),
+        ];
+    }
+
+    public function generateIncidentsReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
+    {
+        return Pdf::loadView('reports.incidents', $this->incidentsData($filters) + ['userName' => $userName]);
+    }
+
+    /**
+     * Progress pack data: weighted accomplishment % per project and overall,
+     * per-milestone bars, overdue list. Pure data (tested).
+     */
+    public function progressData(array $filters): array
+    {
+        $analytics = app(ReportAnalytics::class);
+        $projectId = $filters['project_id'] ?? null;
+
+        $milestones = ProjectMilestone::query()
+            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->with('project:id,name')
+            ->orderBy('project_id')->orderBy('milestone_order')
+            ->get(['id', 'project_id', 'milestone_name', 'milestone_order', 'weight_pct']);
+
+        $avgs = SiteAccomplishment::query()
+            ->whereIn('milestone_id', $milestones->pluck('id'))
+            ->selectRaw('milestone_id, AVG(pct_complete) AS avg_pct, COUNT(*) AS n')
+            ->groupBy('milestone_id')
+            ->get()->keyBy('milestone_id');
+
+        $projects = [];
+        $grandWeight = 0.0;
+        $grandPoints = 0.0;
+        foreach ($milestones->groupBy('project_id') as $projectMilestones) {
+            $rows = [];
+            $weight = 0.0;
+            $points = 0.0;
+            foreach ($projectMilestones as $milestone) {
+                $avg = (float) ($avgs->get($milestone->id)->avg_pct ?? 0);
+                $w = (float) $milestone->weight_pct;
+                $weight += $w;
+                $points += $w * $avg;
+                $grandWeight += $w;
+                $grandPoints += $w * $avg;
+                $rows[] = [
+                    'name' => $milestone->milestone_name,
+                    'weight' => $w,
+                    'avg_pct' => round($avg, 1),
+                    'sites' => (int) ($avgs->get($milestone->id)->n ?? 0),
+                ];
+            }
+            $projects[] = [
+                'project' => $projectMilestones->first()->project->name ?? "#{$projectMilestones->first()->project_id}",
+                'weighted_pct' => $weight > 0 ? round($points / $weight, 1) : 0.0,
+                'milestones' => $rows,
+            ];
+        }
+
+        $overdue = SiteAccomplishment::query()
+            ->whereIn('site_id', $analytics->siteIds($filters))
+            ->whereDate('target_date', '<', today())
+            ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->with(['site:id,location_name,project_id', 'milestone:id,milestone_name,project_id', 'site.project:id,name'])
+            ->orderBy('target_date')->take(50)
+            ->get(['id', 'site_id', 'milestone_id', 'status', 'pct_complete', 'target_date'])
+            ->map(fn ($row) => [
+                'site' => data_get($row->site, 'location_name', '—'),
+                'project' => data_get($row->site, 'project.name', '—'),
+                'milestone' => data_get($row->milestone, 'milestone_name', '—'),
+                'status' => $row->status,
+                'pct' => (float) $row->pct_complete,
+                'target_date' => $row->target_date->toDateString(),
+                'days_overdue' => (int) $row->target_date->diffInDays(today()),
+            ])->all();
+
+        return [
+            'scope' => $analytics->describeScope($filters),
+            'overall_pct' => $grandWeight > 0 ? round($grandPoints / $grandWeight, 1) : 0.0,
+            'projects' => $projects,
+            'overdue' => $overdue,
+        ];
+    }
+
+    public function generateProgressReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
+    {
+        return Pdf::loadView('reports.progress', $this->progressData($filters) + ['userName' => $userName]);
     }
 
     public function getDashboardStats(): array

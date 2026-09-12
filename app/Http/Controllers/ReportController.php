@@ -138,6 +138,32 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
+    public function incidentsPdf(GenerateScopedReportRequest $request)
+    {
+        $export = ReportExport::create([
+            'user_id' => $request->user()->id,
+            'type' => 'incidents',
+            'params' => ['filters' => $request->scope()],
+            'download_name' => $this->downloadName(['incidents', now()->format('Y-m-d')]),
+        ]);
+        GenerateReport::dispatch($export);
+
+        return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
+    }
+
+    public function progressPdf(GenerateScopedReportRequest $request)
+    {
+        $export = ReportExport::create([
+            'user_id' => $request->user()->id,
+            'type' => 'progress',
+            'params' => ['filters' => $request->scope()],
+            'download_name' => $this->downloadName(['progress', now()->format('Y-m-d')]),
+        ]);
+        GenerateReport::dispatch($export);
+
+        return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
+    }
+
     /** Re-queue a failed export with its original filter set (§Phase 5.5). */
     public function retry(Request $request, ReportExport $export)
     {

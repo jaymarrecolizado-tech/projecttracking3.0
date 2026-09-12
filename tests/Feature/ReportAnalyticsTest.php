@@ -9,7 +9,9 @@ use App\Models\DeviceDeployment;
 use App\Models\DeviceModel;
 use App\Models\MaintenanceTicket;
 use App\Models\Project;
+use App\Models\ProjectMilestone;
 use App\Models\Site;
+use App\Models\SiteAccomplishment;
 use App\Models\SiteDailyStatus;
 use App\Models\SiteStatusEvent;
 use App\Models\User;
@@ -246,6 +248,85 @@ class ReportAnalyticsTest extends TestCase
         $this->assertCount(205, app(ReportingService::class)->siteTypeAppendix([]));
     }
 
+    public function test_incidents_pack_computes_mtta_mttr_and_backlog(): void
+    {
+        $now = now();
+        $rule = AlertRule::create([
+            'name' => 'Offline', 'metric' => 'offline_minutes', 'operator' => '>',
+            'threshold' => 10, 'duration_minutes' => 0, 'severity' => 'critical',
+            'notify_roles' => [], 'is_active' => true,
+        ]);
+        Alert::create([
+            'rule_id' => $rule->id, 'site_id' => $this->siteA->id,
+            'triggered_at' => $now->copy()->subHours(10),
+            'acknowledged_at' => $now->copy()->subHours(8),
+            'resolved_at' => $now->copy()->subHours(5),
+        ]);
+        Alert::create([
+            'rule_id' => $rule->id, 'site_id' => $this->siteA->id,
+            'triggered_at' => $now->copy()->subHours(2),
+        ]);
+
+        $reporter = User::factory()->create()->id;
+        $done = MaintenanceTicket::create([
+            'site_id' => $this->siteA->id, 'title' => 'Fixed link',
+            'priority' => 'medium', 'category' => 'connectivity', 'status' => 'RESOLVED',
+            'reported_by' => $reporter, 'resolved_at' => $now->copy()->subHour(),
+        ]);
+        $done->created_at = $now->copy()->subHours(6);
+        $done->save();
+        MaintenanceTicket::create([
+            'site_id' => $this->siteA->id, 'title' => 'Open fault',
+            'priority' => 'high', 'category' => 'power', 'status' => 'OPEN',
+            'reported_by' => $reporter,
+        ]);
+
+        $data = app(ReportingService::class)->incidentsData(['project_id' => $this->project->id]);
+
+        $this->assertSame(2, $data['alerts_triggered']);
+        $this->assertSame(['critical' => 2], $data['by_severity']);
+        $this->assertSame(2.0, $data['mtta_h']);
+        $this->assertSame(5.0, $data['mttr_alerts_h']);
+        $this->assertSame(1, $data['tickets_open']);
+        $this->assertSame(['high' => 1], $data['tickets_by_priority']);
+        $this->assertSame(5.0, $data['mttr_tickets_h']);
+        $this->assertCount(1, $data['open_alerts']);
+        $this->assertCount(1, $data['open_tickets']);
+    }
+
+    public function test_progress_pack_weights_milestones_and_lists_overdue(): void
+    {
+        $user = User::factory()->create()->id;
+        $civil = ProjectMilestone::create([
+            'project_id' => $this->project->id, 'milestone_name' => 'Civil works',
+            'milestone_order' => 1, 'weight_pct' => 60,
+        ]);
+        $install = ProjectMilestone::create([
+            'project_id' => $this->project->id, 'milestone_name' => 'Installation',
+            'milestone_order' => 2, 'weight_pct' => 40,
+        ]);
+        foreach ([[$this->siteA, $civil, 100, 'IN_PROGRESS', today()->addWeek()],
+            [$this->siteB, $civil, 50, 'IN_PROGRESS', today()->addWeek()],
+            [$this->siteA, $install, 50, 'IN_PROGRESS', today()->subDay()],
+        ] as [$site, $milestone, $pct, $status, $target]) {
+            SiteAccomplishment::create([
+                'site_id' => $site->id, 'milestone_id' => $milestone->id,
+                'status' => $status, 'pct_complete' => $pct,
+                'target_date' => $target, 'created_by' => $user,
+            ]);
+        }
+
+        $data = app(ReportingService::class)->progressData(['project_id' => $this->project->id]);
+
+        // (60×75 + 40×50) / 100 = 65.
+        $this->assertSame(65.0, $data['overall_pct']);
+        $this->assertCount(1, $data['projects']);
+        $this->assertSame(75.0, $data['projects'][0]['milestones'][0]['avg_pct']);
+        $this->assertCount(1, $data['overdue']);
+        $this->assertSame('Installation', $data['overdue'][0]['milestone']);
+        $this->assertSame(1, $data['overdue'][0]['days_overdue']);
+    }
+
     public function test_ops_and_fleet_pdfs_generate(): void
     {
         $this->recordStatus($this->siteA, today()->toDateString(), 'UP');
@@ -254,5 +335,9 @@ class ReportAnalyticsTest extends TestCase
         $this->assertStringStartsWith('%PDF', $reporting->generateOpsPeriodReport(
             ['project_id' => $this->project->id], 'tester')->output());
         $this->assertStringStartsWith('%PDF', $reporting->generateFleetReport([], 'tester')->output());
+        $this->assertStringStartsWith('%PDF', $reporting->generateIncidentsReport(
+            ['project_id' => $this->project->id], 'tester')->output());
+        $this->assertStringStartsWith('%PDF', $reporting->generateProgressReport(
+            ['project_id' => $this->project->id], 'tester')->output());
     }
 }

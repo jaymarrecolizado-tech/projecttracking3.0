@@ -125,6 +125,8 @@ class ReportExportTest extends TestCase
         $this->actingAs($viewer)->post(route('reports.barangay-coverage'))->assertForbidden();
         $this->actingAs($viewer)->post(route('reports.ops-period'))->assertForbidden();
         $this->actingAs($viewer)->post(route('reports.fleet'))->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.incidents'))->assertForbidden();
+        $this->actingAs($viewer)->post(route('reports.progress'))->assertForbidden();
 
         $this->assertSame(0, ReportExport::count());
     }

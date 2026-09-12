@@ -38,6 +38,8 @@ const typeLabels = {
     barangay_coverage: 'Barangay coverage',
     ops_period: 'Operations period',
     fleet: 'Fleet inventory',
+    incidents: 'Incidents',
+    progress: 'Progress',
 };
 
 const coverageForm = useForm({
@@ -357,6 +359,20 @@ const statusStyles = {
                 @click="submitPack('reports.fleet')"
               >
                 Fleet inventory PDF
+              </button>
+              <button
+                type="button" :disabled="packsForm.processing"
+                class="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+                @click="submitPack('reports.incidents')"
+              >
+                Incidents PDF
+              </button>
+              <button
+                type="button" :disabled="packsForm.processing"
+                class="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+                @click="submitPack('reports.progress')"
+              >
+                Progress PDF
               </button>
             </div>
           </form>

@@ -101,6 +101,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reports/barangay-coverage', [ReportController::class, 'barangayCoveragePdf'])->name('reports.barangay-coverage')->middleware('can:reports.export');
     Route::post('/reports/ops-period', [ReportController::class, 'opsPeriodPdf'])->name('reports.ops-period')->middleware('can:reports.export');
     Route::post('/reports/fleet', [ReportController::class, 'fleetPdf'])->name('reports.fleet')->middleware('can:reports.export');
+    Route::post('/reports/incidents', [ReportController::class, 'incidentsPdf'])->name('reports.incidents')->middleware('can:reports.export');
+    Route::post('/reports/progress', [ReportController::class, 'progressPdf'])->name('reports.progress')->middleware('can:reports.export');
     Route::get('/reports/exports/{export}/download', [ReportController::class, 'download'])->name('reports.download')->middleware('can:reports.view');
     Route::post('/reports/exports/{export}/retry', [ReportController::class, 'retry'])->name('reports.retry')->middleware('can:reports.export');
 
