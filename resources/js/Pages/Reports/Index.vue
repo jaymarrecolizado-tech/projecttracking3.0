@@ -1,13 +1,14 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import GeoFilterFields from '@/Components/GeoFilterFields.vue';
+import Pagination from '@/Components/Pagination.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconRefresh, IconTable, IconTarget } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
     projects: Array,
-    exports: Array,
+    exports: { type: Object, default: () => ({ data: [], links: [] }) },
     siteTypes: { type: Array, default: () => [] },
     initialOptions: { type: Object, default: () => ({ provinces: [], districts: [], municipalities: [], barangays: [] }) },
 });
@@ -139,8 +140,52 @@ function submitPack(routeName) {
     });
 }
 
+const builderForm = useForm({
+    from: '',
+    to: '',
+    project_id: '',
+    province: '',
+    district: '',
+    municipality: '',
+    barangay: '',
+    sections: ['ops_period', 'fleet'],
+});
+
+const builderOptions = ref(props.initialOptions);
+
+const packSections = [
+    { code: 'ops_period', label: 'Period health' },
+    { code: 'fleet', label: 'Fleet inventory' },
+    { code: 'incidents', label: 'Incidents' },
+    { code: 'progress', label: 'Progress' },
+];
+
+function onBuilderFilters(next) {
+    Object.assign(builderForm, next);
+    loadOptions(next, builderOptions);
+}
+
+function setPreset(days) {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - (days - 1));
+    builderForm.from = from.toISOString().slice(0, 10);
+    builderForm.to = to.toISOString().slice(0, 10);
+}
+
+function submitBuilder() {
+    builderForm.post(route('reports.combined'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            builderForm.reset();
+            builderForm.sections = ['ops_period', 'fleet'];
+            builderOptions.value = props.initialOptions;
+        },
+    });
+}
+
 const hasPending = computed(() =>
-    props.exports.some((e) => e.status === 'PENDING' || e.status === 'PROCESSING'),
+    (props.exports?.data ?? []).some((e) => e.status === 'PENDING' || e.status === 'PROCESSING'),
 );
 
 let pollTimer = null;
@@ -378,6 +423,71 @@ const statusStyles = {
           </form>
         </div>
       </div>
+      <!-- Report builder: period + sections in one pack -->
+      <div class="dict-card overflow-hidden lg:col-span-2">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-accent-500 rounded-lg flex items-center justify-center shrink-0">
+              <IconMapPin class="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-800">Report builder</h3>
+              <p class="text-sm text-slate-500">One pack with the sections you pick, for the period and area you pick</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-6">
+          <form @submit.prevent="submitBuilder">
+            <div class="flex flex-wrap items-end gap-3 mb-3">
+              <div>
+                <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Period</span>
+                <div class="flex gap-2">
+                  <button
+                    v-for="days in [7, 14, 30]" :key="days" type="button"
+                    class="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40"
+                    @click="setPreset(days)"
+                  >
+                    {{ days }}d
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" for="builder-from">From</label>
+                <input id="builder-from" v-model="builderForm.from" type="date" class="rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" for="builder-to">To</label>
+                <input id="builder-to" v-model="builderForm.to" type="date" class="rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40" />
+              </div>
+            </div>
+            <GeoFilterFields
+              :projects="projects"
+              :site-types="siteTypes"
+              :options="builderOptions"
+              :filters="builderForm.data()"
+              :show-site-type="false"
+              @update:filters="onBuilderFilters"
+            />
+            <fieldset class="mt-4">
+              <legend class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Sections</legend>
+              <div class="flex flex-wrap gap-4">
+                <label v-for="section in packSections" :key="section.code" class="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input v-model="builderForm.sections" type="checkbox" :value="section.code" class="rounded border-slate-300 text-accent-600 focus:ring-accent-500/40" />
+                  {{ section.label }}
+                </label>
+              </div>
+              <p v-if="builderForm.errors.sections" class="mt-1 text-xs text-red-600">{{ builderForm.errors.sections }}</p>
+            </fieldset>
+            <button
+              type="submit" :disabled="builderForm.processing"
+              class="mt-4 inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+            >
+              <IconLoader2 v-if="builderForm.processing" class="w-4 h-4 animate-spin" />
+              {{ builderForm.processing ? 'Submitting…' : 'Generate pack' }}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- Recent exports -->
@@ -386,8 +496,8 @@ const statusStyles = {
         <h3 class="font-semibold text-slate-800">Your recent reports</h3>
         <p class="text-sm text-slate-500">Generated files stay available until cleaned up periodically.</p>
       </div>
-      <ul v-if="exports?.length" class="divide-y divide-slate-100">
-        <li v-for="exportItem in exports" :key="exportItem.id" class="px-6 py-3 flex items-center gap-3 flex-wrap">
+      <ul v-if="exports?.data?.length" class="divide-y divide-slate-100">
+        <li v-for="exportItem in exports.data" :key="exportItem.id" class="px-6 py-3 flex items-center gap-3 flex-wrap">
           <span
             class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
             :class="statusStyles[exportItem.status] || 'border-slate-200 bg-slate-50 text-slate-600'"
@@ -400,6 +510,7 @@ const statusStyles = {
           <span class="text-sm text-slate-700 font-medium">
             {{ exportItem.download_name || typeLabels[exportItem.type] || 'Report' }}
           </span>
+          <span v-if="exportItem.scope_line" class="text-xs text-slate-400">{{ exportItem.scope_line }}</span>
           <span class="text-xs text-slate-400">{{ new Date(exportItem.created_at).toLocaleString() }}</span>
           <span v-if="exportItem.error" class="text-xs text-red-600 w-full">{{ exportItem.error }}</span>
           <button
@@ -417,6 +528,9 @@ const statusStyles = {
         </li>
       </ul>
       <div v-else class="px-6 py-8 text-center text-sm text-slate-400">No reports generated yet — use a report card above to queue one.</div>
+      <div v-if="exports?.links" class="px-6 py-4 border-t border-slate-100">
+        <Pagination :links="exports.links" />
+      </div>
     </div>
   </AuthenticatedLayout>
 </template>

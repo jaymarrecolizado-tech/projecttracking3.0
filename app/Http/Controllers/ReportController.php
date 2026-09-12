@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GenerateCombinedReportRequest;
 use App\Http\Requests\GenerateProvinceReportRequest;
 use App\Http\Requests\GenerateScopedReportRequest;
 use App\Jobs\GenerateReport;
@@ -9,6 +10,7 @@ use App\Models\AuditLog;
 use App\Models\Project;
 use App\Models\ReportExport;
 use App\Services\GeoFilterOptions;
+use App\Services\ReportAnalytics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -35,8 +37,15 @@ class ReportController extends Controller
         $projects = Project::where('is_active', true)->get(['id', 'code', 'name', 'marker_color']);
         $exports = ReportExport::where('user_id', $request->user()->id)
             ->latest()
-            ->take(10)
-            ->get(['id', 'type', 'params', 'status', 'download_name', 'error', 'completed_at', 'created_at']);
+            ->paginate(10)
+            ->withQueryString();
+
+        $projectNames = Project::whereIn('id', $exports->getCollection()
+            ->map(fn ($export) => $export->params['project_id'] ?? $export->params['filters']['project_id'] ?? null)
+            ->filter()->unique()->all())->pluck('name', 'id');
+        $exports->getCollection()->each(
+            fn ($export) => $export->setAttribute('scope_line', $this->exportScope($export->params ?? [], $projectNames))
+        );
 
         $geoOptions = app(GeoFilterOptions::class);
 
@@ -46,6 +55,22 @@ class ReportController extends Controller
             'siteTypes' => $geoOptions->siteTypes(),
             'initialOptions' => $geoOptions->for(),
         ]);
+    }
+
+    /** One-line scope for an export row, whatever param shape its type uses. */
+    private function exportScope(array $params, $projectNames): string
+    {
+        $flat = $params + ($params['filters'] ?? []);
+        unset($flat['filters'], $flat['sections']);
+        if (! empty($flat['project_id']) && empty($flat['project'])) {
+            $flat['project'] = $projectNames->get($flat['project_id'], '#'.$flat['project_id']);
+        }
+        $line = app(ReportAnalytics::class)->describeScope($flat);
+        if (! empty($params['sections'])) {
+            $line .= ' · Sections: '.implode(', ', $params['sections']);
+        }
+
+        return $line;
     }
 
     public function projectPdf(GenerateScopedReportRequest $request, Project $project)
@@ -158,6 +183,23 @@ class ReportController extends Controller
             'type' => 'progress',
             'params' => ['filters' => $request->scope()],
             'download_name' => $this->downloadName(['progress', now()->format('Y-m-d')]),
+        ]);
+        GenerateReport::dispatch($export);
+
+        return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
+    }
+
+    /** Report-builder pack: one PDF with the selected analytic sections. */
+    public function combinedPdf(GenerateCombinedReportRequest $request)
+    {
+        $validated = $request->validated();
+        $filters = $request->scope();
+        unset($filters['sections']);
+        $export = ReportExport::create([
+            'user_id' => $request->user()->id,
+            'type' => 'combined',
+            'params' => ['filters' => $filters, 'sections' => $validated['sections']],
+            'download_name' => $this->downloadName(['ops-pack', now()->format('Y-m-d')]),
         ]);
         GenerateReport::dispatch($export);
 

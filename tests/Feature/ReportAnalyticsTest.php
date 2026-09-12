@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\ReportAnalytics;
 use App\Services\ReportingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 /**
@@ -339,5 +340,21 @@ class ReportAnalyticsTest extends TestCase
             ['project_id' => $this->project->id], 'tester')->output());
         $this->assertStringStartsWith('%PDF', $reporting->generateProgressReport(
             ['project_id' => $this->project->id], 'tester')->output());
+    }
+
+    public function test_combined_pack_renders_selected_sections(): void
+    {
+        $this->recordStatus($this->siteA, today()->toDateString(), 'UP');
+        $pdf = app(ReportingService::class)->generateCombinedReport(
+            ['project_id' => $this->project->id], ['ops_period', 'progress'], 'tester');
+
+        $this->assertStringStartsWith('%PDF', $pdf->output());
+    }
+
+    public function test_combined_rejects_an_empty_section_set(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        app(ReportingService::class)->generateCombinedReport([], ['nope']);
     }
 }

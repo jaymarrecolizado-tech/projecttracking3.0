@@ -191,10 +191,10 @@ Audience: **both** — one-page executive rollup, then detailed ops annexes in t
 - [x] `incidents` — alert severity, ticket backlog, MTTA/MTTR; open lists
 - [x] `progress` — weighted accomplishment %; overdue milestones
 
-### Phase 4 — Reports builder UI
-- [ ] Replace disconnected cards with: period presets + `GeoFilterFields` + section checkboxes + one Generate
+### Phase 4 — Reports builder UI [done, Excel companion deferred]
+- [x] Report builder card: period presets (7/14/30d) + `GeoFilterFields` + section checkboxes + one Generate → `combined` pack (`ops_period`, `fleet`, `incidents`, `progress` in one PDF via `params.sections`)
 - [ ] Optional Excel/CSV companion for annex tables (Maatwebsite already in composer)
-- [ ] Paginated export history with scope line on each row; show flash success
+- [x] Paginated export history (10/page) with scope line on each row; flash success already shown
 
 ### Phase 5 — After product input (do not block 1–4)
 - [ ] SLA vs target (`SLA_UPTIME_TARGET`, pass/fail column) — confirm target and whether `NO_NMS` stays in the denominator
@@ -213,10 +213,8 @@ Skills: Ponytail governs — reuse `ReportAnalytics`/partials/`GenerateScopedRep
 - `incidents`: alert severity breakdown, ticket backlog, MTTA/MTTR from `triggered_at`/`acknowledged_at`/`resolved_at` (+ tickets `created_at`/`resolved_at`); open alert + ticket lists. Route/job/view/tests, same pattern as `ops_period`/`fleet`.
 - `progress`: weighted accomplishment % (`weight_pct` × `pct_complete`), per-milestone bars, overdue list (`target_date` past + incomplete). Route/job/view/tests.
 
-### R2 — builder UI + combined PDF [open]
-- Reports page: period presets (7/14/30d) + shared `GeoFilterFields` + section checkboxes + one Generate; keep per-pack cards until the builder proves out, then remove them.
-- `combined` report type: cover + selected analytic sections (`ops_period`, `fleet`, `incidents`, `progress`) in one PDF via `params.sections`.
-- Export history: scope line on each row (computed from params), paginated when it outgrows 10.
+### R2 — builder UI + combined PDF [done]
+- Reports page: period presets (7/14/30d) + shared `GeoFilterFields` + section checkboxes + one Generate (per-pack cards kept alongside); scope line + pagination on export history.
 
 ### R3 — Laravel 11 → 12 upgrade [open]
 - Baseline gates green + git checkpoint; bump `laravel/framework` to `^12.0` with companions per the official guide; fix breaks; full gates; dedicated commit. Rollback = revert that commit. (Closes CVE-2026-48019 + signed-URL advisory; then CI `composer audit` becomes blocking.)

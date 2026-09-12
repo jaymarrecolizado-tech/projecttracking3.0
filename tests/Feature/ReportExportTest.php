@@ -143,6 +143,32 @@ class ReportExportTest extends TestCase
         $this->assertSame(1, ReportExport::where('type', 'project')->count());
     }
 
+    public function test_builder_queues_combined_pack_with_sections(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post(route('reports.combined'), [
+            'province' => 'Cagayan', 'sections' => ['ops_period', 'fleet'],
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $export = ReportExport::latest()->first();
+        $this->assertSame('combined', $export->type);
+        $this->assertSame(['ops_period', 'fleet'], $export->params['sections']);
+        $this->assertSame('Cagayan', $export->params['filters']['province']);
+    }
+
+    public function test_builder_requires_at_least_one_valid_section(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post(route('reports.combined'), ['province' => 'Cagayan'])
+            ->assertSessionHasErrors('sections');
+        $this->actingAs($admin)->post(route('reports.combined'), ['sections' => ['nope']])
+            ->assertSessionHasErrors('sections.0');
+
+        $this->assertSame(0, ReportExport::where('type', 'combined')->count());
+    }
+
     public function test_failed_generation_is_recorded_on_the_export(): void
     {
         Storage::fake('local');

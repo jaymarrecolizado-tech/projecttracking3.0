@@ -15,6 +15,7 @@ use App\Models\SiteStatusEvent;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class ReportingService
 {
@@ -166,9 +167,10 @@ class ReportingService
 
     public function generateOpsPeriodReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
-        $comparison = $this->opsPeriodComparison($filters);
-
-        return Pdf::loadView('reports.ops-period', $comparison + ['userName' => $userName]);
+        return Pdf::loadView('reports.ops-period', [
+            'comparison' => $this->opsPeriodComparison($filters),
+            'userName' => $userName,
+        ]);
     }
 
     /**
@@ -312,7 +314,10 @@ class ReportingService
 
     public function generateIncidentsReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
-        return Pdf::loadView('reports.incidents', $this->incidentsData($filters) + ['userName' => $userName]);
+        return Pdf::loadView('reports.incidents', [
+            'incidents' => $this->incidentsData($filters),
+            'userName' => $userName,
+        ]);
     }
 
     /**
@@ -391,7 +396,48 @@ class ReportingService
 
     public function generateProgressReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
-        return Pdf::loadView('reports.progress', $this->progressData($filters) + ['userName' => $userName]);
+        return Pdf::loadView('reports.progress', [
+            'progress' => $this->progressData($filters),
+            'userName' => $userName,
+        ]);
+    }
+
+    /**
+     * Combined operations pack: cover plus the selected analytic sections in
+     * one PDF. Unknown sections are dropped; an empty set is a permanent
+     * failure (it would retry identically forever).
+     */
+    public function generateCombinedReport(array $filters, array $sections, string $userName = 'system'): \Barryvdh\DomPDF\PDF
+    {
+        $sections = array_values(array_intersect(
+            $sections, ['ops_period', 'fleet', 'incidents', 'progress']
+        ));
+        if ($sections === []) {
+            throw new InvalidArgumentException('No report sections selected.');
+        }
+
+        $analytics = app(ReportAnalytics::class);
+        [$from, $to] = $analytics->period($filters);
+        $data = [
+            'sections' => $sections,
+            'scope' => $analytics->describeScope($filters),
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'userName' => $userName,
+        ];
+        foreach ($sections as $section) {
+            if ($section === 'ops_period') {
+                $data['comparison'] = $this->opsPeriodComparison($filters);
+            } elseif ($section === 'fleet') {
+                $data['inventory'] = $this->fleetInventory($filters);
+            } elseif ($section === 'incidents') {
+                $data['incidents'] = $this->incidentsData($filters);
+            } elseif ($section === 'progress') {
+                $data['progress'] = $this->progressData($filters);
+            }
+        }
+
+        return Pdf::loadView('reports.combined', $data);
     }
 
     public function getDashboardStats(): array
