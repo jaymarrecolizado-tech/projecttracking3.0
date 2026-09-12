@@ -104,7 +104,8 @@ class RegionWorkbookImportTest extends TestCase
     }
 
     public function test_reimport_is_idempotent_and_fills_blanks(): void
-    {        $this->seed(RolePermissionSeeder::class);
+    {
+        $this->seed(RolePermissionSeeder::class);
         $admin = User::factory()->create();
         $admin->roles()->attach(1);
 

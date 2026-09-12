@@ -29,12 +29,10 @@ jobs:
       - name: Tests
         run: php artisan test --compact
 
-      # Non-blocking: laravel/framework 11.x carries advisories fixable only
-      # on 12.x (see Plan.md dependency track). Signal, don't gate, until the
-      # Laravel 12 upgrade lands — then drop continue-on-error.
+      # Audit is blocking: the tree carries no known advisories (verified on
+      # the Laravel 12 upgrade). Keep it that way.
       - name: Security audit
         run: composer audit
-        continue-on-error: true
 
   frontend:
     runs-on: ubuntu-latest

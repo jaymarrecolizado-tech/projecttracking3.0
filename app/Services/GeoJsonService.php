@@ -10,6 +10,7 @@ class GeoJsonService
 {
     /** Hard ceiling per response so an unfiltered fleet can't OOM the worker. */
     private const MAX_FEATURES = 10000;
+
     public function getSitesForProject(Project $project): array
     {
         $sites = $project->sites()->with('latestDailyStatus')->get();

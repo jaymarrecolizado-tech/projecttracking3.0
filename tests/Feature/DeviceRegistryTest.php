@@ -8,6 +8,7 @@ use App\Models\DeviceModel;
 use App\Models\Project;
 use App\Models\Site;
 use App\Models\User;
+use App\Services\DeviceDeploymentService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -119,7 +120,8 @@ class DeviceRegistryTest extends TestCase
     }
 
     public function test_user_without_permission_cannot_create_devices(): void
-    {        $this->seed(RolePermissionSeeder::class);
+    {
+        $this->seed(RolePermissionSeeder::class);
         $viewer = User::factory()->create();
         $viewer->roles()->attach(4); // viewer
 
@@ -148,7 +150,7 @@ class DeviceRegistryTest extends TestCase
             'status' => 'in_stock',
         ]);
 
-        $service = app(\App\Services\DeviceDeploymentService::class);
+        $service = app(DeviceDeploymentService::class);
         $service->open($device, ['site_id' => $siteA->id], $admin->id);
         $service->open($device, ['site_id' => $siteB->id], $admin->id);
 

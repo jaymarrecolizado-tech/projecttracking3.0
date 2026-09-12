@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Project;
+use App\Models\Site;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,7 +83,7 @@ class AuditLogTest extends TestCase
         ])->assertRedirect();
 
         $http = AuditLog::where('auditable_type', 'general')->latest('id')->firstOrFail();
-        $model = AuditLog::where('auditable_type', \App\Models\Site::class)->latest('id')->firstOrFail();
+        $model = AuditLog::where('auditable_type', Site::class)->latest('id')->firstOrFail();
         $this->assertSame($http->new_values['request_id'], $model->new_values['request_id']);
     }
 

@@ -151,10 +151,8 @@ Phase 5 — frontend taste/tests/docs [done]
 - [x] ESLint auth exclusion removed (0/0 gated); Vitest added (`npm test`, CI) with a runnable check on the popup escaper. Component/a11y harness deferred — existing a11y (focus trap, aria-live, sr-only captions, keyboard row links) is covered by convention, not automation.
 - [x] README/scheduler/permission docs current; tracked scratch files removed; repo hygiene via CI audits.
 
-Dependency track [open, audited 2026-09-11]
-- [x] `composer audit` / `npm audit` run clean except laravel/framework; both wired into CI (composer non-blocking until the upgrade, npm blocking).
-- [ ] `maatwebsite/excel`, `phpspreadsheet`, `dompdf`, Guzzle/Symfony, `postcss`, `nanoid`: no advisories — fold updates into the Laravel 12 pass, not isolated churn.
-- [ ] Laravel 11.52 → 12 (plus Inertia adapter): required, not optional — 11.x carries CVE-2026-48019 (CRLF in email rule, high) + a signed-URL advisory, fixed only in 12.60+. Exposure here is narrow (mail flows; signed verification links unenforced), but schedule the upgrade.
+Dependency track [done 2026-09-11 — Laravel 12.69.2, `composer audit` + `npm audit` clean, both blocking in CI]
+- [x] Companion updates folded into the upgrade (`maatwebsite/excel`, `phpspreadsheet`, `dompdf`, Guzzle/Symfony, `postcss`, `nanoid` — no isolated churn needed).
 
 Out of scope (not started, not promised this slice): nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
 
@@ -216,8 +214,8 @@ Skills: Ponytail governs — reuse `ReportAnalytics`/partials/`GenerateScopedRep
 ### R2 — builder UI + combined PDF [done]
 - Reports page: period presets (7/14/30d) + shared `GeoFilterFields` + section checkboxes + one Generate (per-pack cards kept alongside); scope line + pagination on export history.
 
-### R3 — Laravel 11 → 12 upgrade [open]
-- Baseline gates green + git checkpoint; bump `laravel/framework` to `^12.0` with companions per the official guide; fix breaks; full gates; dedicated commit. Rollback = revert that commit. (Closes CVE-2026-48019 + signed-URL advisory; then CI `composer audit` becomes blocking.)
+### R3 — Laravel 11 → 12 upgrade [done 2026-09-11]
+- Framework now 12.69.2 (`laravel/framework: ^12.0`, companions resolved, `composer audit` clean — CVE-2026-48019 + signed-URL advisory gone); Pint normalizations from the new fixer version; CI `composer audit` is blocking again.
 
 ### R4 — cutover readiness [open]
 - Everything short of the server: `deploy.sh` review, `route:cache` + production build verified, restore steps in runbook, local smoke. The actual cutover stays owner-side (`docs/DEPLOY.md` §5).
