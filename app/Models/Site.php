@@ -27,6 +27,19 @@ class Site extends Model
         'Quirino' => 'II',
     ];
 
+    /**
+     * Province → island group, kept beside REGIONS_BY_PROVINCE for the same
+     * reason: `island_group` is a map filter, so a blank value silently drops
+     * the site from "Luzon" results.
+     */
+    public const ISLAND_GROUP_BY_PROVINCE = [
+        'Batanes' => 'Luzon',
+        'Cagayan' => 'Luzon',
+        'Isabela' => 'Luzon',
+        'Nueva Vizcaya' => 'Luzon',
+        'Quirino' => 'Luzon',
+    ];
+
     protected static function booted(): void
     {
         static::deleting(function (Site $site) {

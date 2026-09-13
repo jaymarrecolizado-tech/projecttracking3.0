@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DailyStatusApiController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate(['per_page' => 'nullable|integer|min:1|max:200']);
+
         $query = SiteDailyStatus::with('site:id,location_name');
         if (($scope = $request->user()->accessibleProjectIds('daily.view')) !== null) {
             $query->whereHas('site', fn ($q) => $q->whereIn('project_id', $scope));
@@ -25,18 +28,20 @@ class DailyStatusApiController extends Controller
             $query->whereHas('site', fn ($q) => $q->where('project_id', $request->project_id));
         }
 
-        return response()->json($query->paginate($request->per_page ?? 50));
+        return response()->json($query->paginate($validated['per_page'] ?? 50));
     }
 
-    public function bySite(Site $site, Request $request)
+    public function bySite(Site $site, Request $request): JsonResponse
     {
+        $validated = $request->validate(['per_page' => 'nullable|integer|min:1|max:200']);
+
         $scope = $request->user()->accessibleProjectIds('daily.view');
         abort_if($scope !== null && ! in_array($site->project_id, $scope, true), 403);
 
         $statuses = $site->dailyStatuses()
             ->when($request->date, fn ($q, $d) => $q->whereDate('date', $d))
             ->latest('date')
-            ->paginate($request->per_page ?? 31);
+            ->paginate($validated['per_page'] ?? 31);
 
         return response()->json($statuses);
     }

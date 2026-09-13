@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class ProbeTokenController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         // Probe tokens can rewrite operational status, so issuance requires an
         // existing daily-write permission — not merely an authenticated account.
@@ -38,7 +39,7 @@ class ProbeTokenController extends Controller
             ->with('plainTextToken', $token->plainTextToken);
     }
 
-    public function destroy(Request $request, int $tokenId)
+    public function destroy(Request $request, int $tokenId): RedirectResponse
     {
         Auth::user()->tokens()->where('id', $tokenId)->firstOrFail()->delete();
 

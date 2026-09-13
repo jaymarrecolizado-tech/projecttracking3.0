@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\Site;
 use App\Support\CoverageCache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Actual-vs-registered coverage by Site Type (Plan §Map 4.5). "Actual" = the
@@ -82,7 +83,42 @@ class SiteCoverageService
                 'devices' => array_sum(array_column($rows, 'devices')),
                 'coverage_pct' => $totalRegistered > 0 ? round($totalActual / $totalRegistered * 100, 1) : 0.0,
             ],
+            // A district filter matches on sites.district, so sites with a blank
+            // district drop out of the numerator invisibly. Report them so a low
+            // figure can never masquerade as complete (Plan_revision §Phase 1.4).
+            'district_blank_sites' => $this->districtBlankSites($filters),
         ];
+    }
+
+    /** Live sites in the filtered province(s) that the district filter cannot see. */
+    private function districtBlankSites(array $filters): int
+    {
+        if (empty($filters['district'])) {
+            return 0;
+        }
+
+        $query = Site::query()
+            ->where(fn ($q) => $q->whereNull('district')->orWhere('district', ''))
+            ->when($filters['province'] ?? null, fn ($q, $v) => $q->where('province', $v))
+            ->when($filters['project_id'] ?? null, fn ($q, $v) => $q->where('project_id', $v))
+            ->when($filters['site_type'] ?? null, fn ($q, $v) => $q->where('site_type', $v))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v));
+
+        // No province selected: a district name can span provinces, so scope to
+        // the provinces the lookup says that district covers.
+        if (empty($filters['province'])) {
+            $provinces = DB::table('legislative_districts')
+                ->where('district', $filters['district'])
+                ->distinct()
+                ->pluck('province');
+
+            if ($provinces->isEmpty()) {
+                return 0;
+            }
+            $query->whereIn('province', $provinces);
+        }
+
+        return $query->count();
     }
 
     /** Human-readable filter set so every PDF is self-describing (§Phase 5.5). */

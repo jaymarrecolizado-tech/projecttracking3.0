@@ -22,3 +22,4 @@ Schedule::command('audit:prune')->monthlyOn(1, '03:30')->withoutOverlapping();
 Schedule::command('sanctum:prune-expired --hours=24')->monthlyOn(1, '04:00')->withoutOverlapping();
 Schedule::command('metrics:aggregate')->hourlyAt(10)->withoutOverlapping();
 Schedule::command('alerts:evaluate')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('reports:scheduled')->monthlyOn(1, '06:00')->withoutOverlapping();

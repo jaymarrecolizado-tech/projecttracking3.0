@@ -10,6 +10,7 @@ use App\Models\SiteDailyStatus;
 use App\Models\User;
 use App\Services\Telegram;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -105,8 +106,12 @@ class EvaluateAlertRules extends Command
         return [0, 0];
     }
 
-    /** Active sites are always watched (offline rule); metric rules need data. */
-    private function sitesUnderWatch()
+    /**
+     * Active sites are always watched (offline rule); metric rules need data.
+     *
+     * @return Builder<Site>
+     */
+    private function sitesUnderWatch(): Builder
     {
         return Site::where('status', 'active')->select(['id', 'location_name', 'municipality', 'province', 'bw_download_cir']);
     }

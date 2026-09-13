@@ -8,12 +8,14 @@ use App\Models\Device;
 use App\Models\MaintenanceTicket;
 use App\Models\Site;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class TicketController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $tickets = MaintenanceTicket::with([
             'site:id,location_name,municipality,province',
@@ -45,7 +47,7 @@ class TicketController extends Controller
         ]);
     }
 
-    public function store(StoreMaintenanceTicketRequest $request)
+    public function store(StoreMaintenanceTicketRequest $request): RedirectResponse
     {
         $data = $request->validated();
         $data['reported_by'] = auth()->id();
@@ -54,7 +56,7 @@ class TicketController extends Controller
         return redirect()->route('tickets.index')->with('success', 'Ticket created.');
     }
 
-    public function update(UpdateMaintenanceTicketRequest $request, MaintenanceTicket $ticket)
+    public function update(UpdateMaintenanceTicketRequest $request, MaintenanceTicket $ticket): RedirectResponse
     {
         $ticket->update($request->validatedWithTimestamps());
 

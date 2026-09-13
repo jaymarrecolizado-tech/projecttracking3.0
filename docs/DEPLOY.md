@@ -45,10 +45,20 @@ pruning — one cron entry runs them all:
 
 ## 3. Queue worker
 
-Imports (Excel) and PDF reports are queued. Under CloudPanel/supervisor run:
+Imports (Excel) and PDF reports are queued. A Supervisor program is committed
+at `deploy/fpiap-worker.conf` — copy it to the supervisor drop-in dir,
+fill in `<site-user>`/`<site>`, and `supervisorctl reread && supervisorctl update`:
 
 ```
 php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+```
+
+Liveness: `php artisan queue:check` exits non-zero when PENDING work is older
+than 5 minutes (same signal as the amber Reports-page banner). Point the
+external uptime monitor at it, or add a cron that pages on failure:
+
+```
+*/5 * * * * cd /home/<site-user>/htdocs/<site> && php artisan queue:check >> /dev/null 2>&1
 ```
 
 `deploy.sh` already ends with `php artisan queue:restart` so workers pick up
@@ -69,6 +79,7 @@ new code after every deploy. If supervisor is not available, a fallback cron
 | 03:00 | telemetry prune                       |
 | monthly (1st 03:30) | audit log prune           |
 | monthly (1st 04:00) | expired token prune         |
+| monthly (1st 06:00) | provincial report packs     |
 | 07:00 | encoder reminder / warranty digest (Mon) |
 | 08:00 | backup health monitor                 |
 | 15 min| DOWN alerts, import cleanup, Telegram alerts |

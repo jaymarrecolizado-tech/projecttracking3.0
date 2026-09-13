@@ -5,18 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Services\GeoJsonService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MapApiController extends Controller
 {
-    public function sites(Request $request, GeoJsonService $geoJsonService)
+    public function sites(Request $request, GeoJsonService $geoJsonService): JsonResponse
     {
         return response()->json($geoJsonService->getSitesForMap([
             'project_scope' => $request->user()->accessibleProjectIds('sites.view'),
         ]));
     }
 
-    public function projectSites(Project $project, Request $request, GeoJsonService $geoJsonService)
+    public function projectSites(Project $project, Request $request, GeoJsonService $geoJsonService): JsonResponse
     {
         $scope = $request->user()->accessibleProjectIds('sites.view');
         abort_if($scope !== null && ! in_array($project->id, $scope, true), 403);

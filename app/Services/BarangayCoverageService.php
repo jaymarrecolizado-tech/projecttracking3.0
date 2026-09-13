@@ -164,13 +164,6 @@ class BarangayCoverageService
             ->values()->all();
     }
 
-    /**
-     * Resolve a district filter to the municipalities it covers.
-     *
-     * @param  array<string, mixed>  $filters
-     * @return array<string, array<int, string>>|null null when no district filter
-     */
-
     /** Human-readable filter set so every PDF is self-describing (§Phase 5.5). */
     private function describeScope(array $filters): string
     {
@@ -188,6 +181,12 @@ class BarangayCoverageService
         return $parts === [] ? 'All areas' : implode(' · ', $parts);
     }
 
+    /**
+     * Resolve a district filter to the municipalities it covers.
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array<string, array<int, string>>|null null when no district filter
+     */
     private function municipalitiesInDistrict(array $filters): ?array
     {
         if (empty($filters['district'])) {

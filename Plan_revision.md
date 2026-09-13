@@ -12,7 +12,10 @@ Companion documents:
 
 **How to read this:** Phase 0 and Phases 1–7 are now implemented (some
 Phase 7 items are documented as owner-dependent instead of coded). Each
-phase below is annotated with its status. §3a is the implementation log.
+phase below is annotated with its status. §3a is the implementation log;
+**§3b and §3c are independent verification logs (2026-09-14)** — every ✅ in
+§3 was re-checked against the tree, and the discrepancies they found are
+folded back into the items below and into `Plan.md` backlog #7–8.
 
 ---
 
@@ -165,11 +168,17 @@ user data · no interpolated raw SQL.
    a series per observed status.
 2. ✅ `StoreDailyStatusRequest` / `BatchStoreDailyStatusRequest` /
    `BulkDailyOpsRequest` accept every code in `daily_status.codes`.
-3. ✅ `sites.region` guaranteed ≥ 99%: `SiteObserver::saving` fills it from
-   `Site::REGIONS_BY_PROVINCE` (all five provinces → II), and migration
-   `2026_09_08_000001` backfilled history. Filter retained.
-4. ✅ District guard: `BarangayCoverageService` returns
-   `district_blank_sites`; the barangay-coverage PDF prints the caveat.
+3. ✅ `sites.region` guaranteed ≥ 99%, via three layers that each cover a
+   different gap: `SiteObserver::saving` fills it on every write from
+   `Site::REGIONS_BY_PROVINCE` (all five provinces → II) and
+   `Site::ISLAND_GROUP_BY_PROVINCE` → Luzon; migration
+   `2026_09_08_000001` backfills history; and the idempotent
+   `sites:backfill-regions` command reaches rows that predate the lookup.
+   Filter retained. **Measured 2026-09-14: 14.3% → 100%** on the local DB —
+   see §3b for why the migration alone was not enough.
+4. ✅ District guard on **both** district-filterable reports:
+   `BarangayCoverageService` and `SiteCoverageService` return
+   `district_blank_sites`, and both PDFs print the caveat.
 5. ✅ `ap_site_code`: blank codes get a deterministic synthetic code
    (`NS-<sha1-12>`, collision-suffixed) at the observer layer; migration
    backfilled stragglers and made the column NOT NULL, so the
@@ -278,9 +287,16 @@ site write bumps the version).
 3. ✅ Pint passes on all 228 files (`.gitattributes` forces LF for code).
 4. ✅ `.github/workflows/ci.yml`: Pint + PHPStan + tests + ESLint(0) +
    `npm run build` on every push/PR.
-5. ◐ Untested list: probe-token revoke, 2FA disable, device label/scan,
-   `/api/sites`, `/api/daily-statuses` remain — the rest of §2's list is
-   covered by the new suites (169 tests total, up from 139 at audit).
+5. ◐ Untested list, **re-verified 2026-09-14**: of §2's list, only two items
+   remain uncovered — `probe-tokens.destroy` (revoke; `store` is tested) and
+   `/api/daily-statuses` + `/api/daily-statuses/site/{site}`. The rest are now
+   covered: audit redaction (`AuditLogTest`), 2FA *disable*
+   (`TwoFactorAuthenticationTest`), `DeviceController::label`/`scan`
+   (`DeviceImportTest`), heartbeat `LOCKED` 409 and overwriting `APPROVED`,
+   uptime with `NO_NMS` (`DailyStatusReportingTest`), `/api/sites`
+   (`RbacAuthorizationTest`), and both former dead policies
+   (`DailyStatusWorkflowAuthorizationTest`). Suite is **214 tests** as of
+   2026-09-14 (139 at audit).
 
 ### Phase 7 — Product backlog — ◐ documented, not buildable here
 **Goal:** the features already scoped in `Plan.md` but not built.
@@ -290,7 +306,9 @@ site write bumps the version).
 2. ⏳ SLA PDF vs target, firmware fleet view, solar analytics, field
    inspection form, public map: product decisions before code.
 3. ⏳ SMS channel: needs a provider account (ClickSend/Twilio).
-4. ✅ README drift fixed (says Laravel 11 now).
+4. ✅ README drift fixed. (The original drift was "claims 12, runs 11"; after
+   the 2026-09-11 framework upgrade the README's "Laravel 12" is now correct —
+   installed framework is **12.69.2**.)
 
 ---
 
@@ -331,6 +349,108 @@ endpoints).
 
 ---
 
+## 3b. Verification log — 2026-09-14
+
+Re-ran Phase 1 end to end against the local tree and found one item that had
+silently never taken effect, plus two smaller defects.
+
+Gate state after this pass (snapshot; the suite grows in parallel):
+**214 tests / 975 assertions green** · **PHPStan 0 errors** ·
+**Pint 235 files pass** · **ESLint 0 errors / 0 warnings** · **Vitest 11** ·
+`npm run build` clean · `config:cache` / `event:cache` / `route:cache` /
+`view:cache` all clean.
+
+### The region backfill had never actually run
+
+`2026_09_08_000001` backfills `sites.region` **inside a migration** — but on
+this project the schema is migrated *before* the Region II workbook is
+imported, so at migration time `sites` is empty and the `UPDATE` matches zero
+rows. Local coverage was still **14.3%** (613 of 715 live sites blank), which
+means the region filter was silently returning almost nothing.
+
+The durable fix is the **command**, not the migration: `sites:backfill-regions`
+is idempotent and already wired into `deploy.sh` step 5b, so production is
+covered on every deploy. After running it locally:
+
+```
+Updated 1000 site(s).
+Region coverage: 100% (0 of 715 live site(s) still blank).
+Island group coverage: 100% (0 of 715 live site(s) still blank).
+```
+
+Re-running prints `Updated 0 site(s).` — verified idempotent, and covered by
+`SiteAttributionGuaranteesTest`.
+
+### Defects fixed
+
+- **Wallboard trend bars were invisible.** `width` was declared *inside* the
+  `chart` computed, so the template's `:width="width - 0.3"` evaluated to
+  `NaN` and every `<rect>` failed to render. Now a `barWidth` computed.
+- **Orphaned docblock** above `BarangayCoverageService::municipalitiesInDistrict()`
+  — an earlier edit moved the method and left its docblock behind.
+- **`island_group` was not maintained.** It is a `MapController` filter, so a
+  blank value drops a site from "Luzon" results; 27 live sites were blank. Now
+  filled by the observer and the command, beside `region`.
+
+### Consolidation (judgment call — easy to revert)
+
+`config/psgc.php` and `Site::REGIONS_BY_PROVINCE` both encoded province →
+region, so the observer (write path) and the command (backfill path) could
+drift apart. The lookup now lives in **one** place — the `Site` constants —
+read by both. `config/psgc.php` deleted. Trade-off: the lookup is Region II
+only, so expanding the program is one edit, not two.
+
+### Extended beyond the letter of Phase 1.4
+
+The district guard was only on the barangay report. The site-type coverage
+report takes the same `district` filter and had the same blind spot, so
+`SiteCoverageService::districtBlankSites()` was added with parity in the PDF.
+
+## 3c. Verification log — Phases 2–7 (2026-09-14)
+
+Re-checked every ✅ in §3 against the tree rather than trusting the annotation.
+**Phases 2–6 hold up as written** — no false claims found. Evidence per phase:
+
+- **Phase 2** — the two policies exist; `entry_status` is genuinely absent from
+  `StoreDailyStatusRequest` (15 tests, incl. `test_entry_status_is_not_client_writable`);
+  read routes carry `can:sites.view` / `can:daily.view`; `tokenCan('heartbeat')`
+  enforced; downloads + both job `failed()` handlers audit;
+  `BACKUP_OFFSITE_DISK` in `config/backup.php` and `.env.example`.
+- **Phase 3** — all four indexes present; `CoverageCache::TTL_MINUTES = 10`;
+  metrics closure uses `->select()`; `GeoJsonService` projects columns;
+  `TicketController` scopes assignees to `tickets.manage`; device search
+  anchored-prefix except MAC.
+- **Phase 4** — `ProcessExcelImport` `tries=3` / `timeout=600` / `backoff=60` +
+  `failed()`; `deploy.sh` window + `trap` + dump + `--pull` + scoped perms;
+  single `dashboard` name + 301; `public/build` untracked; `Queue::failing`.
+  **All four cache commands run clean**, so the deploy path is safe.
+- **Phase 5** — `accent`/`ink` tokens; **grep confirms zero brand literals
+  outside `theme.js`**; `Pagination.vue` shared, `Dropdown*` gone,
+  `ToastStack.vue` alive; ESLint 0/0; `reports.retry` + `describeScope()`.
+- **Phase 6** — larastan `^3.10` auto-loaded via `phpstan/extension-installer`
+  (the neon file no longer needs an `includes` entry), level 5, 0 errors;
+  6 factories + `HasFactory` on 6 models; Pint 235 files; `ci.yml` present.
+
+### Corrected
+
+- §Phase 6.5 — the untested list was stale; see the item for the current state.
+- §Phase 7.4 — "says Laravel 11 now" was written before the 12 upgrade.
+
+### Still open (never claimed fixed, so no false claim — but real)
+
+These §2 findings survived every phase. Small, self-contained:
+
+| Sev | Location | Finding |
+|---|---|---|
+| **M** | `Api/HeartbeatController` | Read-then-write race: two concurrent beats can both miss and both `create()`, violating `unique(['site_id','date'])` → 500. No `lockForUpdate()`, no duplicate-key retry |
+| **L** | `UserController.php:24` | `(bool) $request->input('status')` — `?status=false` is truthy |
+| **L** | `Api/SiteApiController` | `per_page` unvalidated; `show()` eager-loads all `dailyStatuses` |
+| **L** | `.env.production.example` | `CACHE_PREFIX` empty; `SESSION_DRIVER`/`CACHE_STORE` = `database` → MySQL hit per request |
+
+Tracked as backlog #7–8 in `Plan.md`.
+
+---
+
 ## 4. Sequencing and dependencies
 
 ```
@@ -367,4 +487,17 @@ Phase 6 (gates) runs continuously alongside 1–5
 3. **Production cut-over** — still open: no staging environment known;
    `deploy.sh` is now window-safe (down → migrate → up, trap rollback) but
    the rehearsal needs a target.
-4. **Laravel 11 → 12** — still open; README corrected to 11 in the meantime.
+4. **Laravel 11 → 12** — ✅ done 2026-09-11: framework **12.69.2**, companions
+   resolved, `composer audit` + `npm audit` clean and both blocking in CI.
+   README says 12, which now matches.
+5. **Error monitoring** — open: `sentry/sentry-laravel` is installed and
+   `Sentry\Laravel\Integration` is wired in `bootstrap/app.php`, but
+   `SENTRY_ENABLED=false` and `SENTRY_LARAVEL_DSN=` is empty in both env
+   examples. Needs a DSN before production errors are visible anywhere.
+6. **Queue-worker supervision** — open: the scheduler has 14 entries, but no
+   Supervisor/systemd unit is committed. A dead worker leaves reports and
+   imports `PENDING` indefinitely (the amber stale-queue banner is the only
+   signal). See `Plan.md` backlog.
+7. **Backup restore** — open: backups run nightly to two encrypted
+   destinations and `backup:monitor` runs at 08:00, but no restore has ever
+   been rehearsed. A backup that has never been restored is a hypothesis.

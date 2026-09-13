@@ -8,12 +8,14 @@ use App\Services\GeoBoundaryService;
 use App\Services\GeoFilterOptions;
 use App\Services\GeoJsonService;
 use App\Services\SiteCoverageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class MapController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $projects = Project::where('is_active', true)->get(['id', 'code', 'name', 'marker_color', 'marker_shape', 'marker_icon']);
 
@@ -27,7 +29,7 @@ class MapController extends Controller
         ]);
     }
 
-    public function geojson(Request $request, GeoJsonService $geoJsonService)
+    public function geojson(Request $request, GeoJsonService $geoJsonService): JsonResponse
     {
         $filters = $request->only(['project_id', 'status', 'region', 'province', 'district', 'municipality', 'barangay', 'site_type', 'island_group']);
         $filters['project_scope'] = $request->user()->accessibleProjectIds('sites.view');
@@ -41,14 +43,14 @@ class MapController extends Controller
 
     /** Cascade options for the geo filters (Plan §Map 4.4) — children stay
      * empty until a parent is chosen, sourced from sites that have data. */
-    public function filterOptions(Request $request, GeoFilterOptions $options)
+    public function filterOptions(Request $request, GeoFilterOptions $options): JsonResponse
     {
         return response()->json($options->for(
             $request->only(['project_id', 'province', 'district', 'municipality']),
         ));
     }
 
-    public function boundaries(Request $request, GeoBoundaryService $service)
+    public function boundaries(Request $request, GeoBoundaryService $service): JsonResponse
     {
         $level = $request->input('level', 'province');
         $filters = $request->only(['province', 'district', 'municipality']);
@@ -56,14 +58,14 @@ class MapController extends Controller
         return response()->json($service->forLevel($level, $filters));
     }
 
-    public function coverage(Request $request, SiteCoverageService $service)
+    public function coverage(Request $request, SiteCoverageService $service): JsonResponse
     {
         $filters = $request->only(['project_id', 'status', 'province', 'district', 'municipality', 'barangay', 'site_type']);
 
         return response()->json($service->coverage($filters));
     }
 
-    public function barangayCoverage(Request $request, BarangayCoverageService $service)
+    public function barangayCoverage(Request $request, BarangayCoverageService $service): JsonResponse
     {
         $filters = $request->only(['project_id', 'province', 'district', 'municipality']);
 

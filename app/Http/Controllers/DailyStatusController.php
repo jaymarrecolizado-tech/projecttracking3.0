@@ -6,14 +6,16 @@ use App\Http\Requests\BatchStoreDailyStatusRequest;
 use App\Http\Requests\StoreDailyStatusRequest;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DailyStatusController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
         $statuses = SiteDailyStatus::with('site:id,location_name,project_id', 'site.project:id,code,name')
             ->latest('date')->paginate(20);
@@ -21,7 +23,7 @@ class DailyStatusController extends Controller
         return Inertia::render('FreeWifi/DailyGrid', ['statuses' => $statuses]);
     }
 
-    public function store(StoreDailyStatusRequest $request)
+    public function store(StoreDailyStatusRequest $request): RedirectResponse
     {
         // entry_status never comes from the client (Plan_revision §Phase 2.2):
         // hand-entered rows start as DRAFT and move through the workflow
@@ -56,7 +58,7 @@ class DailyStatusController extends Controller
         return redirect()->back()->with('success', 'Status saved.');
     }
 
-    public function approve(Request $request, SiteDailyStatus $status)
+    public function approve(Request $request, SiteDailyStatus $status): RedirectResponse
     {
         Gate::authorize('approve', $status);
 
@@ -71,7 +73,7 @@ class DailyStatusController extends Controller
         return redirect()->back()->with('success', 'Record approved.');
     }
 
-    public function lock(Request $request, SiteDailyStatus $status)
+    public function lock(Request $request, SiteDailyStatus $status): RedirectResponse
     {
         Gate::authorize('approve', $status);
 
@@ -84,14 +86,14 @@ class DailyStatusController extends Controller
         return redirect()->back()->with('success', 'Record locked.');
     }
 
-    public function grid(Site $site)
+    public function grid(Site $site): Response
     {
         $statuses = $site->dailyStatuses()->latest('date')->paginate(31);
 
         return Inertia::render('FreeWifi/DailyGrid', ['site' => $site, 'statuses' => $statuses]);
     }
 
-    public function batchStore(BatchStoreDailyStatusRequest $request)
+    public function batchStore(BatchStoreDailyStatusRequest $request): RedirectResponse
     {
         $user = $request->user();
         $data = $request->validated();

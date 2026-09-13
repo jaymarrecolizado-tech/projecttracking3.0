@@ -6,9 +6,11 @@ use App\Http\Requests\BulkDailyOpsRequest;
 use App\Models\Project;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * The Daily Ops Board: one screen to record today's status (UP, DOWN,
@@ -17,7 +19,7 @@ use Inertia\Inertia;
  */
 class DailyOpsController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $user = $request->user();
         $date = $request->input('date', today()->toDateString());
@@ -82,7 +84,7 @@ class DailyOpsController extends Controller
         ]);
     }
 
-    public function batch(BulkDailyOpsRequest $request)
+    public function batch(BulkDailyOpsRequest $request): RedirectResponse
     {
         $user = $request->user();
         $action = $request->validated('action');

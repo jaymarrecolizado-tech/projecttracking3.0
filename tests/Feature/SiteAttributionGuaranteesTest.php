@@ -58,6 +58,60 @@ class SiteAttributionGuaranteesTest extends TestCase
         ]);
 
         $this->assertSame('II', $site->fresh()->region);
+        $this->assertSame('Luzon', $site->fresh()->island_group);
+    }
+
+    /**
+     * The observer only guards future writes — rows imported before the lookup
+     * existed stay blank, which is exactly the state production was in
+     * (14% region coverage). The command has to reach them.
+     */
+    public function test_backfill_command_stamps_rows_the_observer_never_saw(): void
+    {
+        // Raw insert bypasses the observer, like a pre-existing import would.
+        $id = DB::table('sites')->insertGetId([
+            'project_id' => $this->project->id,
+            'ap_site_code' => 'LEGACY-1',
+            'location_name' => 'Legacy Site',
+            'province' => 'Cagayan',
+            'municipality' => 'Aparri',
+            'barangay' => 'Tobias',
+            'latitude' => 18.35,
+            'longitude' => 121.64,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->assertNull(DB::table('sites')->find($id)->region);
+
+        $this->artisan('sites:backfill-regions')->assertSuccessful();
+
+        $site = DB::table('sites')->find($id);
+        $this->assertSame('II', $site->region);
+        $this->assertSame('Luzon', $site->island_group);
+
+        // Idempotent: nothing left to change on a second pass.
+        $this->artisan('sites:backfill-regions')->expectsOutputToContain('Updated 0 site(s).')->assertSuccessful();
+    }
+
+    public function test_backfill_command_never_guesses_an_unknown_province(): void
+    {
+        $id = DB::table('sites')->insertGetId([
+            'project_id' => $this->project->id,
+            'ap_site_code' => 'LEGACY-2',
+            'location_name' => 'Elsewhere Site',
+            'province' => 'Cebu',
+            'municipality' => 'Cebu City',
+            'latitude' => 10.31,
+            'longitude' => 123.89,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('sites:backfill-regions')->assertSuccessful();
+
+        $this->assertNull(DB::table('sites')->find($id)->region);
     }
 
     public function test_blank_site_code_gets_a_deterministic_synthetic_code(): void

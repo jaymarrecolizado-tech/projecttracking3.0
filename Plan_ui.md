@@ -166,11 +166,80 @@ No backend, route, policy, or query changes in any slice.
   Active Sites readout → neutral white (status hues reserved); severity →
   `SeverityChip dark`; 11px timestamps → slate-400; map fallback marker →
   neutral slate (status colors already matched); map container flat.
+- [x] **Firmware counter** (done 2026-09-13, `Plan.md` #5) — reuses the Slice 4
+  warranty-counter pattern (neutral card + amber toggle button,
+  `aria-pressed`, tabular numerals). No new visual language; no slice needed.
+- [x] **Slice 7 — Status cluster bubbles** (2026-09-13)
+  `iconCreateFunction` bubble (count + dominant % via pure `clusterStats`,
+  ties break toward worse status) with halo + S/M/L sizes; single dots
+  7px → 10px; `statusColors` map moved to `theme.js` `STATUS_COLORS`;
+  `clusters.css` bundled into the Map chunk; Vitest `clusterStats.test.js`
+  (8/8 with escaper suite). Lint 0, Vite build green.
 
-### Open
+### Open — Map marker glow-up (reference: status-bubble ops map)
 
-(none — all slices implemented 2026-09-08. Lint: 0 errors, remaining warnings
-pre-existing in untouched lines.)
+Goal: the Map View reads like the reference — status-colored cluster bubbles
+with counts + dominant %, halo glow, light basemap, live legend chips.
+Constraints: Leaflet stays (replacing it is out of scope); no new deps
+(`leaflet.markercluster` is already loaded globally, CARTO tiles are keyless);
+status hues are data (UP green / DOWN red / NO_NMS amber / NO_DATA slate —
+same buckets as the reference's online/offline/unmonitored/not-located);
+teal accent and all drill/filter behavior unchanged.
+
+- [x] **Slice 7 — Status cluster bubbles** (done above — the core look)
+  - Custom `iconCreateFunction`: bubble shows site count + dominant-status %;
+    fill = dominant status color with a translucent halo ring (`box-shadow`);
+    three sizes (S/M/L) by count; white tabular numerals.
+  - Single dots grow 7px → 10px with a white ring so max-zoom matches the
+    bubble language; fills unchanged.
+  - New `resources/js/Pages/Map/clusters.css` (bubble/halo classes only);
+    move the `statusColors` map from `useLeafletMap.js` into `theme.js` so
+    bubbles, dots, and legend share one source.
+  - No backend change: cluster stats read `feature.properties.daily_status`
+    off child markers.
+  - Accept: zoomed-out Region II shows a handful of glowing bubbles with
+    counts; zooming splits them; popups/escaping untouched.
+
+- [x] **Slice 9 — Polish + pre-flight** (2026-09-13)
+  Popup status band (decorative strip, color from `STATUS_COLORS` map only —
+  no new injection surface, values still escaped); bubble fills darkened one
+  step within each hue (white numerals now 4.8–6.5:1, AA) while dots keep
+  the bright data hues; filter row wraps at 360px; slider focus ring.
+  §4 pre-flight: contrast measured, tabular numerals, focus-visible +
+  `aria-pressed` throughout, light theme, lint 0, build green.
+- [x] **Slice 8 — Light basemap + live legend header** (done above)
+  CARTO light tiles (OSM + CARTO attribution); legend header with plotted
+  total + Z readout + four chips (Online / Offline / Unmonitored /
+  Not located) counted client-side via pure `healthBucket` — no endpoint;
+  Not located adds the unplotted remainder so chips reconcile with the
+  stats panel; chips toggle a client-side health filter (`aria-pressed`,
+  no refetch); Merge/Detail slider drives `maxClusterRadius` (0–160) with
+  one shared `drawMarkers()` path; boundaries softened to slate-300.
+  Vitest `healthBucket.test.js` (11/11 total). Lint 0, Vite build green.
+  - Tile swap: OSM standard → CARTO light
+    (`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png`,
+    OSM + CARTO attribution, as in the reference). One URL + attribution.
+  - Legend header above the map: plotted total + four live chips
+    (ONLINE n · OFFLINE n · UNMONITORED n · NOT LOCATED n) counted
+    client-side from the fetched GeoJSON (UP / DOWN+DOWN_SERVER / NO_NMS /
+    NO_DATA+unplotted) — no new endpoint. Chips click-to-filter by status.
+  - Merge/detail slider → markercluster `maxClusterRadius` + zoom-level
+    readout on `zoomend` (reference's ZOOM + slider, same delight, ~20 lines).
+  - Soften boundary polygons to light gray so bubbles pop on the pale base.
+  - Accept: header counts reconcile with the stats panel; slider visibly
+    merges/splits bubbles; filters still drive everything.
+
+- [ ] **Slice 9 — Polish + pre-flight**
+  (done above — popup band, AA bubbles, 360px, pre-flight)
+  - Popup header band in status color (values still escaped); mobile: legend
+    wraps, controls don't cover the map at 360px.
+  - Vitest: pure `clusterStats(statuses)` helper (count/dominant/pct) —
+    runnable check for the bubble math.
+  - Full Plan_ui.md §4 pre-flight + `npm run lint` (0 errors) + rebuilt
+    assets; update this file's Done list.
+
+Build order: 8 → 9 (7 already transforms the page — ship it first if splitting).
+Glow-up complete 2026-09-13 (7 + 8 + 9 all Done above).
 
 ---
 

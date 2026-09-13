@@ -7,21 +7,23 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class UserController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $users = User::query()
             ->with('roles:id,name,description')
             ->when($request->input('search'), fn ($q, $v) => $q->where(fn ($w) => $w
                 ->where('name', 'like', "%{$v}%")
                 ->orWhere('email', 'like', "%{$v}%")))
-            ->when($request->filled('status'), fn ($q) => $q->where('is_active', (bool) $request->input('status')))
+            ->when($request->filled('status'), fn ($q) => $q->where('is_active', $request->boolean('status')))
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
@@ -34,7 +36,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(StoreUserRequest $request)
+    public function store(StoreUserRequest $request): RedirectResponse
     {
         $data = $request->validated();
 
@@ -54,7 +56,7 @@ class UserController extends Controller
             ->with('success', "User {$user->email} created.");
     }
 
-    public function update(UpdateUserRequest $request, User $user)
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         $data = $request->withSelfProtection($user);
 
@@ -75,7 +77,7 @@ class UserController extends Controller
             ->with('success', "User {$user->email} updated.");
     }
 
-    public function destroy(Request $request, User $user)
+    public function destroy(Request $request, User $user): RedirectResponse
     {
         if ((int) $user->id === (int) $request->user()->id) {
             return redirect()->route('users.index')->with('error', 'You cannot delete your own account.');

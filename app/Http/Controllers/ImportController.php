@@ -6,18 +6,20 @@ use App\Http\Requests\StoreImportUploadRequest;
 use App\Jobs\ProcessExcelImport;
 use App\Models\FreewifiImportBatch;
 use App\Services\ImportService;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ImportController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
         $batches = FreewifiImportBatch::with('importer')->latest()->paginate(20);
 
         return Inertia::render('Import/Index', ['batches' => $batches]);
     }
 
-    public function upload(StoreImportUploadRequest $request, ImportService $importService)
+    public function upload(StoreImportUploadRequest $request, ImportService $importService): RedirectResponse
     {
         $file = $request->file('file');
         $type = $request->input('type', 'sites');
@@ -29,7 +31,7 @@ class ImportController extends Controller
         return redirect()->route('import.show', $batch);
     }
 
-    public function show(FreewifiImportBatch $batch)
+    public function show(FreewifiImportBatch $batch): Response
     {
         $batch->load('importer');
 

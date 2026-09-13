@@ -135,6 +135,27 @@ class SiteCoverageTest extends TestCase
         $this->assertSame(1, $byStatus['totals']['registered']);
     }
 
+    /**
+     * Plan_revision §Phase 1.4 — a district filter matches on sites.district, so
+     * a site with a blank district disappears from the count. The payload has to
+     * say how many were dropped, or a low figure reads as complete coverage.
+     */
+    public function test_coverage_reports_sites_the_district_filter_cannot_see(): void
+    {
+        $this->site(['province' => 'Cagayan', 'municipality' => 'Aparri', 'district' => '1st', 'site_type' => 'PES']);
+        $this->site(['province' => 'Cagayan', 'municipality' => 'Aparri', 'site_type' => 'PES']);
+
+        $coverage = app(SiteCoverageService::class)->coverage(['province' => 'Cagayan', 'district' => '1st']);
+
+        $this->assertSame(1, $coverage['totals']['registered']);
+        $this->assertSame(1, $coverage['district_blank_sites']);
+
+        // No district selected → nothing is being hidden, so nothing to report.
+        $unfiltered = app(SiteCoverageService::class)->coverage(['province' => 'Cagayan']);
+        $this->assertSame(0, $unfiltered['district_blank_sites']);
+        $this->assertSame(2, $unfiltered['totals']['registered']);
+    }
+
     public function test_site_type_report_queues_and_completes(): void
     {
         Storage::fake('local');

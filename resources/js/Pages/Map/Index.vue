@@ -4,7 +4,8 @@ import GeoFilterFields from '@/Components/GeoFilterFields.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import MapStatsPanel from './MapStatsPanel.vue';
-import { useLeafletMap } from './useLeafletMap';
+import { useLeafletMap, healthBucket } from './useLeafletMap';
+import { STATUS_COLORS } from '../../theme';
 
 const props = defineProps({
     projects: Array,
@@ -31,11 +32,57 @@ const truncated = ref(false);
 const busy = ref(false);
 const loadError = ref('');
 
+// Legend + slider state (Slice 8): raw fetch cache, client-side health
+// filter, cluster merge radius, live zoom.
+const markerData = ref(null);
+const health = ref(null);
+const clusterRadius = ref(80);
+const zoom = ref(7);
+
 const mapContainer = ref(null);
 const leaflet = useLeafletMap(mapContainer);
 
 const typeLabel = computed(() =>
     Object.fromEntries((props.siteTypes ?? []).map((t) => [t.code, t.label])));
+
+// Live legend chips counted from the fetched GeoJSON — no new endpoint.
+// NOT LOCATED adds the unplotted remainder so the four chips reconcile
+// with the stats panel's registered total.
+const healthCounts = computed(() => {
+    const counts = { UP: 0, DOWN: 0, NO_NMS: 0, NO_DATA: 0 };
+    for (const f of markerData.value?.features ?? []) {
+        counts[healthBucket(f.properties?.daily_status)]++;
+    }
+    return counts;
+});
+const fetchedTotal = computed(() => markerData.value?.features?.length ?? 0);
+const unplotted = computed(() => filters.deployed_only === '1'
+    ? 0
+    : Math.max(0, (coverage.value?.totals?.registered ?? 0) - fetchedTotal.value));
+const chips = computed(() => ([
+    { key: 'UP', label: 'Online', color: STATUS_COLORS.UP, count: healthCounts.value.UP },
+    { key: 'DOWN', label: 'Offline', color: STATUS_COLORS.DOWN, count: healthCounts.value.DOWN },
+    { key: 'NO_NMS', label: 'Unmonitored', color: STATUS_COLORS.NO_NMS, count: healthCounts.value.NO_NMS },
+    { key: 'NO_DATA', label: 'Not located', color: STATUS_COLORS.NO_DATA, count: healthCounts.value.NO_DATA + unplotted.value },
+]));
+
+// One draw path for fetch, chip filter, and slider — no refetch.
+function drawMarkers() {
+    const features = markerData.value?.features ?? [];
+    const shown = health.value
+        ? features.filter((f) => healthBucket(f.properties?.daily_status) === health.value)
+        : features;
+    leaflet.renderMarkers({ type: 'FeatureCollection', features: shown }, {
+        typeLabel: typeLabel.value,
+        maxClusterRadius: clusterRadius.value,
+    });
+    plotted.value = shown.length;
+}
+
+function toggleHealth(key) {
+    health.value = health.value === key ? null : key;
+    drawMarkers();
+}
 
 // Polygon drill level follows the deepest chosen filter: province →
 // district → municipality → barangay. `filter` is the key a polygon click
@@ -83,15 +130,15 @@ async function refresh({ syncUrl = false } = {}) {
         }
         const geo = apiParams({ deployed_only: filters.deployed_only });
 
-        const [markerData, boundaryData, coverageData] = await Promise.all([
+        const [markerJson, boundaryData, coverageData] = await Promise.all([
             fetchJson('/map/geojson', geo),
             fetchJson('/map/boundaries', apiParams({ level: boundaryScope().level, ...boundaryScope().params })),
             fetchJson('/map/coverage', apiParams()),
         ]);
 
-        plotted.value = markerData.features?.length ?? 0;
-        truncated.value = markerData.truncated === true;
-        leaflet.renderMarkers(markerData, { typeLabel: typeLabel.value });
+        truncated.value = markerJson.truncated === true;
+        markerData.value = markerJson;
+        drawMarkers();
 
         const scope = boundaryScope();
         leaflet.renderBoundaries(boundaryData, {
@@ -162,6 +209,9 @@ function generatePdf() {
 
 onMounted(() => {
     leaflet.init();
+    leaflet.mapRef.value?.on('zoomend', () => {
+        zoom.value = leaflet.mapRef.value.getZoom();
+    });
     setTimeout(() => refresh(), 100);
 });
 
@@ -185,7 +235,7 @@ onBeforeUnmount(() => leaflet.destroy());
           :filters="filters"
           @update:filters="onFiltersChange"
         >
-          <div class="flex items-center gap-3">
+          <div class="flex flex-wrap items-center gap-3">
             <select
               :value="filters.status"
               class="rounded-lg border-slate-300 text-sm focus:border-accent-500 focus:ring-accent-500/40"
@@ -221,6 +271,41 @@ onBeforeUnmount(() => leaflet.destroy());
 
       <!-- Map -->
       <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{{ loadError }}</div>
+      <div class="dict-card px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span class="text-sm text-slate-600">
+          <strong class="font-semibold text-slate-800 tabular-nums">{{ plotted }}</strong>
+          plotted · <span class="tabular-nums">Z{{ zoom }}</span>
+        </span>
+        <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by site health">
+          <button
+            v-for="chip in chips"
+            :key="chip.key"
+            type="button"
+            :aria-pressed="health === chip.key"
+            :title="health === chip.key ? `Showing ${chip.label} only — click to clear` : `Show ${chip.label} only`"
+            class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40"
+            :class="health === chip.key ? 'border-slate-700 bg-slate-100 text-slate-900' : 'border-slate-300 text-slate-600 hover:border-slate-400'"
+            @click="toggleHealth(chip.key)"
+          >
+            <span class="inline-block size-2 rounded-full" :style="{ background: chip.color }" aria-hidden="true"></span>
+            {{ chip.label }} <span class="tabular-nums">{{ chip.count }}</span>
+          </button>
+        </div>
+        <label class="ml-auto flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-500">
+          Merge
+          <input
+            v-model.number="clusterRadius"
+            type="range"
+            min="0"
+            max="160"
+            step="20"
+            class="w-28 accent-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40"
+            aria-label="Cluster merge radius"
+            @input="drawMarkers"
+          />
+          Detail
+        </label>
+      </div>
       <div ref="mapContainer" class="rounded-lg overflow-hidden border border-slate-200" style="height: 600px;"></div>
 
       <MapStatsPanel

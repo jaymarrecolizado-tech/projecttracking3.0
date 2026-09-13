@@ -7,7 +7,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { IconChevronRight, IconRouter, IconSearch } from '@tabler/icons-vue';
 import Pagination from '@/Components/Pagination.vue';
 
-const props = defineProps({ devices: Object, filters: Object, deviceModels: Array, counts: Object, stockByType: Array, warranty: Object });
+const props = defineProps({ devices: Object, filters: Object, deviceModels: Array, counts: Object, stockByType: Array, warranty: Object, firmware: Object });
 
 const search = ref(props.filters.search ?? '');
 
@@ -15,6 +15,8 @@ function applyFilters(extra = {}) {
     router.get(route('devices.index'), {
         search: search.value || null,
         status: props.filters.status,
+        warranty: props.filters.warranty,
+        firmware: props.filters.firmware,
         ...extra,
     }, { preserveState: true });
 }
@@ -27,6 +29,11 @@ function filterStatus(status) {
 function filterWarranty(which) {
     const next = props.filters.warranty === which ? null : which;
     applyFilters({ warranty: next });
+}
+
+function filterFirmware() {
+    const next = props.filters.firmware === 'outdated' ? null : 'outdated';
+    applyFilters({ firmware: next });
 }
 
 const typeLabels = {
@@ -59,7 +66,7 @@ const typeLabels = {
     </div>
 
     <!-- Inventory views -->
-    <div class="grid md:grid-cols-3 gap-6 mb-6">
+    <div class="grid md:grid-cols-4 gap-6 mb-6">
       <div class="dict-card p-6 md:col-span-2">
         <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Stock by type</h3>
         <div v-if="stockByType?.length" class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5 text-sm">
@@ -91,6 +98,20 @@ const typeLabels = {
           <span class="text-slate-600">Expired</span>
           <span class="font-bold text-red-600 tabular-nums">{{ warranty?.expired ?? 0 }}</span>
         </button>
+      </div>
+      <div class="dict-card p-6">
+        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Firmware</h3>
+        <button
+          v-if="firmware?.outdated !== null"
+          type="button" class="w-full flex justify-between items-center rounded-lg px-3 py-2 text-sm hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 active:scale-[0.99] transition"
+          :class="{ 'ring-1 ring-amber-400 bg-amber-50': filters.firmware === 'outdated' }"
+          :aria-pressed="filters.firmware === 'outdated'"
+          @click="filterFirmware()"
+        >
+          <span class="text-slate-600">Outdated</span>
+          <span class="font-bold text-amber-700 tabular-nums">{{ firmware.outdated }}</span>
+        </button>
+        <p v-else class="text-sm text-slate-400">Set APPROVED_FIRMWARE to track outdated units.</p>
       </div>
     </div>
 

@@ -8,12 +8,14 @@ use App\Models\Device;
 use App\Models\DeviceModel;
 use App\Models\Project;
 use App\Models\Site;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class SiteController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $sites = Site::query()
             ->with(['project:id,code,name,marker_color', 'latestDailyStatus'])
@@ -39,7 +41,7 @@ class SiteController extends Controller
         ]);
     }
 
-    public function show(Site $site)
+    public function show(Site $site): Response
     {
         $site->load(['project', 'latestDailyStatus', 'dailyStatuses' => fn ($q) => $q->latest('date')->take(30),
             'activeDeployments.device.deviceModel:id,manufacturer,model_name,model_number']);
@@ -58,7 +60,7 @@ class SiteController extends Controller
         ]);
     }
 
-    public function store(StoreSiteRequest $request)
+    public function store(StoreSiteRequest $request): RedirectResponse
     {
         $site = Site::create($request->validated() + [
             'created_by' => auth()->id(),
@@ -67,21 +69,21 @@ class SiteController extends Controller
         return redirect()->route('sites.show', $site);
     }
 
-    public function update(UpdateSiteRequest $request, Site $site)
+    public function update(UpdateSiteRequest $request, Site $site): RedirectResponse
     {
         $site->update($request->validated() + ['updated_by' => auth()->id()]);
 
         return redirect()->route('sites.show', $site);
     }
 
-    public function destroy(Site $site)
+    public function destroy(Site $site): RedirectResponse
     {
         $site->delete();
 
         return redirect()->route('sites.index');
     }
 
-    public function byProject(Request $request, Project $project)
+    public function byProject(Request $request, Project $project): Response
     {
         $sites = $project->sites()
             ->with(['latestDailyStatus'])

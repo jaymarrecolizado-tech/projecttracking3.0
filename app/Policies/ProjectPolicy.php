@@ -10,27 +10,27 @@ class ProjectPolicy
 {
     use HandlesAuthorization;
 
-    public function viewAny(User $user)
+    public function viewAny(User $user): bool
     {
         return true;
     } // Everyone can see projects list, though typically viewers can too
 
-    public function view(User $user, Project $project)
+    public function view(User $user, Project $project): bool
     {
         return true;
     }
 
-    public function create(User $user)
+    public function create(User $user): bool
     {
         return $user->hasPermission('projects.manage');
     }
 
-    public function update(User $user, Project $project)
+    public function update(User $user, Project $project): bool
     {
         return $user->hasPermission('projects.manage');
     }
 
-    public function delete(User $user, Project $project)
+    public function delete(User $user, Project $project): bool
     {
         return $user->hasPermission('projects.manage');
     }

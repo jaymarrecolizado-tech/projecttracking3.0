@@ -1,5 +1,6 @@
 import { ref } from 'vue';
-import { INK } from '../../theme';
+import { INK, STATUS_COLORS } from '../../theme';
+import './clusters.css';
 
 // Leaflet popups render HTML strings, so every database-derived value is
 // escaped first — site/device names arrive from manual entry and Excel
@@ -13,6 +14,43 @@ export function escapeHtml(value) {
         .replaceAll("'", '&#39;');
 }
 
+// Cluster bubble math (pure — covered by Vitest): how many sites, which
+// status dominates, and its share. Ties break toward the worse status so a
+// half-down area never reads green.
+const SEVERITY_ORDER = ['DOWN', 'NO_NMS', 'NO_DATA', 'UP'];
+
+export function clusterStats(statuses) {
+    const counts = { UP: 0, DOWN: 0, NO_NMS: 0, NO_DATA: 0 };
+    for (const raw of statuses) {
+        const s = raw === 'DOWN_SERVER' ? 'DOWN' : raw;
+        counts[s in counts ? s : 'NO_DATA']++;
+    }
+    const total = statuses.length;
+    let dominant = 'NO_DATA';
+    let best = -1;
+    for (const s of SEVERITY_ORDER) {
+        if (counts[s] > best) {
+            best = counts[s];
+            dominant = s;
+        }
+    }
+    return {
+        count: total,
+        label: total >= 1000 ? `${(total / 1000).toFixed(1)}k` : `${total}`,
+        dominant,
+        pct: total > 0 ? Math.round((best / total) * 100) : 0,
+    };
+}
+
+// Health bucket for the legend chips (pure — covered by Vitest): the five
+// daily statuses collapse to four legend buckets; unknowns read as NO_DATA.
+export function healthBucket(status) {
+    if (status === 'UP') return 'UP';
+    if (status === 'DOWN' || status === 'DOWN_SERVER') return 'DOWN';
+    if (status === 'NO_NMS') return 'NO_NMS';
+    return 'NO_DATA';
+}
+
 // Leaflet wiring for Map View (Plan §Map 3): init, deployed-device markers
 // with clustering, and the boundary polygon layer with highlight +
 // click-to-filter. Leaflet loads globally via app.blade.php.
@@ -22,21 +60,32 @@ export function useLeafletMap(containerRef) {
     let markerLayer = null;
     let boundaryLayer = null;
 
-    const statusColors = {
-        UP: '#059669',
-        DOWN: '#dc2626',
-        DOWN_SERVER: '#dc2626',
-        NO_NMS: '#d97706',
-        NO_DATA: '#94a3b8',
-    };
+    // Status hues live in theme.js — one source for dots, bubbles, legend.
+    const statusColors = STATUS_COLORS;
+
+    // Cluster bubble icon: count + dominant-status % (Slice 7). Reads the
+    // child markers' GeoJSON daily_status — no backend change.
+    function bubbleIcon(cluster) {
+        const { label, dominant, pct } = clusterStats(
+            cluster.getAllChildMarkers().map((m) => m.feature?.properties?.daily_status),
+        );
+        const count = cluster.getChildCount();
+        const size = count >= 100 ? 60 : count >= 10 ? 50 : 40;
+        const cls = dominant.toLowerCase();
+        return L.divIcon({
+            html: `<div class="map-cluster st-${cls} ${size >= 60 ? 'sz-l' : size >= 50 ? 'sz-m' : 'sz-s'}"><span class="n">${label}</span><span class="pct">${pct}%</span></div>`,
+            className: 'map-cluster-wrap',
+            iconSize: L.point(size, size),
+        });
+    }
 
     function init() {
         if (map || !containerRef.value) {
             return;
         }
         map = L.map(containerRef.value, { zoomControl: true }).setView([16.9, 121.8], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors',
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             maxZoom: 18,
         }).addTo(map);
         mapRef.value = map;
@@ -57,9 +106,9 @@ export function useLeafletMap(containerRef) {
         }
     }
 
-    function renderMarkers(data, { typeLabel = {} } = {}) {
+    function renderMarkers(data, { typeLabel = {}, maxClusterRadius = 80 } = {}) {
         clearMarkers();
-        const style = { radius: 7, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9 };
+        const style = { radius: 10, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9 };
 
         const geoJson = L.geoJSON(data, {
             pointToLayer: (feature, latlng) => {
@@ -91,7 +140,7 @@ export function useLeafletMap(containerRef) {
                         where,
                         `<a href="${route('sites.show', p.id)}">Site</a>`,
                     ];
-                layer.bindPopup(`<div class="text-sm leading-snug">${lines.filter(Boolean).join('<br>')}</div>`, { sticky: true });
+                layer.bindPopup(`<div class="text-sm leading-snug"><div style="height:6px;border-radius:9999px;background:${statusColors[healthBucket(p.daily_status)]};margin-bottom:8px" aria-hidden="true"></div>${lines.filter(Boolean).join('<br>')}</div>`, { sticky: true });
                 // Hover previews the details; click pins the popup (touch-friendly).
                 layer.on('mouseover', () => layer.openPopup());
                 layer.on('mouseout', () => {
@@ -106,7 +155,9 @@ export function useLeafletMap(containerRef) {
         });
 
         // Cluster when markercluster is present; plain layer otherwise.
-        markerLayer = typeof L.markerClusterGroup === 'function' ? L.markerClusterGroup() : L.layerGroup();
+        markerLayer = typeof L.markerClusterGroup === 'function'
+            ? L.markerClusterGroup({ iconCreateFunction: bubbleIcon, maxClusterRadius })
+            : L.layerGroup();
         markerLayer.addLayer(geoJson);
         map.addLayer(markerLayer);
     }
@@ -129,7 +180,7 @@ export function useLeafletMap(containerRef) {
         boundaryLayer = L.geoJSON(featureCollection, {
             style: (feature) => (feature.properties.name === selectedName
                 ? { fillColor: INK, fillOpacity: 0.3, color: INK, weight: 2 }
-                : { fill: false, color: '#64748b', weight: 1, opacity: 0.55 }),
+                : { fill: false, color: '#cbd5e1', weight: 1, opacity: 0.8 }),
             onEachFeature: (feature, layer) => {
                 layer.bindTooltip(escapeHtml(feature.properties.name), { sticky: true });
                 layer.on('click', () => onPick(feature.properties.name));

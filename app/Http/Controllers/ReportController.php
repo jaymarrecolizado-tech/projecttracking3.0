@@ -12,10 +12,14 @@ use App\Models\ReportExport;
 use App\Services\GeoFilterOptions;
 use App\Services\ReportAnalytics;
 use App\Services\ReportingService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -33,7 +37,7 @@ class ReportController extends Controller
         return ($slug === '' ? 'report' : $slug).'.pdf';
     }
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $projects = Project::where('is_active', true)->get(['id', 'code', 'name', 'marker_color']);
         $exports = ReportExport::where('user_id', $request->user()->id)
@@ -60,7 +64,7 @@ class ReportController extends Controller
     }
 
     /** One-line scope for an export row, whatever param shape its type uses. */
-    private function exportScope(array $params, $projectNames): string
+    private function exportScope(array $params, Collection $projectNames): string
     {
         $flat = $params + ($params['filters'] ?? []);
         unset($flat['filters'], $flat['sections']);
@@ -75,7 +79,7 @@ class ReportController extends Controller
         return $line;
     }
 
-    public function projectPdf(GenerateScopedReportRequest $request, Project $project)
+    public function projectPdf(GenerateScopedReportRequest $request, Project $project): RedirectResponse
     {
         $export = ReportExport::create([
             'user_id' => $request->user()->id,
@@ -88,7 +92,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function provincePdf(GenerateProvinceReportRequest $request)
+    public function provincePdf(GenerateProvinceReportRequest $request): RedirectResponse
     {
         $validated = $request->validated();
         $export = ReportExport::create([
@@ -107,7 +111,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function siteTypePdf(GenerateScopedReportRequest $request)
+    public function siteTypePdf(GenerateScopedReportRequest $request): RedirectResponse
     {
         $filters = $request->scope();
         $scope = $filters['province'] ?? 'nationwide';
@@ -123,7 +127,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function barangayCoveragePdf(GenerateScopedReportRequest $request)
+    public function barangayCoveragePdf(GenerateScopedReportRequest $request): RedirectResponse
     {
         $filters = $request->scope();
         $scope = $filters['province'] ?? 'region-ii';
@@ -139,7 +143,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function opsPeriodPdf(GenerateScopedReportRequest $request)
+    public function opsPeriodPdf(GenerateScopedReportRequest $request): RedirectResponse
     {
         $export = ReportExport::create([
             'user_id' => $request->user()->id,
@@ -152,7 +156,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function fleetPdf(GenerateScopedReportRequest $request)
+    public function fleetPdf(GenerateScopedReportRequest $request): RedirectResponse
     {
         $export = ReportExport::create([
             'user_id' => $request->user()->id,
@@ -165,7 +169,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function incidentsPdf(GenerateScopedReportRequest $request)
+    public function incidentsPdf(GenerateScopedReportRequest $request): RedirectResponse
     {
         $export = ReportExport::create([
             'user_id' => $request->user()->id,
@@ -178,7 +182,7 @@ class ReportController extends Controller
         return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
     }
 
-    public function progressPdf(GenerateScopedReportRequest $request)
+    public function progressPdf(GenerateScopedReportRequest $request): RedirectResponse
     {
         $export = ReportExport::create([
             'user_id' => $request->user()->id,
@@ -192,7 +196,7 @@ class ReportController extends Controller
     }
 
     /** Report-builder pack: one PDF with the selected analytic sections. */
-    public function combinedPdf(GenerateCombinedReportRequest $request)
+    public function combinedPdf(GenerateCombinedReportRequest $request): RedirectResponse
     {
         $validated = $request->validated();
         $filters = $request->scope();
@@ -209,7 +213,7 @@ class ReportController extends Controller
     }
 
     /** Re-queue a failed export with its original filter set (§Phase 5.5). */
-    public function retry(Request $request, ReportExport $export)
+    public function retry(Request $request, ReportExport $export): RedirectResponse
     {
         abort_unless($request->user()->hasPermission('reports.export'), 403);
         abort_unless($export->status === 'FAILED', 422, 'Only failed exports can be retried.');
@@ -221,7 +225,7 @@ class ReportController extends Controller
     }
 
     /** CSV companion for an export's annex table — regenerated, never stored. */
-    public function downloadCsv(Request $request, ReportExport $export)
+    public function downloadCsv(Request $request, ReportExport $export): StreamedResponse
     {
         abort_unless(
             (int) $export->user_id === (int) $request->user()->id || $request->user()->hasPermission('reports.export'),
@@ -253,7 +257,7 @@ class ReportController extends Controller
         }, $csv['name'], ['Content-Type' => 'text/csv']);
     }
 
-    public function download(Request $request, ReportExport $export)
+    public function download(Request $request, ReportExport $export): StreamedResponse
     {
         abort_unless(
             (int) $export->user_id === (int) $request->user()->id || $request->user()->hasPermission('reports.export'),

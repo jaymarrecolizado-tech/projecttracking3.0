@@ -81,8 +81,12 @@ class HeartbeatController extends Controller
             ];
             // whereDate avoids the Eloquent date-cast vs Y-m-d storage mismatch
             // that makes updateOrCreate() double-insert on some drivers.
+            // lockForUpdate serializes concurrent beats for the same site+day
+            // so two simultaneous first-beats can't both miss and both create
+            // (unique site+date violation → 500).
             $status = SiteDailyStatus::where('site_id', $site->id)
                 ->whereDate('date', today())
+                ->lockForUpdate()
                 ->first();
             if ($status) {
                 $status->fill($attributes)->save();

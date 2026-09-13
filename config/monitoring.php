@@ -4,6 +4,10 @@ return [
     // Fallback recipient for DOWN alerts / warranty digest.
     'watchdog_email' => env('WATCHDOG_EMAIL'),
 
+    // Monthly scheduled-report summary. Falls back to the watchdog address
+    // so the pack never queues silently with nowhere to announce it.
+    'reports_email' => env('REPORT_SCHEDULED_EMAIL', env('WATCHDOG_EMAIL')),
+
     // Telegram alert channel (free — no gateway contract needed). Create a bot
     // with @BotFather, put its token here, and the chat_id of the NOC group.
     // Both must be set for Telegram alerts to fire; otherwise email-only.

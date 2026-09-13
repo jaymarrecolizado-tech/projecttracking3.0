@@ -10,27 +10,27 @@ class SitePolicy
 {
     use HandlesAuthorization;
 
-    public function viewAny(User $user)
+    public function viewAny(User $user): bool
     {
         return $user->hasPermission('sites.view');
     }
 
-    public function view(User $user, Site $site)
+    public function view(User $user, Site $site): bool
     {
         return $user->hasPermission('sites.view', $site->project_id);
     }
 
-    public function create(User $user)
+    public function create(User $user): bool
     {
         return $user->hasPermission('sites.create');
     }
 
-    public function update(User $user, Site $site)
+    public function update(User $user, Site $site): bool
     {
         return $user->hasPermission('sites.edit', $site->project_id);
     }
 
-    public function delete(User $user, Site $site)
+    public function delete(User $user, Site $site): bool
     {
         return $user->hasPermission('sites.delete', $site->project_id);
     }

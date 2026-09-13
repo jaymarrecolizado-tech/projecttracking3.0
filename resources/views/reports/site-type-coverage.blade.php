@@ -58,6 +58,13 @@
         </tfoot>
     </table>
 
+    @if (($coverage['district_blank_sites'] ?? 0) > 0)
+    <p class="muted" style="font-size:9px">
+        {{ $coverage['district_blank_sites'] }} site(s) in the selected province(s) have no legislative district
+        recorded and are therefore excluded by the district filter.
+    </p>
+    @endif
+
     @if ($sites->isNotEmpty())
     <h2>Deployed sites appendix ({{ $sites->count() }} sites)</h2>
     <table class="grid">

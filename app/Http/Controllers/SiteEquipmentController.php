@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\DeviceDeployment;
 use App\Models\Site;
 use App\Services\DeviceDeploymentService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ class SiteEquipmentController extends Controller
 {
     public function __construct(private DeviceDeploymentService $deployments) {}
 
-    public function store(Request $request, Site $site)
+    public function store(Request $request, Site $site): RedirectResponse
     {
         $data = $request->validate([
             'mode' => 'required|in:new,existing',
@@ -67,7 +68,7 @@ class SiteEquipmentController extends Controller
         return back()->with('success', 'Equipment attached to '.$site->location_name.'.');
     }
 
-    public function destroy(Site $site, DeviceDeployment $deployment)
+    public function destroy(Site $site, DeviceDeployment $deployment): RedirectResponse
     {
         abort_unless((int) $deployment->site_id === (int) $site->id, 404);
         abort_unless($deployment->removed_at === null, 409);

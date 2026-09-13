@@ -16,6 +16,10 @@ class SiteObserver
             $site->region = Site::REGIONS_BY_PROVINCE[$site->province];
         }
 
+        if (blank($site->island_group) && isset(Site::ISLAND_GROUP_BY_PROVINCE[$site->province])) {
+            $site->island_group = Site::ISLAND_GROUP_BY_PROVINCE[$site->province];
+        }
+
         // The (project_id, ap_site_code) unique index cannot dedupe NULLs, so
         // a missing code gets a deterministic synthetic one: re-importing the
         // same source row resolves to the same code instead of stacking

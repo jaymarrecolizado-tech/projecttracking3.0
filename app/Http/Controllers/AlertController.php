@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Alert;
 use App\Models\AlertRule;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * Alerts console (Plan backlog: alerts UI). Viewing/acknowledging/resolving
@@ -16,7 +18,7 @@ class AlertController extends Controller
 {
     private const METRICS = ['offline_minutes', 'latency_ms', 'cpu_pct', 'mem_pct', 'clients', 'rx_mbps', 'tx_mbps', 'battery_v', 'bandwidth_pct', 'firmware_outdated'];
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $alerts = Alert::query()
             ->with(['rule:id,name,metric,operator,threshold,severity', 'site:id,location_name,municipality,province', 'device:id,asset_tag', 'acknowledger:id,name'])
@@ -40,7 +42,7 @@ class AlertController extends Controller
         ]);
     }
 
-    public function acknowledge(Request $request, Alert $alert)
+    public function acknowledge(Request $request, Alert $alert): RedirectResponse
     {
         abort_if($alert->resolved_at !== null, 409);
 
@@ -52,28 +54,28 @@ class AlertController extends Controller
         return back()->with('success', 'Alert acknowledged.');
     }
 
-    public function resolve(Alert $alert)
+    public function resolve(Alert $alert): RedirectResponse
     {
         $alert->update(['resolved_at' => now()]);
 
         return back()->with('success', 'Alert resolved.');
     }
 
-    public function storeRule(Request $request)
+    public function storeRule(Request $request): RedirectResponse
     {
         $rule = AlertRule::create($this->validated($request));
 
         return back()->with('success', "Rule '{$rule->name}' created.");
     }
 
-    public function updateRule(Request $request, AlertRule $rule)
+    public function updateRule(Request $request, AlertRule $rule): RedirectResponse
     {
         $rule->update($this->validated($request));
 
         return back()->with('success', "Rule '{$rule->name}' updated.");
     }
 
-    public function destroyRule(AlertRule $rule)
+    public function destroyRule(AlertRule $rule): RedirectResponse
     {
         $name = $rule->name;
         $rule->delete();

@@ -11,15 +11,21 @@ use App\Services\DeviceDeploymentService;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DeviceController extends Controller
 {
     public function __construct(private DeviceDeploymentService $deployments) {}
 
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
+        // Outdated = version missing or outside APPROVED_FIRMWARE — the same
+        // null-semantics as the fleet pack (`outdated: null` when unconfigured).
+        $approved = (array) config('monitoring.approved_firmware', []);
         $devices = Device::with([
             'deviceModel:id,manufacturer,model_name,model_number,type,wifi_standard',
             'currentDeployment.site:id,location_name',
@@ -44,13 +50,18 @@ class DeviceController extends Controller
                     $q->whereNotNull('warranty_until')->whereBetween('warranty_until', [now(), now()->addDays(90)]);
                 }
             })
+            ->when($request->input('firmware'), function ($q, $v) use ($approved) {
+                if ($v === 'outdated' && $approved !== []) {
+                    $q->where(fn ($w) => $w->whereNull('firmware_version')->orWhereNotIn('firmware_version', $approved));
+                }
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
         return Inertia::render('Devices/Index', [
             'devices' => $devices,
-            'filters' => $request->only(['status', 'type', 'search', 'warranty']),
+            'filters' => $request->only(['status', 'type', 'search', 'warranty', 'firmware']),
             'deviceModels' => DeviceModel::orderBy('manufacturer')->get(),
             'counts' => [
                 'total' => Device::count(),
@@ -74,10 +85,15 @@ class DeviceController extends Controller
                 'expiring' => Device::whereNotNull('warranty_until')->whereBetween('warranty_until', [now(), now()->addDays(90)])->count(),
                 'expired' => Device::whereNotNull('warranty_until')->where('warranty_until', '<', now())->count(),
             ],
+            'firmware' => [
+                'outdated' => $approved === []
+                    ? null
+                    : Device::where(fn ($w) => $w->whereNull('firmware_version')->orWhereNotIn('firmware_version', $approved))->count(),
+            ],
         ]);
     }
 
-    public function show(Device $device)
+    public function show(Device $device): Response
     {
         $device->load([
             'deviceModel',
@@ -101,7 +117,7 @@ class DeviceController extends Controller
         ]);
     }
 
-    public function store(StoreDeviceRequest $request)
+    public function store(StoreDeviceRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -113,7 +129,7 @@ class DeviceController extends Controller
         return redirect()->route('devices.show', $device);
     }
 
-    public function update(UpdateDeviceRequest $request, Device $device)
+    public function update(UpdateDeviceRequest $request, Device $device): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -126,7 +142,7 @@ class DeviceController extends Controller
         return redirect()->route('devices.show', $device);
     }
 
-    public function destroy(Device $device)
+    public function destroy(Device $device): RedirectResponse
     {
         $device->delete();
 
@@ -134,7 +150,7 @@ class DeviceController extends Controller
     }
 
     /** Short URL encoded in the QR tag — scanning lands on the device page. */
-    public function scan(string $tag)
+    public function scan(string $tag): RedirectResponse
     {
         $device = Device::withTrashed()->where('asset_tag', $tag)->firstOrFail();
 
@@ -142,7 +158,7 @@ class DeviceController extends Controller
     }
 
     /** Standalone printable label page (not Inertia — must print clean). */
-    public function label(Request $request)
+    public function label(Request $request): View
     {
         $ids = collect(explode(',', (string) $request->query('ids', '')))->filter(fn ($v) => ctype_digit($v));
         $devices = $ids->isNotEmpty()

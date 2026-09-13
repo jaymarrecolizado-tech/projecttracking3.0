@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,13 +29,13 @@ class SiteDailyStatus extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function scopeForDate($query, $date)
+    public function scopeForDate(Builder $query, string $date): void
     {
-        return $query->whereDate('date', $date);
+        $query->whereDate('date', $date);
     }
 
-    public function scopeUp($query)
+    public function scopeUp(Builder $query): void
     {
-        return $query->where('status', 'UP');
+        $query->where('status', 'UP');
     }
 }
