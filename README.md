@@ -17,6 +17,14 @@ php artisan serve
 
 `setup.ps1` installs dependencies, creates the SQLite DB, migrates + seeds, generates a **random admin password** (printed once at the end), and builds the frontend.
 
+### Dev loop (Windows): serve + worker + rebuild
+The app needs **two** background processes, and both go stale after code changes:
+- `php artisan serve --host=127.0.0.1 --port=8010` — restart after any PHP change (built-in server only).
+- `php artisan queue:work --sleep=3 --tries=3` — **restart after every backend or Blade change**, or queued jobs (reports, imports) keep running the old code. No `--max-time` locally, or it silently exits within the hour.
+- `npm run build` — rerun after any Vue change; the app serves `public/build`, not the Vite dev server.
+
+Stuck report with no PDF? Check the worker first: `DB::table('jobs')->count()` growing while nothing completes means it died — the Reports page now also shows an amber banner when a report waits over 5 minutes.
+
 ## Roles & permissions
 
 Seeded by `RolePermissionSeeder` (re-runnable). Route writes are gated via `can:` middleware → Policies → `User::hasPermission(name, projectId)`. Permissions marked *scoped* only apply to projects a user's role assignment is attached to (`role_user.project_id`; `NULL` = global). Read APIs and the map GeoJSON additionally filter rows to `User::accessibleProjectIds()`.
