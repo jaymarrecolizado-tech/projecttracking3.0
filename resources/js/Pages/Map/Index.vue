@@ -4,7 +4,8 @@ import GeoFilterFields from '@/Components/GeoFilterFields.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import MapStatsPanel from './MapStatsPanel.vue';
-import { useLeafletMap, healthBucket } from './useLeafletMap';
+import { useLeafletMap } from './useLeafletMap';
+import { healthBucket } from './mapHelpers';
 import { STATUS_COLORS } from '../../theme';
 
 const props = defineProps({

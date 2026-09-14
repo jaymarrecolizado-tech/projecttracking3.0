@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escapeHtml } from './Pages/Map/useLeafletMap.js';
+import { escapeHtml } from './Pages/Map/mapHelpers.js';
 
 // Leaflet popups render HTML strings: unescaped site/device names become
 // markup (stored XSS via manual entry or Excel imports). One runnable check.

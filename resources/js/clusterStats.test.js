@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clusterStats } from './Pages/Map/useLeafletMap.js';
+import { clusterStats } from './Pages/Map/mapHelpers.js';
 
 // Bubble math for the status cluster icons (Plan_ui.md Slice 7): count,
 // dominant status, and its share. One runnable check on the pure helper.

@@ -198,6 +198,31 @@ class ReportExportTest extends TestCase
         $this->assertStringContainsString('UP', $content);
     }
 
+    public function test_csv_neutralizes_formula_injection(): void
+    {
+        $admin = $this->admin();
+        $project = $this->project();
+        $site = Site::create([
+            'project_id' => $project->id, 'location_name' => '=HYPERLINK("http://evil.example","x")',
+            'province' => 'Cagayan', 'municipality' => 'Aparri',
+            'latitude' => 18.3, 'longitude' => 121.6, 'status' => 'active',
+        ]);
+        SiteDailyStatus::create([
+            'site_id' => $site->id, 'date' => today()->toDateString(), 'status' => 'UP',
+            'entry_status' => 'DRAFT', 'created_by' => $admin->id,
+        ]);
+        $export = ReportExport::create([
+            'user_id' => $admin->id, 'type' => 'project',
+            'params' => ['project_id' => $project->id],
+            'download_name' => 'project-summary.pdf', 'status' => 'DONE',
+        ]);
+
+        $content = $this->actingAs($admin)->get(route('reports.csv', $export))->streamedContent();
+
+        $this->assertStringContainsString("'=HYPERLINK", $content);
+        $this->assertStringNotContainsString(',=HYPERLINK', $content);
+    }
+
     public function test_csv_is_forbidden_to_strangers_and_missing_for_combined(): void
     {
         $owner = User::factory()->create();

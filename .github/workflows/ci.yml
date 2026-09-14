@@ -34,6 +34,38 @@ jobs:
       - name: Security audit
         run: composer audit
 
+  # F1: the suite must also pass on the engine production ships — MySQL 8
+  # with its default strict modes. Credentials mirror phpunit.mysql.xml.
+  php-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: pred_tracking_mysql_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pdo_mysql
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Tests on MySQL
+        run: php vendor/bin/phpunit --compact -c phpunit.mysql.xml
+
   frontend:
     runs-on: ubuntu-latest
     steps:

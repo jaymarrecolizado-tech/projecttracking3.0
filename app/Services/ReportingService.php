@@ -151,7 +151,7 @@ class ReportingService
         $params = $export->params ?? [];
         $filters = $params['filters'] ?? $params;
 
-        return match ($export->type) {
+        $csv = match ($export->type) {
             'project' => $this->projectRegisterCsv(
                 Project::findOrFail($params['project_id']), $params
             ),
@@ -211,6 +211,25 @@ class ReportingService
             ],
             default => throw new InvalidArgumentException("No CSV companion for '{$export->type}' reports."),
         };
+
+        // Formula-injection guard: a location/remark starting with = + - @
+        // (or tab/CR) executes as a formula when the CSV is opened in Excel.
+        // Prefixing with ' forces text treatment in every spreadsheet app.
+        $csv['rows'] = array_map(
+            fn ($row) => array_map(self::csvSafe(...), (array) $row),
+            $csv['rows']
+        );
+
+        return $csv;
+    }
+
+    private static function csvSafe(mixed $value): mixed
+    {
+        if (! is_string($value) || $value === '') {
+            return $value;
+        }
+
+        return in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
     }
 
     private function projectRegisterCsv(Project $project, array $params): array

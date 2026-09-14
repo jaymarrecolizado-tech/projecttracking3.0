@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { healthBucket } from './Pages/Map/useLeafletMap.js';
+import { healthBucket } from './Pages/Map/mapHelpers.js';
 
 // Legend chip buckets (Plan_ui.md Slice 8): five daily statuses collapse
 // to four chips; anything unexpected reads as NO_DATA, never vanishes.

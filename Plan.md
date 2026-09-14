@@ -192,7 +192,7 @@ Re-checked every claim in `Plan_revision.md` §3 against the tree instead of tru
 | 2 | Phase 7.4 says "README drift fixed (says Laravel 11 now)" — README says 12 and the framework is 12.69.2 | wording corrected |
 | 3 | §2 low-severity findings were never claimed fixed and are **genuinely still open** | logged as backlog #7–8 |
 
-Current gate state (snapshot 2026-09-14, re-measured — the suite keeps growing as parallel sessions land tests): **231 tests / 1,085 assertions** · PHPStan 0 errors · Pint 244 files · ESLint 0/0 · Vitest 11 · `npm run build` clean · `config:cache`/`event:cache`/`route:cache`/`view:cache` all clean. Same suite also green on the `pdo_mysql` driver path (see F1).
+Current gate state (snapshot 2026-09-14, re-measured — the suite keeps growing as parallel sessions land tests): **231 tests / 1,085 assertions** · PHPStan 0 errors · Pint 244 files · ESLint 0/0 · Vitest 11 · `npm run build` clean · `config:cache`/`event:cache`/`route:cache`/`view:cache` all clean. Same suite also green on the `pdo_mysql` driver path (see F1). Later 2026-09-14 pass: **234 / 1,097** (CSP + CSV-injection tests).
 
 Out of scope (not started, not promised this slice): nationwide shapefiles, live GPS/NMS coordinates, changing Site Type codes, replacing Leaflet.
 
@@ -208,7 +208,7 @@ Ordered by "what breaks in production that nothing here can see yet".
 
 ### F1 — Prove it on MySQL *(highest leverage)*
 
-`phpunit.xml` runs the whole suite on **SQLite `:memory:`**, `ci.yml` installs only the `sqlite3` extension, and the local `.env` is SQLite too. **Production is MySQL — so the suite has never been run against the engine the app ships on.**
+`phpunit.xml` runs the whole suite on **SQLite `:memory:`**, `ci.yml` installs only the `sqlite3` extension, and the local `.env` is SQLite too. **Production is MySQL — so CI has never validated the app against the engine it ships on.**
 
 **Measured 2026-09-14 — the risk is real, but smaller and differently shaped than first estimated.** The suite was run against a MySQL-protocol server (`pdo_mysql`) with MySQL 8's strict modes forced on:
 
@@ -249,8 +249,13 @@ Both driver-specific branches **did execute** under `pdo_mysql`, and both passed
 
 Still open:
 
-- [ ] **CSV formula injection.** `ReportController::downloadCsv` (`:248–250`) `fputcsv`es raw DB values with no guard. A site name, barangay or remark beginning with `=`, `+`, `-` or `@` is executed as a formula when a DICT staffer opens the CSV in Excel. Neutralise those cells (prefix `'`) — it affects every CSV export.
-- [ ] **Missing security headers.** `SecurityHeaders` sets nosniff, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy` — but no **Content-Security-Policy** and no **HSTS**. CSP needs care: Inertia inlines the page payload and Ziggy emits an inline `<script>`, so start permissive (`script-src 'self' 'unsafe-inline'`) or go nonce-based — a strict policy will white-screen the app. HSTS is safe to add once the TLS cert is confirmed.
+- [x] **CSV formula injection** (done 2026-09-14) — `exportCsv()` prefixes `= + - @` / tab / CR cells with `'` at the single choke point covering all eight packs (`test_csv_neutralizes_formula_injection`).
+- [ ] **The map runs on a third-party CDN, with no SRI.** `app.blade.php:14–18` loads Leaflet 1.9.4 **and** markercluster 1.5.3 (JS + 3 CSS files) from `unpkg.com` on every page load. Verified:
+  - **Leaflet is not in `package.json`** — so it is never bundled, never pinned by the lockfile, and **never seen by `npm audit`**. `eslint.config.js:16` declares `L: 'readonly'`, i.e. the codebase deliberately consumes it as a CDN global (`useLeafletMap.js:86,158`).
+  - **No `integrity=` anywhere in `resources/`** — the `@1.9.4` in the URL is a request to unpkg, not a cryptographic guarantee. A tampered artifact executes.
+  - Consequences: a compromised or unavailable unpkg means arbitrary JS on a government system, or the NOC's **primary view silently dies**; nothing monitors it. Every user's IP also goes to unpkg.com, bunny.net and cartocdn.com per page load.
+  - **Fix:** `npm i leaflet leaflet.markercluster`, import them in `app.js`/`useLeafletMap.js`, and drop the four CDN tags — that folds Leaflet into the lockfile + `npm audit`, removes the availability risk, and is a **prerequisite for any real CSP** (below). Basemap tiles from `basemaps.cartocdn.com` stay external, but that is `img-src`, not `script-src`.
+- [x] **Missing security headers** (done 2026-09-14) — `SecurityHeaders` now emits a nonce-based CSP (`script-src 'self'` + per-request nonce; Ziggy `@routes` bypassed for direct `generate(nonce:)` since the directive takes no nonce arg) plus HSTS, **production-only** (Vite HMR needs inline/ws; HSTS would poison local http). `SecurityHeadersTest` asserts the served nonce matches the policy. Remaining external surface is images/fonts/tiles only.
 
 ### F3 — Make failures visible before users report them
 
@@ -331,6 +336,7 @@ Found by sweeping for what is *absent*, not what is broken. None of these is in 
 | 7 | **PHPStan level 6** | Level 5 is clean; level 6 was 290 errors | incremental slice done 2026-09-13: all 95 missing return/param types across Http/Console/Models/Policies/Observers/Mail/Jobs (native types, suite still 231 green). Remaining ~199 are docblock generics + Services array-shapes — a separate shaped-data pass, still deferred |
 | 8 | **No operator manual** | `docs/DEPLOY.md` is ops-only. Encoders/managers using Daily Ops, approvals and reports have no guide | done 2026-09-13: `docs/USER_GUIDE.md` (Daily Ops lifecycle, map, reports builder + scheduled pack, alerts/tickets, accounts/probe tokens) |
 | 9 | **417 soft-deleted duplicate sites** | `sites:dedupe` keeps them deliberately, but no retention policy is written down | decided 2026-09-13: **retain** — `HeartbeatController` resolves stale AP codes via the trashed rows' `metadata.merged_into`; deleting them turns old codes into 404s. Negligible storage; revisit at 10× growth |
+| 10 | **The map loads Leaflet from a public CDN with no SRI** | `app.blade.php:14–18` pulls Leaflet 1.9.4 + markercluster 1.5.3 from `unpkg.com`; **not in `package.json`** (so never bundled, never lockfile-pinned, invisible to `npm audit`); no `integrity=` anywhere in `resources/` | done 2026-09-14: `leaflet@1.9.4` + `leaflet.markercluster@1.5.3` bundled via npm (pinned, audited — 0 vulns), CDN tags dropped, pure helpers split to `mapHelpers.js` (leaflet touches `window` at import, broke Vitest otherwise). See F2 |
 
 ---
 

@@ -30,6 +30,8 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
-        "@tabler/icons-vue": "^3.44.0"
+        "@tabler/icons-vue": "^3.44.0",
+        "leaflet": "^1.9.4",
+        "leaflet.markercluster": "^1.5.3"
     }
 }

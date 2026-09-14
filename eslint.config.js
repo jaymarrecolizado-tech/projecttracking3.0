@@ -12,8 +12,6 @@ export default [
                 ...globals.browser,
                 // Ziggy exposes route() globally via the Blade template.
                 route: 'readonly',
-                // Leaflet is loaded as a global from resources/views/app.blade.php.
-                L: 'readonly',
             },
         },
         rules: {
