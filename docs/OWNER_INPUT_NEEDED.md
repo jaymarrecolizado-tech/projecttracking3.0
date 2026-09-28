@@ -14,15 +14,41 @@ Ordered by "how much does this unblock".
 
 ## 1. One-line answers — unblock code that is already built
 
+### 1A. Decided 2026-09-28 — deliberately left unset *(no action needed)*
+
+These were reviewed and the **unset** state is the decision, not a gap. The code is already
+in this state; the point of recording it is so nobody "fixes" it by guessing a number.
+
+| # | Decision | Verified state | Why unset is correct right now |
+|---|---|---|---|
+| 1.4 | **SLA uptime target** stays unset | `config('monitoring.sla_uptime_target')` → `NULL` | No figure has been confirmed by DICT. Reports state "No uptime SLA target is configured, so this period is not marked pass or fail" — the honest output. **Revisit when DICT gives a number** |
+| 1.5 | **`NO_NMS` counts against uptime** | already in `config/daily_status.php` → `observed` | A site with no NMS reporting is a site not *proven* up. Crediting it would make the headline describe a smaller fleet than the program has. To reverse later: remove it from `observed` — one edit moves it out of uptime, trends and SLA together |
+| 1.2 | **Survey escalation threshold** stays unset | `config('monitoring.survey_escalation.mean_below')` → `NULL` | A threshold picked without data is a guess. The digest sends nothing and says so on the console. Set both halves together when there are enough responses for a mean to mean something |
+| 1.6 | **Audit retention stays 90 days** | hardcoded `--days=90` in `PruneAuditLogs` | No contrary requirement on record. ⚠️ **This is a code constant, not a config key** — changing it means passing `--days=N` in `routes/console.php:22` or editing the command signature. Confirm 90 days satisfies the audit requirement before cut-over |
+
+### 1B. Still needs a value from you *(these cannot be defaulted)*
+
 | # | Question | Where it goes | Consequence of leaving it blank |
 |---|---|---|---|
 | 1.1 | **Sentry DSN** for production | `SENTRY_LARAVEL_DSN` in prod `.env` | Production errors go nowhere. Package is installed and wired |
-| 1.2 | **Survey escalation threshold** — mean rating below which a site is chased | `SURVEY_ESCALATION_MEAN_BELOW` | `survey:escalate` stays inert and says so. No wrong emails sent |
-| 1.3 | **Who receives that digest** | `SURVEY_ESCALATION_EMAIL` | Same — inert until both are set |
-| 1.4 | **SLA uptime target %** (e.g. 97) | `SLA_UPTIME_TARGET` | Reports state "no SLA target configured" instead of printing a pass/fail against a number nobody agreed to |
-| 1.5 | **Does `NO_NMS` count against the SLA?** | `config/daily_status.php` → `observed` | Affects every uptime/trend/SLA figure at once — one edit moves the status out of the denominator everywhere |
-| 1.6 | **Audit trail retention** — is 90 days the requirement? | `AUDIT_RETENTION_DAYS` | `audit:prune` runs monthly regardless; the trail may be deleted before an audit needs it |
+| 1.3 | **Who receives the survey escalation digest** | `SURVEY_ESCALATION_EMAIL` | The digest stays inert until this *and* 1.2 are both set |
 | 1.7 | **Survey response retention** — 24 months then aggregate-only? | survey config | Responses are personal-adjacent (comments, IP hash) and are **also copied into generated PDFs and CSVs** — a PDF in someone's inbox outlives the row |
+
+### 1C. Found while verifying 1A — needs attention at cut-over
+
+⚠️ **The notification layer has no configured channel.** Verified locally: `WATCHDOG_EMAIL`
+is unset, and so are `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`. Consequences:
+
+- `alerts:down` still mails **users holding `daily.approve`** on the owning project, but has
+  no catch-all address — so if no such user is watching, a site going DOWN notifies nobody.
+- `alerts:evaluate` has the same shape (approvers + watchdog + Telegram).
+- `warranty:digest` sends **nothing at all** with no recipient.
+- `reports:scheduled` falls back to the watchdog address, so the monthly pack has nowhere
+  to announce itself.
+
+This is a deployment step, not a code change — but it is the difference between an app that
+notifies its operators and one that quietly does nothing. Set at least one channel before
+real traffic.
 
 ---
 
@@ -72,6 +98,7 @@ honestly yet**, for two concrete reasons:
 Deployment is **on hold** (owner decision 2026-09-14) until §1–§4 are closed.
 
 - [ ] `php artisan db:seed --class=SiteSurveySeeder` (idempotent) — **deploys the question set**
+- [ ] **Set at least one notification channel** — `WATCHDOG_EMAIL` and/or `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`. ⚠️ Currently neither is configured, so DOWN alerts reach only `daily.approve` holders, `warranty:digest` sends nothing, and the monthly report pack has no recipient. See §1C
 - [ ] `php artisan sites:backfill-regions` — **must** report 100%. The migration does *not* do this; it runs before the workbook import and matches zero rows
 - [ ] `php artisan providers:normalize --apply` (optional; dry-run by default, reports unmapped values)
 - [ ] Sync Vite `public/build` to **both** the domain folder and `fpiap-app/public`
