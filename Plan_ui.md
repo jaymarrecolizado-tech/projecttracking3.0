@@ -398,18 +398,40 @@ one more Supervisor unit — the same pattern as the existing `deploy/fpiap-work
 | Phase | Scope | State |
 |---|---|---|
 | **P0** | Laravel public survey **API** (3 JSON endpoints) + feature tests | ✅ done 2026-09-28 — `Api\PublicSurveyController`, 12 tests / 33 assertions |
-| **P1** | `public-web/` Next.js app — SSR survey form, neutral pages | 🟡 written, **not yet installed or built** — `npm install` needs approval; see below |
+| **P1** | `public-web/` Next.js app — SSR survey form, neutral pages | ✅ **built and live-verified 2026-09-28** — see below |
 | **P2** | Design-token parity with Part I §1 (teal `#0E5E6F`, navy `#0F1B2D`, Figtree) | ✅ done — `app/globals.css` copies the Part I tokens |
 | **P3** | Supervisor unit + nginx split + README | ✅ written — `deploy/public-web.conf`, `deploy/nginx-public-web.conf`, `public-web/README.md`; **not yet applied to a server** |
-| **P4** | **Cut-over:** nginx flips `/s/*` to Next.js | ⬜ not started — needs P1 built and rehearsed first |
+| **P4** | **Cut-over:** nginx flips `/s/*` to Next.js | ⬜ not started — needs the nginx block applied and rehearsed |
 
-### What P1 still needs
+### P1 verification, 2026-09-28 (live, not just compiled)
 
-The Next.js sources are written but **no dependency has been installed and no
-build has run** — `npm install` in `public-web/` was blocked pending approval.
-So the app is *unverified*: it has never been compiled, type-checked or rendered.
-Treat P1 as unproven until `npm run build` is green and one real page has been
-rendered. The Laravel side (P0) is fully tested and safe on its own.
+`npm ci && npm run build` green. Route `/s/[siteCode]` is `ƒ (Dynamic) —
+server-rendered on demand`, which is the intent. Then, against a real Laravel
+on `:8010` and a real seeded site (`SINAG-R2-001A`):
+
+| Check | Result |
+|---|---|
+| Site name + all three questions in the **first HTML response** | ✅ present in the raw HTML, before any JS — the whole justification for the split |
+| Real signed submission | ✅ `{"status":"ok"}`, row landed with correct ratings and comments |
+| `ip_hash` | ✅ 64 chars; **raw IP absent** from the row |
+| Honeypot filled | ✅ 422 `Submission rejected.` |
+| Unsigned POST (replay) | ✅ `Invalid signature.` |
+| Unknown site code | ✅ HTTP **200** + neutral page, no disclosure |
+
+**Two bugs found and fixed by building it, neither of which a test would have caught:**
+
+1. **The build failed outright.** Next inferred the workspace root from the
+   *parent* Laravel project's lockfile and inherited its PostCSS config — an
+   ESM + Tailwind file its CJS loader cannot read — so `next/font` blew up.
+   Fixed by pinning `outputFileTracingRoot` and adding an empty
+   `public-web/postcss.config.js`. Without that file this surface would
+   silently have been built with the console's Tailwind pipeline, which it is
+   explicitly not supposed to use.
+2. **`APP_URL` in the local `.env` pointed at `localhost:8000`** while this app
+   runs on `8010` — the squatted-port trap. The signed submit URL was therefore
+   minted for a dead port and every local submission would have failed. Fixed
+   locally (`.env.bak` kept). **Worth checking `APP_URL` on the server before
+   cut-over** — it is the one value that silently breaks the survey POST.
 
 **One design decision worth re-reading before cut-over:** the browser posts to
 Laravel's signed `submitUrl` *directly* rather than through the Next server.
