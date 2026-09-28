@@ -2,7 +2,7 @@
 
 Living roadmap. Each workstream is a numbered **Plan#N** below. **Done** = in the local repo. **Open** = not built, or built locally but not on production.
 
-Companion docs: `Plan_revision.md` (2026-09-08 hardening log; §3b/§3c are the 2026-09-14 verification) · `Plan_ui.md` (visual roadmap).
+Companion docs: `Plan_revision.md` (2026-09-08 hardening log; §3b/§3c are the 2026-09-14 verification) · `Plan_ui.md` (visual roadmap) · **`OWNER_INPUT_NEEDED.md` (2026-09-28 — every remaining open item across Plans #1–#7, collected into one checklist; the default next step is to work that list, not this file).**
 
 ---
 
