@@ -73,6 +73,43 @@ new code after every deploy. If supervisor is not available, a fallback cron
 * * * * * (php artisan queue:work --stop-when-empty --max-time=300 >> /dev/null 2>&1)
 ```
 
+## 3.1 Next.js public surface (optional, `/s/*` only)
+
+The per-site feedback survey has a second, server-rendered face in
+`public-web/`. It serves **`/s/*` and nothing else** — the ops console is still
+Laravel + Inertia and is not affected. Rationale and the rollback design are in
+`Plan_UI.md` Part II.
+
+This is **not required** to run the app. Laravel already serves `/s/{siteCode}`.
+Add this section only when you are ready to cut `/s/*` over.
+
+Supervisor program: `deploy/public-web.conf` (second runtime, same pattern as
+§3). nginx split: `deploy/nginx-public-web.conf` — drop the `location` blocks
+**above** the existing Laravel `location /`.
+
+```bash
+cd public-web && npm ci && npm run build
+# copy public-web/ + public-web/.next/standalone to the host
+cp deploy/public-web.conf /etc/supervisor/conf.d/
+supervisorctl reread && supervisorctl update
+```
+
+Set `LARAVEL_BASE_URL` to the **public origin** (not `127.0.0.1`) on the Node
+process. Laravel mints the survey's signed submit URL from `APP_URL`, so a
+mismatch makes every browser submission fail on signature validation.
+
+**Two properties to keep when you change this:**
+
+- `/api/public/surveys` must stay on Laravel even though it shares the prefix.
+  The browser posts there directly — that is what preserves the respondent's real
+  IP for the rate limiter and `ip_hash`. A proxy would substitute the Node
+  server's IP and silently break both.
+- The nginx `proxy_next_upstream` fallback to `@laravel` is what makes a dead
+  Node process degrade to the Inertia survey instead of a 502. Keep it.
+
+Cut-over is that one nginx file. Reverting is deleting the block and
+`nginx -s reload` — no Laravel deploy, no migration.
+
 ## 4. Scheduled jobs this installs (all Asia/Manila)
 
 | Time  | Job                                   |

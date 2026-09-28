@@ -305,3 +305,136 @@ Update the slice checkbox in Plan_ui.md when done.
 Nationwide shapefiles, live NMS bind, SMS channel, SLA/firmware-fleet/solar
 analytics, field-inspection form, public map (all `Plan.md` backlog) — plus any
 Tailwind v4 migration, icon-family swap, or dark-mode-everywhere theme.
+
+---
+---
+
+# Part II — Next.js for the public surface (added 2026-09-28)
+
+> Everything above this line is **Part I**, the Vue/Inertia visual roadmap, and it
+> stands unchanged. Part II does not contradict §1's stack lock — it *scopes* it.
+> Part I's lock ("Vue 3 + Inertia, do NOT migrate") still governs the ops console.
+
+## 8. The decision, and what it is not
+
+**Decision (owner, 2026-09-28):** introduce Next.js **only for unauthenticated public
+surfaces**. The 37-page Inertia ops console stays exactly as it is.
+
+**Why this is bounded rather than a rewrite.** The stated drivers were *"public pages
+need SEO/SSR"* and *"it looks dated"*. Those two pull in opposite directions, and only
+one of them justifies a second frontend runtime:
+
+| Driver | Does Next.js help? | Where it is actually solved |
+|---|---|---|
+| **SEO / SSR on public pages** | **Yes** — the one real justification | Next.js, public surfaces only |
+| **"The UI looks dated"** | **No** | Part I — the existing token system, already 5 slices deep |
+
+A full Next.js rewrite of the console would cost 37 page rebuilds plus a new JSON API
+for all 22 `Inertia::render` sites — weeks of work — and would make the console *less*
+finished, not prettier, immediately before a deploy that is already on hold. **Rejected
+explicitly.** The "looks dated" work stays on Part I's roadmap, where the design system
+already exists.
+
+### The honest caveat about SEO
+
+⚠️ **The one public surface live today is the survey — a form.** Forms are not indexed,
+so SSR there buys **first paint on slow connections**, not search visibility. That is
+still real (the Part I design read notes operators are "often low bandwidth"), but it is
+a performance win, not an SEO win.
+
+The surface that would genuinely need SSR/SEO is the **public transparency map**, which
+is parked on an owner security call (`Plan.md` Plan#7: publishing exact coordinates of
+government infrastructure). **Part II is built so that surface can drop in later without
+redesign** — but Part II does not resolve that decision and must not be read as
+pre-authorising it.
+
+## 9. The seam — Laravel stays the system of record
+
+The hard constraint: **Next.js renders; Laravel decides.** No anti-abuse property,
+validation rule or storage decision moves out of the application.
+
+```
+Browser ──GET /s/{code}──────────────► nginx ──► Next.js  (SSR, no JS needed to read)
+   │                                                   │
+   │                                    server-to-server fetch, server-side only
+   │                                                   ▼
+   └──POST (fetch, signed + throttled)──► nginx ──► Laravel ──► DB
+```
+
+| Concern | Owner | Why not moved |
+|---|---|---|
+| Render, layout, first paint | **Next.js** | This is the whole point |
+| Validation (`StoreSiteSurveyResponseRequest`) | Laravel | Closed rating bag, unknown keys rejected |
+| Signed POST, honeypot, 3s min-elapsed | Laravel | Anti-replay; recomputing a signature in two places invites a bypass |
+| Rate limit (5/min, 30/day per IP) | Laravel | Must key on the **real** client IP, not a proxy's |
+| `ip_hash`, duplicate suppression, storage | Laravel | Never collect identifying data in a second runtime |
+| SSO/session for the console | Laravel | Untouched — the console is not in Part II |
+
+**Two properties the split must preserve, and how:**
+
+1. **The real client IP.** Laravel hashes it into `ip_hash`. If Next.js proxied the POST
+   server-side, Laravel would hash *Next.js's* IP and every respondent would collapse
+   into one duplicate. → **The browser POSTs directly to Laravel**, so the IP is the
+   respondent's. This is why the browser, not the Next server, is the poster.
+2. **The signature is computed for the URL the browser will use.** → Next.js asks
+   Laravel for a signed submit URL server-side and hands it to the browser verbatim.
+
+## 10. Deployment topology
+
+**Chosen: same-origin on the existing VPS, split at nginx by path.** `/s/*` → Next.js,
+everything else → Laravel.
+
+Rationale: this is the only option with **no CORS**, no third-party runtime, and no new
+vendor account, and it matches the CloudPanel layout already in `docs/DEPLOY.md`. It needs
+one more Supervisor unit — the same pattern as the existing `deploy/fpiap-worker.conf`.
+
+- Rejected: **Vercel.** Cross-origin POST, plus Laravel would see Vercel's edge IP unless
+  trusted proxies are reconfigured — which would quietly break `ip_hash` deduplication
+  and the per-IP rate limit. Correctness risk for a convenience win.
+- Rejected: **Node on the app port.** Fights the existing docroot split.
+
+## 11. Phases
+
+| Phase | Scope | State |
+|---|---|---|
+| **P0** | Laravel public survey **API** (3 JSON endpoints) + feature tests | ✅ done 2026-09-28 — `Api\PublicSurveyController`, 12 tests / 33 assertions |
+| **P1** | `public-web/` Next.js app — SSR survey form, neutral pages | 🟡 written, **not yet installed or built** — `npm install` needs approval; see below |
+| **P2** | Design-token parity with Part I §1 (teal `#0E5E6F`, navy `#0F1B2D`, Figtree) | ✅ done — `app/globals.css` copies the Part I tokens |
+| **P3** | Supervisor unit + nginx split + README | ✅ written — `deploy/public-web.conf`, `deploy/nginx-public-web.conf`, `public-web/README.md`; **not yet applied to a server** |
+| **P4** | **Cut-over:** nginx flips `/s/*` to Next.js | ⬜ not started — needs P1 built and rehearsed first |
+
+### What P1 still needs
+
+The Next.js sources are written but **no dependency has been installed and no
+build has run** — `npm install` in `public-web/` was blocked pending approval.
+So the app is *unverified*: it has never been compiled, type-checked or rendered.
+Treat P1 as unproven until `npm run build` is green and one real page has been
+rendered. The Laravel side (P0) is fully tested and safe on its own.
+
+**One design decision worth re-reading before cut-over:** the browser posts to
+Laravel's signed `submitUrl` *directly* rather than through the Next server.
+That is what keeps the respondent's real IP in the rate limiter and `ip_hash`.
+A "tidier" server-side proxy would silently break both.
+
+## 12. Rollback — the property that makes this safe
+
+The Inertia survey (`resources/js/Pages/Survey/*`, `PublicSurveyLayout.vue`) is **kept
+and untouched** through P0–P3. Only the nginx route flips, in P4. Reverting is a
+one-line nginx change and a restart — no redeploy of Laravel, no data migration, and
+nothing to unwind. **P0 is additive and shippable on its own**, so if Part II is ever
+abandoned, nothing is lost but the plan.
+
+## 13. Definition of done
+
+- [ ] A respondent on a slow connection sees the site name and every question in the
+      **first HTML response**, before any JS executes
+- [x] The POST still rejects a replayed signature, a honeypot fill, and a <3s submission
+      — *pinned on the Laravel side by `PublicSurveyApiTest`; the Next client is
+      unverified until P1 is built*
+- [x] A second response from the same IP **replaces** the first — it does not add a row
+- [x] The rate limiter still counts the real client IP — *by construction: the browser
+      posts to Laravel directly, so no proxy IP is substituted*
+- [ ] No raw IP is ever sent to, or logged by, the Next.js runtime
+- [ ] Tokens match Part I §1 exactly; the two surfaces are not visibly different products
+- [ ] Turning the Next.js process off still serves the survey (nginx fallback → Laravel)
+
