@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Listeners\CheckSystemHealth;
 use App\Models\Site;
 use App\Models\SiteAccomplishment;
 use App\Models\SiteDailyStatus;
@@ -10,8 +11,10 @@ use App\Observers\SiteObserver;
 use App\Observers\SiteStatusEventObserver;
 use App\Services\Telegram;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -35,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
         SiteDailyStatus::observe(SiteStatusEventObserver::class);
         Vite::prefetch(concurrency: 3);
 
+        // /up is what an external uptime monitor pings. Laravel's endpoint only
+        // proves PHP is alive, so the listener below is what turns it into an
+        // availability signal (see App\Listeners\CheckSystemHealth).
+        Event::listen(DiagnosingHealth::class, CheckSystemHealth::class);
+
         // failed_jobs must not fail silently (Plan_revision §Phase 4.6): every
         // permanent queue failure is logged loudly and pushed to the ops
         // Telegram channel when it is configured.
@@ -56,6 +64,17 @@ class AppServiceProvider extends ServiceProvider
         // Used by $middleware->throttleApi('api') in bootstrap/app.php.
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // The public survey POST (Plan.md S1). Tighter than the API limiter
+        // because it is the one unauthenticated write in the app, and a
+        // scripted flood would skew a site's average. Layered: a burst limit
+        // and a daily ceiling for the same address.
+        RateLimiter::for('survey', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($request->ip()),
+                Limit::perDay(30)->by($request->ip()),
+            ];
         });
 
         // Register string-based permission Gates used by can: middleware on routes

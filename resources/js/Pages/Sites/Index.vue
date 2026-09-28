@@ -4,8 +4,8 @@ import DataTable from '@/Components/DataTable.vue';
 import StatusPill from '@/Components/StatusPill.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import Pagination from '@/Components/Pagination.vue';
-import { IconChevronRight, IconBuilding, IconSearch, IconArrowLeft } from '@tabler/icons-vue';
-import { watch } from 'vue';
+import { IconChevronRight, IconBuilding, IconSearch, IconArrowLeft, IconQrcode } from '@tabler/icons-vue';
+import { computed, watch } from 'vue';
 
 const props = defineProps({
     sites: Object,
@@ -13,6 +13,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     projects: Array,
     provinces: Array,
+    satisfaction: { type: Object, default: () => ({}) },
 });
 
 const form = useForm({
@@ -34,6 +35,25 @@ watch(() => form.today, () => apply());
 function apply() {
     router.get(route('sites.index'), form.data(), { preserveState: true });
 }
+
+/**
+ * Rating for the page, or null below the minimum-N guard. Kept beside the
+ * uptime pill rather than inside it — a site can report UP all month and still
+ * be unusable, and collapsing the two would hide exactly that.
+ */
+function rating(site) {
+    const summary = props.satisfaction?.[site.id];
+    return summary?.meets_minimum ? summary : null;
+}
+
+/** Printable placards for the area currently filtered, not the whole fleet. */
+const surveyQrUrl = computed(() => {
+    const params = new URLSearchParams();
+    if (form.project_id) params.set('project_id', form.project_id);
+    if (form.province) params.set('province', form.province);
+    const query = params.toString();
+    return route('sites.survey-qr') + (query ? `?${query}` : '');
+});
 </script>
 
 <template>
@@ -101,16 +121,24 @@ function apply() {
           />
           Down today
         </label>
+        <a
+          :href="surveyQrUrl"
+          class="ml-auto inline-flex items-center gap-2 text-sm font-medium text-accent-500 hover:text-accent-600 hover:underline underline-offset-4 rounded px-3 py-1.5 border border-slate-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40"
+        >
+          <IconQrcode class="w-4 h-4" />
+          Print survey QR sheet
+        </a>
       </div>
     </div>
 
-    <DataTable caption="Sites listed with project, municipality, province and current status">
+    <DataTable caption="Sites listed with project, municipality, province, current status and the 30-day user rating">
       <template #head>
         <th class="px-6 py-3">Location</th>
         <th class="px-6 py-3">Project</th>
         <th class="px-6 py-3">Municipality</th>
         <th class="px-6 py-3">Province</th>
         <th class="px-6 py-3">Status</th>
+        <th class="px-6 py-3">User rating</th>
         <th class="px-6 py-3"><span class="sr-only">Actions</span></th>
       </template>
       <tr
@@ -132,6 +160,16 @@ function apply() {
             <StatusPill :status="site.status" />
             <StatusPill v-if="site.latest_daily_status" :status="site.latest_daily_status.status" />
           </span>
+        </td>
+        <td class="px-6 py-4 text-sm">
+          <span v-if="rating(site)" class="tabular-nums font-medium text-slate-700">
+            {{ rating(site).overall.toFixed(1) }}<span class="text-slate-400 font-normal">/5</span>
+            <span class="block text-[11px] text-slate-400 font-normal">{{ rating(site).responses }} resp.</span>
+          </span>
+          <span v-else-if="satisfaction?.[site.id]?.responses > 0" class="text-xs text-slate-400">
+            {{ satisfaction[site.id].responses }} resp. — too few
+          </span>
+          <span v-else class="text-xs text-slate-300">—</span>
         </td>
         <td class="px-6 py-4 text-sm">
           <Link

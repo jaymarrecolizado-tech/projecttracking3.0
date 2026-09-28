@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Site;
 use App\Support\CoverageCache;
 use App\Support\NameNormalizer;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,14 +17,32 @@ use Illuminate\Support\Facades\DB;
  * ("installed or existing"); `deployed` additionally requires an active
  * device deployment. Totals come from the barangay_references table so PSA
  * corrections flow straight into the percentages.
+ *
+ * @phpstan-type Filters array{project_id?: mixed, province?: mixed, district?: mixed, municipality?: mixed, barangay?: mixed, site_type?: mixed, status?: mixed, region?: mixed}
+ * @phpstan-type Row array{province: string, municipality: string, total_barangays: int, covered: int, deployed: int, remaining: int, sites: int, coverage_pct: float}
+ * @phpstan-type BarangayTotals array{barangays: int, covered: int, deployed: int, remaining: int, sites: int, coverage_pct: float}
+ * @phpstan-type Detail array{barangay: string, covered: bool, deployed: bool, sites: int}
+ * @phpstan-type BarangayCoverage array{
+ *   filters: array<string, mixed>, rows: list<Row>, totals: BarangayTotals,
+ *   unattributed_sites: int, scope: string, district_blank_sites: int,
+ *   details: list<Detail>
+ * }
  */
 class BarangayCoverageService
 {
+    /**
+     * @param  Filters  $filters
+     * @return BarangayCoverage
+     */
     public function coverage(array $filters = []): array
     {
         return CoverageCache::remember('barangay', $filters, fn () => $this->computeCoverage($filters));
     }
 
+    /**
+     * @param  Filters  $filters
+     * @return BarangayCoverage
+     */
     private function computeCoverage(array $filters): array
     {
         // `district` is not a column on barangay_references, so a district filter
@@ -142,8 +161,13 @@ class BarangayCoverageService
     /**
      * Per-barangay breakdown — only when a municipality is selected, so the
      * table stays one town long instead of thousands of rows.
+     *
+     * @param  Filters  $filters
+     * @param  Collection<int, BarangayReference>  $references
+     * @param  array<string, array{sites: int, deployed: bool}>  $siteIndex
+     * @return list<Detail>
      */
-    private function detailRows(array $filters, $references, array $siteIndex): array
+    private function detailRows(array $filters, Collection $references, array $siteIndex): array
     {
         if (empty($filters['municipality'])) {
             return [];
@@ -164,7 +188,11 @@ class BarangayCoverageService
             ->values()->all();
     }
 
-    /** Human-readable filter set so every PDF is self-describing (§Phase 5.5). */
+    /**
+     * Human-readable filter set so every PDF is self-describing (§Phase 5.5).
+     *
+     * @param  Filters  $filters
+     */
     private function describeScope(array $filters): string
     {
         $parts = [];
@@ -184,7 +212,7 @@ class BarangayCoverageService
     /**
      * Resolve a district filter to the municipalities it covers.
      *
-     * @param  array<string, mixed>  $filters
+     * @param  Filters  $filters
      * @return array<string, array<int, string>>|null null when no district filter
      */
     private function municipalitiesInDistrict(array $filters): ?array

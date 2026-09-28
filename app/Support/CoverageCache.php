@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Closure;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -19,14 +20,24 @@ class CoverageCache
 {
     private const TTL_MINUTES = 10;
 
+    /**
+     * @template TValue
+     *
+     * @param  array<string, mixed>  $filters
+     * @param  callable(): TValue  $compute
+     * @return TValue
+     */
     public static function remember(string $kind, array $filters, callable $compute): mixed
     {
         $version = (int) Cache::get('coverage.version', 0);
 
+        // Closure::fromCallable is what lets the cache infer the stored type —
+        // a bare `callable` leaves it guessing, and a wrong guess here would be
+        // a coverage figure the caller believes.
         return Cache::remember(
             "coverage.{$kind}.v{$version}.".md5(serialize($filters)),
             now()->addMinutes(self::TTL_MINUTES),
-            $compute,
+            Closure::fromCallable($compute),
         );
     }
 

@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Mail;
  * Rules engine for device_metrics (docs §4.3): each active rule is evaluated
  * over its duration window; violations open alerts (deduped per rule+site)
  * and notify email + Telegram; recovered windows auto-resolve open alerts.
+ *
+ * @phpstan-type Point array{ts: Carbon, value: float}
+ * @phpstan-type Series list<Point>
  */
 class EvaluateAlertRules extends Command
 {
@@ -116,7 +119,11 @@ class EvaluateAlertRules extends Command
         return Site::where('status', 'active')->select(['id', 'location_name', 'municipality', 'province', 'bw_download_cir']);
     }
 
-    /** Ordered [(ts, value)] observations for the rule's metric+window. */
+    /**
+     * Ordered [(ts, value)] observations for the rule's metric+window.
+     *
+     * @return Series
+     */
     private function seriesFor(AlertRule $rule, Site $site): array
     {
         $since = now()->subMinutes(max($rule->duration_minutes, 15) + 30);
@@ -173,6 +180,10 @@ class EvaluateAlertRules extends Command
             ->all();
     }
 
+    /**
+     * @param  Series  $series
+     * @return Series
+     */
     private function violatingPoints(AlertRule $rule, array $series): array
     {
         return array_values(array_filter($series, fn ($point) => $this->compare($point['value'], $rule->operator, (float) $rule->threshold)));
@@ -190,6 +201,7 @@ class EvaluateAlertRules extends Command
         };
     }
 
+    /** @param  Series  $violating */
     private function fire(AlertRule $rule, Site $site, array $violating): void
     {
         $latest = end($violating);
@@ -228,7 +240,11 @@ class EvaluateAlertRules extends Command
         }
     }
 
-    /** Role-holders named by the rule (permissions), plus the watchdog. */
+    /**
+     * Role-holders named by the rule (permissions), plus the watchdog.
+     *
+     * @return list<string>
+     */
     private function recipients(AlertRule $rule): array
     {
         $recipients = User::query()

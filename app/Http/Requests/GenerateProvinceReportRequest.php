@@ -11,6 +11,7 @@ class GenerateProvinceReportRequest extends FormRequest
         return true; // Gated by the can:reports.export middleware on the route.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

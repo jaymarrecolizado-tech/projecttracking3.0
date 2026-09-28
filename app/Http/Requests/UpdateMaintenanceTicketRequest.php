@@ -12,6 +12,7 @@ class UpdateMaintenanceTicketRequest extends FormRequest
         return true; // Route middleware (can:tickets.manage) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -24,6 +25,7 @@ class UpdateMaintenanceTicketRequest extends FormRequest
         ];
     }
 
+    /** @return array<string, mixed> */
     public function validatedWithTimestamps(): array
     {
         $data = $this->validated();

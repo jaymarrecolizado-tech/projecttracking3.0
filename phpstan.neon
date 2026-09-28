@@ -1,5 +1,9 @@
 parameters:
-    level: 5
+    # Level 6: missing types are treated as errors, not warnings. The shared
+    # payload shapes live as @phpstan-type aliases next to the service that
+    # builds them (ReportAnalytics → ReportNarrative → ReportingService), so a
+    # renamed key fails the build instead of printing a blank cell.
+    level: 6
     paths:
         - app/
         - database/migrations/

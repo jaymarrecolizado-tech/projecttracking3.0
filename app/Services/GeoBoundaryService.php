@@ -11,11 +11,18 @@ use Illuminate\Support\Facades\File;
  * storage/app/geo/{level}.geojson (Region II subset — never the public web
  * root). Missing files degrade to an empty FeatureCollection so the map stays
  * useful while boundaries lag; see docs/DEPLOY.md for sourcing the files.
+ *
+ * @phpstan-type Filters array{province?: mixed, district?: mixed, municipality?: mixed}
+ * @phpstan-type Collection_ array{type: 'FeatureCollection', features: list<array<string, mixed>>}
  */
 class GeoBoundaryService
 {
     public const LEVELS = ['province', 'district', 'municipality', 'barangay'];
 
+    /**
+     * @param  Filters  $filters
+     * @return Collection_
+     */
     public function forLevel(string $level, array $filters = []): array
     {
         $level = in_array($level, self::LEVELS, true) ? $level : 'province';
@@ -27,6 +34,10 @@ class GeoBoundaryService
         return Cache::remember($cacheKey, $ttl, fn () => $this->load($level, $filters));
     }
 
+    /**
+     * @param  Filters  $filters
+     * @return Collection_
+     */
     private function load(string $level, array $filters): array
     {
         // Files are pluralized (provinces.geojson, municipalities.geojson).

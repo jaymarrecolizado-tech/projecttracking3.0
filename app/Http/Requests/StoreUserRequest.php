@@ -11,6 +11,7 @@ class StoreUserRequest extends FormRequest
         return true; // Route middleware (can:users.manage) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

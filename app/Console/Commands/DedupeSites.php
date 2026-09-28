@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Site;
 use App\Support\NameNormalizer;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -40,8 +41,11 @@ class DedupeSites extends Command
         $plan = [];
         foreach ($groups as $group) {
             // Canonical: first row that carries an AP code, else the oldest.
-            $canonical = $group->sortBy(fn ($site) => [$site->ap_site_code ? 0 : 1, $site->id])->first();
-            $plan[] = ['canonical' => $canonical, 'duplicates' => $group->reject(fn ($site) => $site->id === $canonical->id)->values()];
+            $canonical = $group->sortBy(fn (Site $site) => [$site->ap_site_code ? 0 : 1, $site->id])->first();
+            $plan[] = [
+                'canonical' => $canonical,
+                'duplicates' => $group->reject(fn (Site $site) => $site->id === $canonical->id)->values(),
+            ];
         }
 
         $this->report($plan);
@@ -110,13 +114,16 @@ class DedupeSites extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * @param  list<array{canonical: Site, duplicates: Collection<int, Site>}>  $plan
+     */
     private function report(array $plan): void
     {
         $this->info('Duplicate groups: '.count($plan));
         foreach (array_slice($plan, 0, 15) as $entry) {
             $canonical = $entry['canonical'];
             $this->line("KEEP #{$canonical->id} {$canonical->location_name} [{$canonical->ap_site_code}]  ←  merge: "
-                .$entry['duplicates']->map(fn ($s) => "#{$s->id}".($s->ap_site_code ? "[{$s->ap_site_code}]" : ''))->implode(' '));
+                .$entry['duplicates']->map(fn (Site $s) => "#{$s->id}".($s->ap_site_code ? "[{$s->ap_site_code}]" : ''))->implode(' '));
         }
         if (count($plan) > 15) {
             $this->line('… and '.(count($plan) - 15).' more group(s)');

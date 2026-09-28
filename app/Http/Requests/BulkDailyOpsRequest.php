@@ -12,6 +12,7 @@ class BulkDailyOpsRequest extends FormRequest
         return true; // Per-entry permission checks happen in the controller.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

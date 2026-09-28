@@ -26,6 +26,8 @@ class ReportController extends Controller
     /**
      * Build a safe download filename. Province/scope values are user-supplied,
      * so every part is slugified before it reaches a Content-Disposition header.
+     *
+     * @param  list<mixed>  $parts
      */
     private function downloadName(array $parts): string
     {
@@ -63,7 +65,12 @@ class ReportController extends Controller
         ]);
     }
 
-    /** One-line scope for an export row, whatever param shape its type uses. */
+    /**
+     * One-line scope for an export row, whatever param shape its type uses.
+     *
+     * @param  array<string, mixed>  $params
+     * @param  Collection<int, string>  $projectNames
+     */
     private function exportScope(array $params, Collection $projectNames): string
     {
         $flat = $params + ($params['filters'] ?? []);
@@ -189,6 +196,19 @@ class ReportController extends Controller
             'type' => 'progress',
             'params' => ['filters' => $request->scope()],
             'download_name' => $this->downloadName(['progress', now()->format('Y-m-d')]),
+        ]);
+        GenerateReport::dispatch($export);
+
+        return redirect()->route('reports.index')->with('success', 'Report generation started — the download link will appear below.');
+    }
+
+    public function satisfactionPdf(GenerateScopedReportRequest $request): RedirectResponse
+    {
+        $export = ReportExport::create([
+            'user_id' => $request->user()->id,
+            'type' => 'satisfaction',
+            'params' => ['filters' => $request->scope()],
+            'download_name' => $this->downloadName(['user-satisfaction', now()->format('Y-m-d')]),
         ]);
         GenerateReport::dispatch($export);
 

@@ -11,6 +11,7 @@ class UpdateProjectRequest extends FormRequest
         return true; // Route middleware (can:update) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

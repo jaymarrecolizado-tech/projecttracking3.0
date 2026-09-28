@@ -83,6 +83,7 @@ class AlertController extends Controller
         return back()->with('success', "Rule '{$name}' deleted.");
     }
 
+    /** @return array<string, mixed> */
     private function validated(Request $request): array
     {
         return $request->validate([

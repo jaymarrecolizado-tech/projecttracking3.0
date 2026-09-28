@@ -12,6 +12,7 @@ class BatchStoreDailyStatusRequest extends FormRequest
         return true; // Route middleware (can:daily.create) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,6 +11,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = ['name', 'email', 'password', 'is_active', 'last_login_at'];
@@ -67,6 +69,8 @@ class User extends Authenticatable
      * Project ids this user may access for a permission. Null means
      * unrestricted (a global grant); otherwise only the listed projects.
      * An empty array means no access.
+     *
+     * @return list<int>|null
      */
     public function accessibleProjectIds(string $permission): ?array
     {

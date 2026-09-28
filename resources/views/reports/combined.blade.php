@@ -6,7 +6,7 @@
     @include('reports.partials.styles')
 </head>
 <body>
-    @php($titles = ['ops_period' => 'Period health', 'fleet' => 'Fleet inventory', 'incidents' => 'Incidents', 'progress' => 'Progress'])
+    @php($titles = ['ops_period' => 'Period health', 'fleet' => 'Fleet inventory', 'incidents' => 'Incidents', 'progress' => 'Progress', 'satisfaction' => 'User satisfaction'])
     @include('reports.partials.cover', ['title' => 'Operations Report Pack', 'scope' => $scope.' · '.$from.' – '.$to.' · Sections: '.implode(', ', array_map(fn ($s) => $titles[$s] ?? $s, $sections)), 'userName' => $userName])
 
     @foreach($sections as $section)
@@ -22,6 +22,8 @@
     @include('reports.sections.incidents', ['incidents' => $incidents, 'bullets' => $bullets['incidents']])
     @elseif($section === 'progress')
     @include('reports.sections.progress', ['progress' => $progress, 'bullets' => $bullets['progress']])
+    @elseif($section === 'satisfaction')
+    @include('reports.sections.satisfaction', ['satisfaction' => $satisfaction, 'bullets' => $bullets['satisfaction']])
     @endif
     @endforeach
 

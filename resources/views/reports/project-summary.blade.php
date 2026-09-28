@@ -23,16 +23,25 @@
     <table class="grid">
         <thead><tr><th>Signal</th><th>Figure</th></tr></thead>
         <tbody>
-            <tr><td>Site types covered</td><td>{{ data_get($analytics, 'site_coverage.covered', 0) }} / {{ data_get($analytics, 'site_coverage.total', 0) }}</td></tr>
-            <tr><td>Barangays with presence</td><td>{{ data_get($analytics, 'barangay_coverage.covered', 0) }} / {{ data_get($analytics, 'barangay_coverage.total', 0) }}</td></tr>
+            {{-- Keys are the services' own: site_coverage is actual/registered,
+                 barangay_coverage is covered/barangays. The old covered/total
+                 pair matched neither and rendered 0 / 0 in the executive pack. --}}
+            <tr><td>Site types covered</td><td>{{ $analytics['site_coverage']['actual'] }} / {{ $analytics['site_coverage']['registered'] }}</td></tr>
+            <tr><td>Barangays with presence</td><td>{{ $analytics['barangay_coverage']['covered'] }} / {{ $analytics['barangay_coverage']['barangays'] }}</td></tr>
             <tr><td>Deployed units (in scope)</td><td>{{ $analytics['fleet']['deployed'] }}</td></tr>
             <tr><td>Stock / under repair (fleet-wide)</td><td>{{ $analytics['fleet']['in_stock'] }} / {{ $analytics['fleet']['under_repair'] }}</td></tr>
             <tr><td>Active alerts ({{ $analytics['alerts']['critical'] }} critical)</td><td>{{ $analytics['alerts']['active'] }}</td></tr>
             <tr><td>Open tickets ({{ $analytics['tickets']['critical_open'] }} critical)</td><td>{{ $analytics['tickets']['open'] }}</td></tr>
+            @if($analytics['sla_target'] !== null)
+            <tr>
+                <td>Uptime SLA ({{ $analytics['sla_target'] }}%)</td>
+                <td><span class="badge {{ $analytics['sla_met'] ? 'b-green' : 'b-red' }}">{{ $analytics['sla_met'] ? 'PASS' : 'FAIL' }}</span></td>
+            </tr>
+            @endif
         </tbody>
     </table>
 
-    @if($analytics['down_episodes']->isNotEmpty())
+    @if($analytics['down_episodes'] !== [])
     <h2>Open DOWN episodes (longest first)</h2>
     <table class="grid">
         <thead><tr><th>Site</th><th>Where</th><th>Status</th><th>Since</th><th>Duration</th></tr></thead>

@@ -9,10 +9,18 @@ use Illuminate\Support\Facades\DB;
 /**
  * Owns the device lifecycle transitions so controllers stay thin and every
  * multi-table write happens inside one transaction.
+ *
+ * @phpstan-type DeviceAttributes array<string, mixed>
+ * @phpstan-type Assignment array{site_id?: mixed, role_at_site?: mixed, installed_at?: mixed, status?: mixed}
  */
 class DeviceDeploymentService
 {
-    /** Create a unit and, when registered as deployed, open its first assignment — atomically. */
+    /**
+     * Create a unit and, when registered as deployed, open its first assignment — atomically.
+     *
+     * @param  DeviceAttributes  $attributes
+     * @param  Assignment  $assignment
+     */
     public function register(array $attributes, array $assignment = []): Device
     {
         return DB::transaction(function () use ($attributes, $assignment) {
@@ -26,7 +34,12 @@ class DeviceDeploymentService
         });
     }
 
-    /** Apply attribute changes and reconcile the assignment history — atomically. */
+    /**
+     * Apply attribute changes and reconcile the assignment history — atomically.
+     *
+     * @param  DeviceAttributes  $attributes
+     * @param  Assignment  $assignment
+     */
     public function updateWithAssignment(Device $device, array $attributes, array $assignment): Device
     {
         DB::transaction(function () use ($device, $attributes, $assignment) {
@@ -44,6 +57,8 @@ class DeviceDeploymentService
      * A device holds at most one open deployment: any still-open assignment
      * is closed first (row-locked), so a concurrent import and UI edit cannot
      * strand one unit as deployed in two places at once.
+     *
+     * @param  Assignment  $data
      */
     public function open(Device $device, array $data, ?int $actorId = null): DeviceDeployment
     {
@@ -66,6 +81,8 @@ class DeviceDeploymentService
     /**
      * Close the current deployment and/or open a new one so the assignment
      * history stays accurate. Callers wanting atomicity should wrap in a transaction.
+     *
+     * @param  Assignment  $data
      */
     public function syncAssignment(Device $device, array $data): void
     {

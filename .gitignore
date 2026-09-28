@@ -20,5 +20,8 @@ Thumbs.db
 
 .tmp/
 
+# Another assistant tool's local memory notes - not part of this project
+/.workbuddy-ai
+
 # Built assets are produced by npm run build (deploy.sh) - never commit them
 /public/build

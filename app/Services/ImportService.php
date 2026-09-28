@@ -78,6 +78,7 @@ class ImportService
      * MAC ADDRESS? | ASSET TAG? (auto FW-#### when blank) | SITE CODE? | CONDITION? |
      * FIRMWARE VERSION? | WARRANTY UNTIL? | SUPPLIER?
      */
+    /** @param  array<string, mixed>  $data  one spreadsheet row */
     protected function upsertDevice(array $data, ?int $actorId = null): void
     {
         $manufacturer = trim($data['MODEL MANUFACTURER'] ?? '');
@@ -173,6 +174,7 @@ class ImportService
      * same MAX(asset_tag)+1 hit the unique index, so regenerate and retry
      * instead of failing the row.
      */
+    /** @param  array<string, mixed>  $attributes  */
     protected function createDeviceWithUniqueTag(array $attributes): Device
     {
         return retry(3, fn () => Device::create($attributes + ['asset_tag' => $this->nextAssetTag()]), 0,
@@ -258,6 +260,7 @@ class ImportService
         }
     }
 
+    /** @param  array<string, mixed>  $data  one spreadsheet row */
     protected function upsertSite(array $data, int $projectId): ?Site
     {
         $rules = [
@@ -293,6 +296,10 @@ class ImportService
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array{header: string, date: string}>  $dateColumns
+     */
     protected function upsertDailyStatuses(int $siteId, array $data, array $dateColumns): int
     {
         $protectedSkipped = 0;
@@ -325,6 +332,10 @@ class ImportService
         return $protectedSkipped;
     }
 
+    /**
+     * @param  list<string>  $headers
+     * @return list<array{header: string, date: string}>
+     */
     protected function parseDateColumns(array $headers): array
     {
         $dateCols = [];
@@ -413,7 +424,10 @@ class ImportService
         }
     }
 
-    /** @param array<int, string> $headers */
+    /**
+     * @param  list<string>  $headers
+     * @param  list<list<mixed>>  $grid
+     */
     protected function classifySheet(array $headers, array $grid): string
     {
         if (! in_array('AP SITE CODE', $headers, true)) {
@@ -431,7 +445,12 @@ class ImportService
         return 'other';
     }
 
-    /** Header cells that are raw Excel serial dates — the day columns of month sheets. */
+    /**
+     * Header cells that are raw Excel serial dates — the day columns of month sheets.
+     *
+     * @param  list<string>  $headers
+     * @return array<int, string>
+     */
     protected function serialDateColumns(array $headers): array
     {
         $days = [];
@@ -444,12 +463,19 @@ class ImportService
         return $days;
     }
 
-    /** @return array<int, string> uppercased, trimmed headers keyed by column index */
+    /**
+     * @param  list<mixed>  $row
+     * @return array<int, string> uppercased, trimmed headers keyed by column index
+     */
     protected function normalizeHeaders(array $row): array
     {
         return array_map(fn ($h) => strtoupper(trim((string) $h)), $row);
     }
 
+    /**
+     * @param  list<string>  $headers
+     * @return array<string, int>
+     */
     protected function headerIndexes(array $headers): array
     {
         $map = [];
@@ -462,6 +488,10 @@ class ImportService
         return $map;
     }
 
+    /**
+     * @param  list<mixed>  $row
+     * @param  array<string, int>  $index
+     */
     protected function cell(array $row, array $index, string $key): mixed
     {
         $i = $index[$key] ?? null;
@@ -496,6 +526,10 @@ class ImportService
      * Roster sheets: one row per AP. Creates the site (when coordinates exist),
      * then a MAC-identified AP device deployed at it. Sheets without coordinates
      * (e.g. "AP MAC ADDRESS") only enrich existing sites' equipment.
+     */
+    /**
+     * @param  list<list<mixed>>  $grid
+     * @param  list<string>  $headers  normalized, keyed by column index
      */
     protected function importRosterSheet(array $grid, array $headers, ?int $actorId, int &$sitesTouched, int &$devicesUpserted): void
     {
@@ -575,6 +609,10 @@ class ImportService
     /**
      * Month sheets: metadata block + per-day triplets whose status column header
      * is an Excel serial date, followed by Bandwidth and Total Users columns.
+     */
+    /**
+     * @param  list<list<mixed>>  $grid
+     * @param  list<string>  $headers  normalized, keyed by column index
      */
     protected function importTelemetrySheet(array $grid, array $headers, ?int $actorId, int &$sitesTouched, int &$statusesUpserted, int &$protectedSkipped): void
     {

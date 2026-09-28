@@ -16,6 +16,7 @@ class GenerateScopedReportRequest extends FormRequest
         return true; // Route middleware (can:reports.export) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -31,7 +32,11 @@ class GenerateScopedReportRequest extends FormRequest
         ];
     }
 
-    /** Non-empty scope values for analytics + params persistence. */
+    /**
+     * Non-empty scope values for analytics + params persistence.
+     *
+     * @return array<string, mixed>
+     */
     public function scope(): array
     {
         return collect($this->validated())->filter()->all();

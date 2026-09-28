@@ -13,6 +13,7 @@ class UpdateUserRequest extends FormRequest
         return true; // Route middleware (can:users.manage) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         $user = $this->route('user');
@@ -29,6 +30,7 @@ class UpdateUserRequest extends FormRequest
     }
 
     /** Admins cannot deactivate or demote themselves — lockout protection. */
+    /** @return array<string, mixed> */
     public function withSelfProtection(User $target): array
     {
         $data = $this->validated();
@@ -50,6 +52,7 @@ class UpdateUserRequest extends FormRequest
         return $data;
     }
 
+    /** @return list<array{role_id: mixed, project_id: mixed}> */
     private function currentAssignments(User $target): array
     {
         return $target->roles->map(fn ($role) => [

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\SiteFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Site extends Model
 {
+    /** @use HasFactory<SiteFactory> */
     use HasFactory;
+
     use SoftDeletes;
 
     /**
@@ -93,6 +96,12 @@ class Site extends Model
     public function accomplishments(): HasMany
     {
         return $this->hasMany(SiteAccomplishment::class);
+    }
+
+    /** @return HasMany<SiteSurveyResponse, $this> */
+    public function surveyResponses(): HasMany
+    {
+        return $this->hasMany(SiteSurveyResponse::class);
     }
 
     /** @return HasMany<DeviceDeployment, $this> */

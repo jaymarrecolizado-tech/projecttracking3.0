@@ -5,22 +5,37 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\Site;
 use App\Support\CoverageCache;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Actual-vs-registered coverage by Site Type (Plan §Map 4.5). "Actual" = the
  * site has at least one active device deployment. Shared by the map stats
  * panel (/map/coverage) and the queued PDF report.
+ *
+ * @phpstan-type Filters array{project_id?: mixed, site_type?: mixed, status?: mixed, region?: mixed, province?: mixed, district?: mixed, municipality?: mixed, barangay?: mixed}
+ * @phpstan-type Row array{site_type: string, label: string, registered: int, actual: int, gap: int, devices: int, coverage_pct: float}
+ * @phpstan-type SiteTotals array{registered: int, actual: int, gap: int, devices: int, coverage_pct: float}
+ * @phpstan-type SiteCoverage array{filters: array<string, mixed>, scope: string, rows: list<Row>, totals: SiteTotals, district_blank_sites: int}
  */
 class SiteCoverageService
 {
     private const GEO_FILTERS = ['region', 'province', 'district', 'municipality', 'barangay'];
 
+    /**
+     * @param  Filters  $filters
+     * @return SiteCoverage
+     */
     public function coverage(array $filters = []): array
     {
         return CoverageCache::remember('site-type', $filters, fn () => $this->computeCoverage($filters));
     }
 
+    /**
+     * @param  Filters  $filters
+     * @return SiteCoverage
+     */
     private function computeCoverage(array $filters): array
     {
         $registered = Site::query();
@@ -90,7 +105,11 @@ class SiteCoverageService
         ];
     }
 
-    /** Live sites in the filtered province(s) that the district filter cannot see. */
+    /**
+     * Live sites in the filtered province(s) that the district filter cannot see.
+     *
+     * @param  Filters  $filters
+     */
     private function districtBlankSites(array $filters): int
     {
         if (empty($filters['district'])) {
@@ -121,7 +140,11 @@ class SiteCoverageService
         return $query->count();
     }
 
-    /** Human-readable filter set so every PDF is self-describing (§Phase 5.5). */
+    /**
+     * Human-readable filter set so every PDF is self-describing (§Phase 5.5).
+     *
+     * @param  Filters  $filters
+     */
     private function describeScope(array $filters): string
     {
         $parts = [];
@@ -138,7 +161,11 @@ class SiteCoverageService
         return $parts === [] ? 'All areas' : implode(' · ', $parts);
     }
 
-    private function applyFilters($query, array $filters): void
+    /**
+     * @param  Builder<Site>  $query
+     * @param  Filters  $filters
+     */
+    private function applyFilters(Builder $query, array $filters): void
     {
         foreach (self::GEO_FILTERS as $column) {
             if (! empty($filters[$column])) {
@@ -156,15 +183,20 @@ class SiteCoverageService
         }
     }
 
-    /** GROUP BY null/blank site_type as one bucket so totals match Site::count(). */
-    private function countsByType($query)
+    /**
+     * GROUP BY null/blank site_type as one bucket so totals match Site::count().
+     *
+     * @param  Builder<Site>  $query
+     * @return Collection<string, int>
+     */
+    private function countsByType(Builder $query): Collection
     {
         return $query->selectRaw('site_type, COUNT(*) as n')
             ->groupBy('site_type')
             ->get()
-            ->reduce(function ($counts, $row) {
+            ->reduce(function (Collection $counts, Site $row) {
                 $key = $this->typeKey($row->site_type);
-                $counts[$key] = ($counts[$key] ?? 0) + (int) $row->n;
+                $counts[$key] = ($counts[$key] ?? 0) + (int) $row->getAttribute('n');
 
                 return $counts;
             }, collect());

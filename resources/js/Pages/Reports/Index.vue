@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import GeoFilterFields from '@/Components/GeoFilterFields.vue';
 import Pagination from '@/Components/Pagination.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconRefresh, IconTable, IconTarget } from '@tabler/icons-vue';
+import { IconCircleCheck, IconCircleX, IconDownload, IconFileDescription, IconLoader2, IconMapPin, IconQrcode, IconRefresh, IconTable, IconTarget } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
@@ -42,6 +42,7 @@ const typeLabels = {
     fleet: 'Fleet inventory',
     incidents: 'Incidents',
     progress: 'Progress',
+    satisfaction: 'User satisfaction',
     combined: 'Operations pack',
 };
 
@@ -142,6 +143,16 @@ function submitPack(routeName) {
     });
 }
 
+/** Same geo scope as the packs, opened as a printable page (full navigation). */
+const surveyQrUrl = computed(() => {
+    const params = new URLSearchParams();
+    for (const key of ['project_id', 'province', 'district', 'municipality']) {
+        if (packsForm[key]) params.set(key, packsForm[key]);
+    }
+    const query = params.toString();
+    return route('sites.survey-qr') + (query ? `?${query}` : '');
+});
+
 const builderForm = useForm({
     from: '',
     to: '',
@@ -160,6 +171,7 @@ const packSections = [
     { code: 'fleet', label: 'Fleet inventory' },
     { code: 'incidents', label: 'Incidents' },
     { code: 'progress', label: 'Progress' },
+    { code: 'satisfaction', label: 'User satisfaction' },
 ];
 
 function onBuilderFilters(next) {
@@ -386,7 +398,7 @@ const statusStyles = {
             </div>
             <div>
               <h3 class="font-semibold text-slate-800">Operations packs</h3>
-              <p class="text-sm text-slate-500">Period health vs the previous window, and the equipment fleet register</p>
+              <p class="text-sm text-slate-500">Period health vs the previous window, the equipment fleet register, and what users said</p>
             </div>
           </div>
         </div>
@@ -429,7 +441,24 @@ const statusStyles = {
               >
                 Progress PDF
               </button>
+              <button
+                type="button" :disabled="packsForm.processing"
+                class="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 active:scale-[0.98] transition disabled:opacity-60"
+                @click="submitPack('reports.satisfaction')"
+              >
+                User satisfaction PDF
+              </button>
+              <a
+                :href="surveyQrUrl"
+                class="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 transition"
+              >
+                <IconQrcode class="w-4 h-4" />
+                Survey QR sheet
+              </a>
             </div>
+            <p class="mt-3 text-xs text-slate-400">
+              The QR sheet opens a printable placard per site for the area you picked — print it for the field.
+            </p>
           </form>
         </div>
       </div>

@@ -149,7 +149,7 @@ class ReportAnalyticsTest extends TestCase
         $this->assertSame(1, $analytics['fleet']['deployed']);
         $this->assertSame(1, $analytics['fleet']['in_stock']);
         $this->assertCount(1, $analytics['down_episodes']);
-        $this->assertSame(5, $analytics['down_episodes']->first()['duration_h']);
+        $this->assertSame(5, $analytics['down_episodes'][0]['duration_h']);
         $this->assertSame(1, $analytics['alerts']['active']);
         $this->assertSame(1, $analytics['alerts']['critical']);
         $this->assertSame(1, $analytics['tickets']['open']);

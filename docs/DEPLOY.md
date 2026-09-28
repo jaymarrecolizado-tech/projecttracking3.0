@@ -4,6 +4,10 @@ This is the checklist for putting FPIAP · FreeWiFi Monitor on the production
 Hostinger VPS. `deploy.sh` automates the repeatable part; this document covers
 the one-time setup and the things only a human with server access can do.
 
+**Something is on fire, not deploying?** See `INCIDENT_RUNBOOK.md` — what each
+alert means, what to check first, and what to do when the queue is stuck.
+`USER_GUIDE.md` is the console guide for encoders and managers.
+
 ## 1. One-time server setup (CloudPanel)
 
 1. **Site** — create a PHP 8.3 site for the domain. Document root must point at
@@ -77,15 +81,22 @@ new code after every deploy. If supervisor is not available, a fallback cron
 | 02:00 | backup cleanup                        |
 | 02:15 | DB backup (`mysqldump` required)      |
 | 03:00 | telemetry prune                       |
+| 03:20 | log file retention (`logs:prune`)      |
 | monthly (1st 03:30) | audit log prune           |
 | monthly (1st 04:00) | expired token prune         |
 | monthly (1st 06:00) | provincial report packs     |
 | 07:00 | encoder reminder / warranty digest (Mon) |
 | 08:00 | backup health monitor                 |
+| 08:30 | low-rating survey escalation (inert until configured) |
 | 15 min| DOWN alerts, import cleanup, Telegram alerts |
 | hourly :10 | device metric aggregation        |
 | 5 min | alert rule evaluation                 |
 | 23:00 | NO_DATA snapshot                      |
+
+Two of these are deliberately quiet no-ops until an owner decision is made, and
+both say so when they run: `logs:prune` keeps 30 days of logs, and
+`survey:escalate` sends nothing at all until both `SURVEY_ESCALATION_MEAN_BELOW`
+and `SURVEY_ESCALATION_EMAIL` are set.
 
 ## 5. Production cutover checklist (each release)
 
@@ -96,7 +107,8 @@ new code after every deploy. If supervisor is not available, a fallback cron
    exists → maintenance window → `migrate --force` → caches → `queue:restart`).
 3. **Backfills** — `php artisan sites:backfill-regions` (region filter
    coverage); `php artisan sites:backfill-districts` only after a fresh
-   workbook import.
+   workbook import; `php artisan providers:normalize --apply` (collapses the
+   free-text provider columns onto `config/providers.php`; dry-run by default).
 4. **Assets** — `public/build` synced to **both** the app dir and the domain
    folder; `php artisan route:cache` is safe (single `dashboard` name).
 5. **Smoke** — `GET /up` 200; log in (deactivated users rejected); Daily Ops

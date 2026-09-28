@@ -6,7 +6,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft, IconCirclePlus } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
-const props = defineProps({ site: Object, deviceModels: Array, stockDevices: Array });
+const props = defineProps({ site: Object, deviceModels: Array, stockDevices: Array, satisfaction: Object, surveyUrl: String });
 
 const page = usePage();
 const can = (permission) => page.props.auth.permissions?.includes(permission);
@@ -250,6 +250,54 @@ function detach() {
               <dd class="text-sm text-slate-700">{{ site.bw_download_cir }} Mbps</dd>
             </div>
           </dl>
+        </div>
+      </div>
+
+      <!-- User satisfaction (survey responses) -->
+      <div v-if="satisfaction" class="dict-card p-6 mt-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">User satisfaction</h3>
+            <p class="text-xs text-slate-400 mt-1">Last 30 days · anonymous responses from people connected here</p>
+          </div>
+          <a
+            v-if="surveyUrl" :href="surveyUrl" target="_blank" rel="noopener"
+            class="text-xs font-medium text-accent-600 hover:text-accent-700 shrink-0"
+          >
+            Open survey link
+          </a>
+        </div>
+
+        <!-- Below the minimum-N guard: show the count, withhold the score -->
+        <div v-if="!satisfaction.meets_minimum" class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-5 text-center">
+          <div class="text-2xl font-bold text-slate-300 tabular-nums">{{ satisfaction.responses }}</div>
+          <p class="mt-1 text-sm text-slate-500">
+            {{ satisfaction.responses === 0 ? 'No responses yet.' : 'Too few responses to rate this site.' }}
+          </p>
+          <p class="mt-0.5 text-xs text-slate-400">A rating needs at least {{ 5 }} responses to be meaningful.</p>
+        </div>
+
+        <div v-else class="flex flex-wrap items-end gap-6">
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="text-3xl font-bold text-slate-900 tabular-nums">{{ satisfaction.overall?.toFixed(1) }}</span>
+              <span class="text-sm text-slate-400">/ 5</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">
+              {{ satisfaction.responses }} response{{ satisfaction.responses === 1 ? '' : 's' }}
+              <span v-if="satisfaction.response_rate != null"> · {{ satisfaction.response_rate }}% of users</span>
+            </p>
+          </div>
+
+          <div class="flex-1 min-w-[200px] space-y-1.5">
+            <div v-for="(score, key) in satisfaction.by_question" :key="key" class="flex items-center gap-3">
+              <span class="text-xs text-slate-500 w-24 shrink-0 capitalize">{{ key }}</span>
+              <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div class="h-full rounded-full bg-accent-500" :style="{ width: `${(score / 5) * 100}%` }"></div>
+              </div>
+              <span class="text-xs font-medium text-slate-700 tabular-nums w-8 text-right">{{ score.toFixed(1) }}</span>
+            </div>
+          </div>
         </div>
       </div>
 

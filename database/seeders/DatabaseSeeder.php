@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             LegislativeDistrictSeeder::class,
             AlertRuleSeeder::class,
+            SiteSurveySeeder::class,
         ]);
     }
 }

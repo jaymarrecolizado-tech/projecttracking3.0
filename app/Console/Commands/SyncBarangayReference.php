@@ -28,7 +28,7 @@ class SyncBarangayReference extends Command
         }
 
         $decoded = json_decode(File::get($path), true);
-        $features = $decoded['features'] ?? [];
+        $features = is_array($decoded['features'] ?? null) ? $decoded['features'] : [];
 
         $upserted = 0;
         foreach (collect($features)->chunk(500) as $chunk) {

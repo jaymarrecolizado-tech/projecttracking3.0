@@ -11,6 +11,7 @@ class StoreImportUploadRequest extends FormRequest
         return true; // Route middleware (can:import.excel) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

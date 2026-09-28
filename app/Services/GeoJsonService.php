@@ -4,13 +4,25 @@ namespace App\Services;
 
 use App\Models\Project;
 use App\Models\Site;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
+/**
+ * GeoJSON payloads for the map. Every feature is built from an explicit
+ * column list, so the property shapes below are the contract the Vue map
+ * reads — a key renamed here is a silently missing pin in the browser.
+ *
+ * @phpstan-type Filters array{project_id?: mixed, project_scope?: list<int>|null, status?: mixed, region?: mixed, province?: mixed, district?: mixed, municipality?: mixed, barangay?: mixed, island_group?: mixed, site_type?: mixed}
+ * @phpstan-type Feature array{type: 'Feature', geometry: array{type: 'Point', coordinates: array{float, float}}, properties: array<string, mixed>}
+ * @phpstan-type FeatureCollection array{type: 'FeatureCollection', features: list<Feature>, truncated?: bool}
+ */
 class GeoJsonService
 {
     /** Hard ceiling per response so an unfiltered fleet can't OOM the worker. */
     private const MAX_FEATURES = 10000;
 
+    /** @return FeatureCollection */
     public function getSitesForProject(Project $project): array
     {
         $sites = $project->sites()->with('latestDailyStatus')->get();
@@ -18,6 +30,10 @@ class GeoJsonService
         return $this->buildFeatureCollection($sites);
     }
 
+    /**
+     * @param  Filters  $filters
+     * @return FeatureCollection
+     */
     public function getSitesForMap(array $filters = []): array
     {
         // Marker payloads are filter-deterministic, so a short cache survives
@@ -29,6 +45,10 @@ class GeoJsonService
         );
     }
 
+    /**
+     * @param  Filters  $filters
+     * @return FeatureCollection
+     */
     private function buildSitesForMap(array $filters): array
     {
         // Hydrate only the project fields the marker payload uses — the
@@ -56,6 +76,9 @@ class GeoJsonService
      * least one deployed unit — multiple units at one location aggregate into
      * a single marker carrying the device roster. Health color comes from the
      * site's daily status so ops read it the same way as the site layer.
+     *
+     * @param  Filters  $filters
+     * @return FeatureCollection
      */
     public function getDeployedDevicesForMap(array $filters = []): array
     {
@@ -78,6 +101,7 @@ class GeoJsonService
         return ['type' => 'FeatureCollection', 'features' => $features];
     }
 
+    /** @return Feature  */
     private function buildSiteDevicesFeature(Site $site): array
     {
         $units = $site->activeDeployments
@@ -114,13 +138,19 @@ class GeoJsonService
         ];
     }
 
+    /** @return Feature  */
     public function getSiteGeoJson(Site $site): array
     {
         return $this->buildFeature($site);
     }
 
-    /** Geo/project filters shared by the site and device layers. */
-    private function applyGeoFilters($query, array $filters): void
+    /**
+     * Geo/project filters shared by the site and device layers.
+     *
+     * @param  Builder<Site>  $query
+     * @param  Filters  $filters
+     */
+    private function applyGeoFilters(Builder $query, array $filters): void
     {
         if (array_key_exists('project_scope', $filters)) {
             // Null scope = unrestricted; otherwise confine markers to the
@@ -148,7 +178,11 @@ class GeoJsonService
         }
     }
 
-    protected function buildFeatureCollection($sites): array
+    /**
+     * @param  Collection<int, Site>  $sites
+     * @return FeatureCollection
+     */
+    protected function buildFeatureCollection(Collection $sites): array
     {
         $features = $sites->map(fn ($site) => $this->buildFeature($site))->values()->all();
 
@@ -158,6 +192,7 @@ class GeoJsonService
         ];
     }
 
+    /** @return Feature  */
     protected function buildFeature(Site $site): array
     {
         // latestOfMany relations resolve to null at runtime even though the

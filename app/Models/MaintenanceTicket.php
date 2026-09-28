@@ -25,21 +25,25 @@ class MaintenanceTicket extends Model
         'resolved_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<Site, $this> */
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
     }
 
+    /** @return BelongsTo<Device, $this> */
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');

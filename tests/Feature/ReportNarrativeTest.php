@@ -47,10 +47,10 @@ class ReportNarrativeTest extends TestCase
             'tickets' => ['open' => 2],
         ];
 
-        $with = $narrative->forProject($base + ['down_episodes' => collect([['site' => 'Alpha', 'duration_h' => 30]])]);
+        $with = $narrative->forProject($base + ['down_episodes' => [['site' => 'Alpha', 'duration_h' => 30]]]);
         $this->assertStringContainsString('1 open DOWN episode; longest at Alpha (30h).', $with[2]);
 
-        $clean = $narrative->forProject($base + ['down_episodes' => collect()]);
+        $clean = $narrative->forProject($base + ['down_episodes' => []]);
         $this->assertSame('No open DOWN episodes in scope.', $clean[2]);
     }
 
@@ -75,10 +75,12 @@ class ReportNarrativeTest extends TestCase
 
         $ops = $narrative->forOps([
             'current' => ['uptime_pct' => 80.0, 'uptime_base' => 20,
-                'daily' => ['progress_pct' => 90.0], 'down_episodes' => collect()],
+                'daily' => ['progress_pct' => 90.0], 'down_episodes' => []],
             'delta_uptime' => -5.5, 'delta_sitedays' => 3, 'delta_down' => 1,
         ]);
         $this->assertStringContainsString('80% (-5.5 pts vs previous)', $ops[0]);
+        // No target configured → say so rather than implying a pass.
+        $this->assertStringContainsString('No uptime SLA target is configured', $ops[3]);
 
         $noList = $narrative->forFleet([
             'deployed' => 3, 'in_stock' => 1, 'under_repair' => 0,
@@ -92,6 +94,54 @@ class ReportNarrativeTest extends TestCase
             'warranty_expiring' => 0, 'approved_firmware' => ['v2.0'], 'outdated' => 2,
         ]);
         $this->assertStringContainsString('2 deployed units run firmware outside the approved list.', $bad[1]);
+    }
+
+    /** Plan.md Phase 5 — the SLA verdict must never appear without a target. */
+    public function test_ops_states_a_verdict_only_once_a_target_exists(): void
+    {
+        $narrative = app(ReportNarrative::class);
+        $period = fn (float $uptime, ?float $target) => [
+            'uptime_pct' => $uptime, 'uptime_base' => 200,
+            'daily' => ['progress_pct' => 90.0], 'down_episodes' => [],
+            'sla_target' => $target, 'sla_met' => $target === null ? null : $uptime >= $target,
+        ];
+        $deltas = ['delta_uptime' => 1.0, 'delta_sitedays' => 3, 'delta_down' => -1];
+
+        $miss = $narrative->forOps($deltas + ['current' => $period(80.0, 95.0)]);
+        $this->assertStringContainsString('Below the 95% uptime SLA.', $miss[3]);
+
+        $hit = $narrative->forOps($deltas + ['current' => $period(97.5, 95.0)]);
+        $this->assertStringContainsString('Meets the 95% uptime SLA.', $hit[3]);
+
+        $unset = $narrative->forOps($deltas + ['current' => $period(97.5, null)]);
+        $this->assertStringContainsString('No uptime SLA target is configured', $unset[3]);
+    }
+
+    public function test_satisfaction_says_nothing_when_there_are_no_responses(): void
+    {
+        $bullets = app(ReportNarrative::class)->forSatisfaction([
+            'responses' => 0, 'scope_mean' => null, 'window_days' => 30,
+            'min_responses' => 5, 'rated_sites' => 0, 'low' => [], 'providers' => [],
+        ]);
+
+        $this->assertCount(1, $bullets);
+        $this->assertStringContainsString('No survey responses in this scope or period', $bullets[0]);
+    }
+
+    public function test_satisfaction_names_the_worst_site_and_flags_below_minimum(): void
+    {
+        $bullets = app(ReportNarrative::class)->forSatisfaction([
+            'responses' => 42, 'scope_mean' => 3.8, 'window_days' => 30,
+            'min_responses' => 5, 'rated_sites' => 4, 'unrated_sites' => 2,
+            'low' => [['site' => 'Bantay del Sur', 'overall' => 2.0, 'responses' => 9]],
+            'providers' => [['cms_provider' => 'DICT', 'last_mile_tech' => 'RADIO', 'responses' => 40, 'meets_minimum' => true, 'overall' => 3.9]],
+        ]);
+
+        $this->assertSame('42 anonymous responses over 30 days.', $bullets[0]);
+        $this->assertStringContainsString('Mean rating 3.8 of 5', $bullets[1]);
+        $this->assertStringContainsString('Rated sites: 4 (needs 5+ responses each); 2 below the minimum.', $bullets[2]);
+        $this->assertStringContainsString('Lowest rated: Bantay del Sur (2/5 from 9 responses).', $bullets[3]);
+        $this->assertStringContainsString('cannot confirm who is connected', $bullets[4]);
     }
 
     public function test_incidents_and_progress_handle_empty_states(): void

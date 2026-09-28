@@ -3,14 +3,23 @@
 namespace App\Services;
 
 use App\Models\Site;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Cascading geo filter options (Plan §Map 4.4) — distinct values from sites
  * that have data, narrowed by the chosen parents. Shared by Map View and
  * the Reports page.
+ *
+ * @phpstan-type Options array{provinces: Collection<int, string>, districts: Collection<int, string>, municipalities: Collection<int, string>, barangays: Collection<int, string>}
+ * @phpstan-type SiteTypeOption array{code: string, label: string}
  */
 class GeoFilterOptions
 {
+    /**
+     * @param  array{project_id?: mixed, province?: mixed, district?: mixed, municipality?: mixed}  $parents
+     * @return Options
+     */
     public function for(array $parents = []): array
     {
         $projectId = $parents['project_id'] ?? null;
@@ -20,7 +29,7 @@ class GeoFilterOptions
 
         // Every list is narrowed by the chosen project so the Reports/Map areas
         // only offer places that actually exist in that project's data.
-        $scoped = fn ($query) => $query->when($projectId, fn ($q) => $q->where('project_id', $projectId));
+        $scoped = fn (Builder $query) => $query->when($projectId, fn ($q) => $q->where('project_id', $projectId));
 
         return [
             'provinces' => $scoped(Site::whereNotNull('province'))->distinct()->orderBy('province')->pluck('province'),
@@ -39,6 +48,7 @@ class GeoFilterOptions
         ];
     }
 
+    /** @return list<SiteTypeOption>  */
     public function siteTypes(): array
     {
         return Site::whereNotNull('site_type')->distinct()->orderBy('site_type')->pluck('site_type')

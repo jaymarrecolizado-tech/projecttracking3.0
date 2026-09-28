@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\DeviceFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Device extends Model
 {
+    /** @use HasFactory<DeviceFactory> */
     use HasFactory;
+
     use SoftDeletes;
 
     protected $fillable = ['device_model_id', 'asset_tag', 'serial_number', 'mac_address',
@@ -55,11 +58,19 @@ class Device extends Model
         return $this->hasMany(DeviceMetric::class);
     }
 
+    /**
+     * @param  Builder<Device>  $q
+     * @return Builder<Device>
+     */
     public function scopeInStock(Builder $q): Builder
     {
         return $q->where('status', 'in_stock');
     }
 
+    /**
+     * @param  Builder<Device>  $q
+     * @return Builder<Device>
+     */
     public function scopeDeployed(Builder $q): Builder
     {
         return $q->where('status', 'deployed');

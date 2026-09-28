@@ -16,10 +16,21 @@
             <tr><td>Uptime</td><td>{{ $comparison['previous']['uptime_pct'] }}% ({{ $comparison['previous']['uptime_base'] }} obs.)</td><td>{{ $comparison['current']['uptime_pct'] }}% ({{ $comparison['current']['uptime_base'] }} obs.)</td></tr>
             <tr><td>UP / DOWN at period end</td><td>{{ $comparison['previous']['daily']['up'] }} / {{ $comparison['previous']['daily']['down'] + $comparison['previous']['daily']['down_server'] }}</td><td>{{ $comparison['current']['daily']['up'] }} / {{ $comparison['current']['daily']['down'] + $comparison['current']['daily']['down_server'] }}</td></tr>
             <tr><td>Reporting progress</td><td>{{ $comparison['previous']['daily']['progress_pct'] }}%</td><td>{{ $comparison['current']['daily']['progress_pct'] }}%</td></tr>
+            @if($comparison['current']['sla_target'] !== null)
+            <tr>
+                <td>Uptime SLA ({{ $comparison['current']['sla_target'] }}%)</td>
+                <td>{{ $comparison['previous']['sla_met'] === null ? '—' : ($comparison['previous']['sla_met'] ? 'PASS' : 'FAIL') }}</td>
+                <td>
+                    <span class="badge {{ $comparison['current']['sla_met'] ? 'b-green' : 'b-red' }}">
+                        {{ $comparison['current']['sla_met'] ? 'PASS' : 'FAIL' }}
+                    </span>
+                </td>
+            </tr>
+            @endif
         </tbody>
     </table>
 
-    @if($comparison['current']['down_episodes']->isNotEmpty())
+    @if($comparison['current']['down_episodes'] !== [])
     <h2>Open DOWN episodes (longest first)</h2>
     <table class="grid">
         <thead><tr><th>Site</th><th>Where</th><th>Status</th><th>Since</th><th>Duration</th></tr></thead>

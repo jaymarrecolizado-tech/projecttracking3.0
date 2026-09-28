@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Models\SiteDailyStatus;
 use App\Models\SiteStatusEvent;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -19,13 +20,41 @@ use Illuminate\Support\Collection;
  * episodes, active alerts, open tickets. Uptime follows config/daily_status.php
  * (UP over every observed status); charts stay HTML/CSS bars because DomPDF
  * cannot run JS.
+ *
+ * The shapes below are the contract every pack, narrative and Blade reads, so
+ * they are declared once here and imported rather than re-guessed per caller.
+ *
+ * @phpstan-import-type SiteTotals from \App\Services\SiteCoverageService
+ * @phpstan-import-type BarangayTotals from \App\Services\BarangayCoverageService
+ *
+ * @phpstan-type ScopeParams array{project_id?: mixed, project?: string|null, from?: string|null, to?: string|null, province?: mixed, district?: mixed, municipality?: mixed, barangay?: mixed, site_type?: mixed, status?: mixed, region?: mixed}
+ * @phpstan-type TrendDay array{date: string, up: int, down: int, no_nms: int, down_server: int}
+ * @phpstan-type DownEpisode array{site: string, where: string, status: string, cause: string|null, started_at: string, duration_h: int}
+ * @phpstan-type AlertRow array{severity: string, rule: string, site: string, triggered_at: string}
+ * @phpstan-type TicketRow array{site: string, title: string|null, status: string, priority: string, created_at: string}
+ * @phpstan-type Bundle array{
+ *   from: string, to: string, scope: string,
+ *   sites: array{total: int, active: int, inactive: int, planned: int},
+ *   daily: array{up: int, down: int, down_server: int, no_nms: int, no_data: int, reported: int, progress_pct: float},
+ *   uptime_pct: float, uptime_base: int,
+ *   sla_target: float|null, sla_met: bool|null,
+ *   trend: list<TrendDay>,
+ *   site_coverage: SiteTotals, barangay_coverage: BarangayTotals,
+ *   fleet: array{deployed: int, in_stock: int, under_repair: int, warranty_expiring: int},
+ *   down_episodes: list<DownEpisode>,
+ *   alerts: array{active: int, critical: int, by_severity: array<string, int>, latest: list<AlertRow>},
+ *   tickets: array{open: int, critical_open: int, latest: list<TicketRow>}
+ * }
  */
 class ReportAnalytics
 {
     /** Hard ceiling on the trend window — bars past a month are unreadable. */
     private const MAX_TREND_DAYS = 31;
 
-    /** @return array{0: Carbon, 1: Carbon} inclusive [from, to], default last 7d. */
+    /**
+     * @param  ScopeParams  $params
+     * @return array{0: Carbon, 1: Carbon} inclusive [from, to], default last 7d.
+     */
     public function period(array $params): array
     {
         $to = isset($params['to']) ? Carbon::parse($params['to'])->startOfDay() : today();
@@ -43,6 +72,9 @@ class ReportAnalytics
         return [$from, $to];
     }
 
+    /**
+     * @param  ScopeParams  $params
+     */
     public function describeScope(array $params): string
     {
         [$from, $to] = $this->period($params);
@@ -61,8 +93,13 @@ class ReportAnalytics
         return implode(' · ', $parts);
     }
 
-    /** Site ids in scope as a subquery — every KPI below reads through it. */
-    public function siteIds(array $params)
+    /**
+     * Site ids in scope as a subquery — every KPI below reads through it.
+     *
+     * @param  ScopeParams  $params
+     * @return Builder<Site>
+     */
+    public function siteIds(array $params): Builder
     {
         $query = Site::query()->select('sites.id');
         if (! empty($params['project_id'])) {
@@ -77,6 +114,10 @@ class ReportAnalytics
         return $query;
     }
 
+    /**
+     * @param  ScopeParams  $params
+     * @return Bundle
+     */
     public function for(array $params): array
     {
         [$from, $to] = $this->period($params);
@@ -103,6 +144,15 @@ class ReportAnalytics
             ->groupBy('status')
             ->pluck('n', 'status');
         $observed = (int) $uptimeCounts->sum();
+        $uptime = $observed > 0
+            ? round((int) $uptimeCounts->get('UP', 0) / $observed * 100, 1)
+            : 0.0;
+
+        // Null target, null verdict: with no confirmed SLA there is nothing to
+        // pass or fail, and printing a dash reads as "no target set" rather than
+        // "target missed". is_numeric guards a typo in the env value.
+        $slaTarget = config('monitoring.sla_uptime_target');
+        $slaTarget = is_numeric($slaTarget) ? (float) $slaTarget : null;
 
         return [
             'from' => $from->toDateString(),
@@ -123,10 +173,10 @@ class ReportAnalytics
                 'reported' => $reported,
                 'progress_pct' => $activeSites > 0 ? round($reported / $activeSites * 100, 1) : 0.0,
             ],
-            'uptime_pct' => $observed > 0
-                ? round((int) $uptimeCounts->get('UP', 0) / $observed * 100, 1)
-                : 0.0,
+            'uptime_pct' => $uptime,
             'uptime_base' => $observed,
+            'sla_target' => $slaTarget,
+            'sla_met' => $slaTarget === null ? null : $uptime >= $slaTarget,
             'trend' => $this->trend($ids, $from, $to),
             'site_coverage' => app(SiteCoverageService::class)->coverage($this->coverageFilters($params))['totals'],
             'barangay_coverage' => app(BarangayCoverageService::class)->coverage($this->coverageFilters($params))['totals'],
@@ -137,6 +187,13 @@ class ReportAnalytics
         ];
     }
 
+    /**
+     * The coverage services take fewer filters than siteIds() (no status, no
+     * site type) so a coverage figure always describes the whole area.
+     *
+     * @param  ScopeParams  $params
+     * @return ScopeParams
+     */
     private function coverageFilters(array $params): array
     {
         return array_filter([
@@ -148,7 +205,11 @@ class ReportAnalytics
         ]);
     }
 
-    private function trend($ids, Carbon $from, Carbon $to): array
+    /**
+     * @param  Builder<Site>  $ids
+     * @return list<TrendDay>
+     */
+    private function trend(Builder $ids, Carbon $from, Carbon $to): array
     {
         $rows = SiteDailyStatus::whereIn('site_id', (clone $ids))
             ->whereBetween('date', [$from, $to])
@@ -177,7 +238,11 @@ class ReportAnalytics
         return $out;
     }
 
-    private function fleet($ids): array
+    /**
+     * @param  Builder<Site>  $ids
+     * @return array{deployed: int, in_stock: int, under_repair: int, warranty_expiring: int}
+     */
+    private function fleet(Builder $ids): array
     {
         return [
             'deployed' => Device::where('status', 'deployed')
@@ -190,7 +255,18 @@ class ReportAnalytics
         ];
     }
 
-    private function downEpisodes($ids): Collection
+    /**
+     * Open DOWN episodes, worst-duration first.
+     *
+     * A plain list, not a Collection: Laravel's Eloquent Collection::map()
+     * returns a union type that static analysis cannot match against a declared
+     * shape, and the sibling `alerts.latest` / `tickets.latest` keys are lists
+     * too — so this keeps the whole bundle one shape.
+     *
+     * @param  Builder<Site>  $ids
+     * @return list<DownEpisode>
+     */
+    private function downEpisodes(Builder $ids): array
     {
         return SiteStatusEvent::query()
             ->whereIn('site_id', (clone $ids))
@@ -199,17 +275,25 @@ class ReportAnalytics
             ->orderBy('started_at')
             ->take(10)
             ->get(['id', 'site_id', 'to_status', 'started_at', 'cause'])
-            ->map(fn ($event) => [
-                'site' => data_get($event->site, 'location_name', '—'),
-                'where' => trim(($event->site->municipality ?? '').', '.($event->site->province ?? ''), ', '),
-                'status' => $event->to_status,
-                'cause' => $event->cause,
-                'started_at' => $event->started_at->toDateTimeString(),
-                'duration_h' => (int) $event->started_at->diffInHours(now()),
-            ]);
+            ->map(function (SiteStatusEvent $event): array {
+                return [
+                    'site' => (string) data_get($event->site, 'location_name', '—'),
+                    'where' => trim(($event->site->municipality ?? '').', '.($event->site->province ?? ''), ', '),
+                    'status' => $event->to_status,
+                    'cause' => $event->cause,
+                    'started_at' => $event->started_at->toDateTimeString(),
+                    'duration_h' => (int) $event->started_at->diffInHours(now()),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
-    private function alerts($ids): array
+    /**
+     * @param  Builder<Site>  $ids
+     * @return array{active: int, critical: int, by_severity: array<string, int>, latest: list<AlertRow>}
+     */
+    private function alerts(Builder $ids): array
     {
         $base = Alert::query()->whereIn('site_id', (clone $ids))->whereNull('resolved_at');
         $bySeverity = (clone $base)
@@ -235,7 +319,11 @@ class ReportAnalytics
         ];
     }
 
-    private function tickets($ids): array
+    /**
+     * @param  Builder<Site>  $ids
+     * @return array{open: int, critical_open: int, latest: list<TicketRow>}
+     */
+    private function tickets(Builder $ids): array
     {
         $base = MaintenanceTicket::query()
             ->whereIn('site_id', (clone $ids))

@@ -100,7 +100,7 @@ Production notes:
 
 ```bash
 composer test      # PHPUnit feature/unit suite
-composer analyse   # PHPStan/Larastan level 5
+composer analyse   # PHPStan/Larastan level 6
 composer lint      # Pint style check
 npm run lint       # ESLint (Vue, zero warnings allowed)
 ```

@@ -59,6 +59,9 @@ class AuditLogMiddleware
     /**
      * Whitelist-minded scrubbing: drop credential-shaped keys entirely, truncate
      * long values, and cap total keys so a runaway form can't flood the table.
+     *
+     * @param  array<array-key, mixed>  $payload
+     * @return array<array-key, mixed>
      */
     private function sanitize(array $payload): array
     {

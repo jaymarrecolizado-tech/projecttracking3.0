@@ -14,7 +14,8 @@ class StatusReminderMail extends Mailable
 
     public function __construct(
         public string $reportDate,
-        public array $perProject, // [project name => missing count]
+        /** @var array<string, int> [project name => missing count] */
+        public array $perProject,
         public string $reportUrl,
     ) {}
 

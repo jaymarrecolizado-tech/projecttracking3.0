@@ -61,6 +61,10 @@ class SiteObserver
         CoverageCache::invalidate();
     }
 
+    /**
+     * @param  array<string, mixed>|null  $old
+     * @param  array<string, mixed>|null  $new
+     */
     protected function log(string $action, Site $site, ?array $old, ?array $new): void
     {
         // request_id matches the HTTP-write audit row for the same request

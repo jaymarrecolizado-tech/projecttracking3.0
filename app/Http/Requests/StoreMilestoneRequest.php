@@ -11,6 +11,7 @@ class StoreMilestoneRequest extends FormRequest
         return true; // Route middleware (can:milestone.manage) enforces permission.
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

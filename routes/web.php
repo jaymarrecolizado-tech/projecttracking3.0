@@ -13,9 +13,26 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SiteEquipmentController;
+use App\Http\Controllers\SiteSurveyController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+
+/*
+| Public survey surface (Plan.md S1–S5) — the only unauthenticated routes in
+| the app. Reached from a per-site signed link (QR at the site, or the
+| AP-vendor guest portal's redirect URL). Rate-limited from day one: this is
+| the one place a stranger can write to the database.
+|
+| The signed middleware on the POST is what binds a submission to the site it
+| was issued for; the GET carries no token so a mistyped link fails to a
+| neutral page rather than a 403.
+*/
+Route::get('/s/{siteCode}', [SiteSurveyController::class, 'show'])->name('survey.show');
+Route::post('/s/{siteCode}', [SiteSurveyController::class, 'store'])
+    ->middleware(['signed', 'throttle:survey'])
+    ->name('survey.store');
+Route::get('/s/{siteCode}/thanks', [SiteSurveyController::class, 'thanks'])->name('survey.thanks');
 
 Route::middleware(['auth'])->group(function () {
     // One canonical name: two routes named "dashboard" made route:cache()
@@ -31,6 +48,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('projects', ProjectController::class)->only(['update'])->middleware('can:update,project');
     Route::resource('projects', ProjectController::class)->only(['destroy'])->middleware('can:delete,project');
     Route::resource('projects', ProjectController::class)->only(['index', 'show']);
+
+    // Declared before the resource so /sites/survey-qr is not swallowed by the
+    // sites/{site} binding.
+    Route::get('/sites/survey-qr', [SiteController::class, 'surveyQr'])->name('sites.survey-qr')->middleware('can:sites.view');
 
     Route::resource('sites', SiteController::class)->only(['store'])->middleware('can:create,App\Models\Site');
     Route::resource('sites', SiteController::class)->only(['update'])->middleware('can:update,site');
@@ -103,6 +124,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reports/fleet', [ReportController::class, 'fleetPdf'])->name('reports.fleet')->middleware('can:reports.export');
     Route::post('/reports/incidents', [ReportController::class, 'incidentsPdf'])->name('reports.incidents')->middleware('can:reports.export');
     Route::post('/reports/progress', [ReportController::class, 'progressPdf'])->name('reports.progress')->middleware('can:reports.export');
+    Route::post('/reports/satisfaction', [ReportController::class, 'satisfactionPdf'])->name('reports.satisfaction')->middleware('can:reports.export');
     Route::post('/reports/combined', [ReportController::class, 'combinedPdf'])->name('reports.combined')->middleware('can:reports.export');
     Route::get('/reports/exports/{export}/download', [ReportController::class, 'download'])->name('reports.download')->middleware('can:reports.view');
     Route::get('/reports/exports/{export}/csv', [ReportController::class, 'downloadCsv'])->name('reports.csv')->middleware('can:reports.view');

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Alert;
 use App\Models\AlertRule;
+use App\Models\BarangayReference;
 use App\Models\Device;
 use App\Models\DeviceDeployment;
 use App\Models\DeviceModel;
@@ -12,7 +13,10 @@ use App\Models\Project;
 use App\Models\ProjectMilestone;
 use App\Models\Site;
 use App\Models\SiteAccomplishment;
+use App\Models\SiteSurvey;
+use App\Models\SiteSurveyResponse;
 use App\Models\User;
+use App\Services\ReportAnalytics;
 use App\Services\ReportingService;
 use App\Services\ReportNarrative;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -141,5 +145,108 @@ class ReportContentTest extends TestCase
         $this->assertSame(1, $inventory['deployed']);
         $this->assertStringContainsString('DEV-RPT-9', $html);
         $this->assertStringContainsString('v9.9', $html);
+    }
+
+    /**
+     * The executive pack read `site_coverage.covered/total` and
+     * `barangay_coverage.total` — keys no service produces — so two coverage
+     * cells rendered 0 / 0 in the PDF a manager is most likely to forward.
+     * A reference barangay is seeded so the denominator is non-zero and the
+     * assertion can actually bite.
+     */
+    public function test_project_template_prints_real_coverage_denominators(): void
+    {
+        BarangayReference::create([
+            'province' => 'Cagayan', 'municipality' => 'Aparri', 'name' => 'Centro',
+            'name_normalized' => 'centro',
+        ]);
+        Site::factory()->create([
+            'project_id' => $this->project->id, 'location_name' => 'Covered Site',
+            'site_type' => 'PES', 'municipality' => 'Aparri', 'province' => 'Cagayan',
+            'barangay' => 'Centro', 'status' => 'active',
+        ]);
+
+        $service = app(ReportingService::class);
+        $analytics = app(ReportAnalytics::class)->for(['project_id' => $this->project->id]);
+        $html = view('reports.project-summary', [
+            'project' => $this->project,
+            'analytics' => $analytics,
+            'register' => collect(),
+            'statusesAtTo' => collect(),
+            'bullets' => app(ReportNarrative::class)->forProject($analytics),
+            'userName' => 'tester',
+        ])->render();
+
+        $this->assertSame(1, $analytics['barangay_coverage']['barangays'], 'Guard: the denominator must be non-zero.');
+        $this->assertGreaterThan(0, $analytics['site_coverage']['registered'], 'Guard: ditto.');
+        $this->assertStringContainsString(
+            $analytics['site_coverage']['actual'].' / '.$analytics['site_coverage']['registered'],
+            $html
+        );
+        $this->assertStringContainsString(
+            $analytics['barangay_coverage']['covered'].' / '.$analytics['barangay_coverage']['barangays'],
+            $html
+        );
+    }
+
+    public function test_satisfaction_template_shows_ratings_and_withholds_below_minimum(): void
+    {
+        $survey = SiteSurvey::create([
+            'code' => 'v1', 'title' => 'Survey', 'is_active' => true,
+            'questions' => [['key' => 'overall', 'label' => 'Overall?', 'type' => 'rating', 'required' => true]],
+        ]);
+        // 5 responses at the rated site (meets MIN_RESPONSES), 2 at the quiet one
+        // — same project, so the scope filter is not what's excluding it.
+        foreach ([[$this->site, 5, 1], ['Quiet Site', 2, 5]] as [$site, $count, $score]) {
+            $site = $site instanceof Site
+                ? $site
+                : Site::factory()->create(['project_id' => $this->project->id, 'location_name' => $site]);
+            SiteSurveyResponse::factory()->count($count)->create([
+                'site_id' => $site->id, 'survey_id' => $survey->id,
+                'cms_provider' => 'DICT', 'last_mile_tech' => 'RADIO',
+                'ratings' => ['overall' => $score],
+                'comments' => $score === 1 ? 'Keeps dropping at peak hours' : null,
+            ]);
+        }
+
+        $service = app(ReportingService::class);
+        $satisfaction = $service->satisfactionData(['project_id' => $this->project->id]);
+        $html = view('reports.satisfaction', [
+            'satisfaction' => $satisfaction,
+            'bullets' => app(ReportNarrative::class)->forSatisfaction($satisfaction),
+            'userName' => 'tester',
+        ])->render();
+
+        $this->assertSame(7, $satisfaction['responses']);
+        $this->assertSame(1, $satisfaction['rated_sites'], 'Only the site above minimum-N is scored.');
+        $this->assertSame(1, $satisfaction['unrated_sites']);
+        $this->assertStringContainsString('Content Site', $html);
+        $this->assertStringNotContainsString('Quiet Site', $html);
+        $this->assertStringContainsString('Keeps dropping at peak hours', $html);
+        $this->assertStringContainsString('DICT', $html);
+    }
+
+    /** Free text from the public must be escaped, not rendered as markup. */
+    public function test_satisfaction_template_escapes_a_submitted_remark(): void
+    {
+        $survey = SiteSurvey::create([
+            'code' => 'v1', 'title' => 'Survey', 'is_active' => true,
+            'questions' => [['key' => 'overall', 'label' => 'Overall?', 'type' => 'rating', 'required' => true]],
+        ]);
+        SiteSurveyResponse::factory()->create([
+            'site_id' => $this->site->id, 'survey_id' => $survey->id,
+            'ratings' => ['overall' => 1],
+            'comments' => '<script>alert(1)</script>',
+        ]);
+
+        $satisfaction = app(ReportingService::class)->satisfactionData(['project_id' => $this->project->id]);
+        $html = view('reports.satisfaction', [
+            'satisfaction' => $satisfaction,
+            'bullets' => app(ReportNarrative::class)->forSatisfaction($satisfaction),
+            'userName' => 'tester',
+        ])->render();
+
+        $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;', $html);
     }
 }

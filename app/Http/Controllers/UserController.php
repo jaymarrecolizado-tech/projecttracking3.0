@@ -98,6 +98,7 @@ class UserController extends Controller
     }
 
     /** Replace the user's role assignments (role + optional project scope). */
+    /** @param  list<array{role_id: mixed, project_id?: mixed}>  $roles  */
     private function syncRoles(User $user, array $roles): void
     {
         $user->roles()->detach();

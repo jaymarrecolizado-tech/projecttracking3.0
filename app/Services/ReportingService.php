@@ -13,13 +13,65 @@ use App\Models\Site;
 use App\Models\SiteAccomplishment;
 use App\Models\SiteDailyStatus;
 use App\Models\SiteStatusEvent;
+use App\Models\SiteSurveyResponse;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
+/**
+ * Every queued PDF in the analytics family. Each public generator is a thin
+ * shell: read the filters, ask a `*Data()`/inventory method for the figures,
+ * hand them to a Blade with a narrative beside them.
+ *
+ * The data shapes are declared here (and imported by ReportNarrative) so the
+ * narrative, the template and the CSV companion cannot disagree about what a
+ * figure is.
+ *
+ * @phpstan-import-type Bundle from ReportAnalytics
+ * @phpstan-import-type ScopeParams from ReportAnalytics
+ * @phpstan-import-type SiteCoverage from SiteCoverageService
+ * @phpstan-import-type BarangayCoverage from BarangayCoverageService
+ * @phpstan-import-type Summary from SiteSurveyAnalytics
+ *
+ * @phpstan-type ProjectRow array{location: mixed, municipality: string, province: string, site_type: string, daily_status: mixed, devices: int, cir: mixed}
+ * @phpstan-type ProvinceRow array{municipality: string|int, sites: int, up: int, up_pct: float}
+ * @phpstan-type Csv array{name: string, headings: array<int, string>, rows: array<int, array<int, mixed>>}
+ * @phpstan-type Comparison array{current: Bundle, previous: Bundle, previous_range: string, delta_uptime: float, delta_down: int, delta_sitedays: int}
+ * @phpstan-type FirmwareRow array{version: string, count: int, approved: bool}
+ * @phpstan-type Inventory array{
+ *   deployed: int, in_stock: int, under_repair: int, warranty_expiring: int,
+ *   approved_firmware: list<string>, firmware_rows: list<FirmwareRow>,
+ *   outdated: int|null, register: Collection<int, Device>
+ * }
+ * @phpstan-type OpenAlert array{severity: string, rule: string, site: string, triggered_at: string, age_h: int}
+ * @phpstan-type OpenTicket array{site: string, title: mixed, status: string, priority: string, age_h: int}
+ * @phpstan-type Incidents array{
+ *   from: string, to: string, scope: string, alerts_triggered: int,
+ *   by_severity: array<string, int>, mtta_h: float|null, mttr_alerts_h: float|null,
+ *   mttr_tickets_h: float|null, tickets_open: int, tickets_by_priority: array<string, int>,
+ *   open_alerts: list<OpenAlert>, open_tickets: list<OpenTicket>
+ * }
+ * @phpstan-type MilestoneRow array{name: mixed, weight: float, avg_pct: float, sites: int}
+ * @phpstan-type MilestoneGroup array{project: string, weighted_pct: float, milestones: list<MilestoneRow>}
+ * @phpstan-type OverdueRow array{site: string, project: string, milestone: string, status: mixed, pct: float, target_date: string, days_overdue: int}
+ * @phpstan-type Progress array{scope: string, overall_pct: float, projects: list<MilestoneGroup>, overdue: list<OverdueRow>}
+ * @phpstan-type LowSite array{site_id: int, site: string, where: string, responses: int, overall: float|null, by_question: array<string, float|null>}
+ * @phpstan-type Remark array{site: string, rating: float|null, comments: string, submitted_at: string}
+ * @phpstan-type ProviderRollup array{cms_provider: string|null, last_mile_tech: string|null, responses: int, meets_minimum: bool, overall: float|null}
+ * @phpstan-type Satisfaction array{
+ *   scope: string, from: string, to: string, window_days: int, min_responses: int,
+ *   responses: int, scope_mean: float|null, by_question: array<string, float|null>,
+ *   distribution: array<int, int>, rated_sites: int, unrated_sites: int,
+ *   low: list<LowSite>, comments: list<Remark>, providers: list<ProviderRollup>
+ * }
+ * @phpstan-type TrendDay array{date: string, up: int, down: int}
+ */
 class ReportingService
 {
+    /**
+     * @param  array<string, mixed>  $params
+     */
     public function generateProjectSummaryPdf(Project $project, array $params = [], string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $analytics = app(ReportAnalytics::class)->for(
@@ -44,6 +96,7 @@ class ReportingService
         ]);
     }
 
+    /** @param  array<string, mixed>  $params  */
     public function generateProvinceReport(string $province, ?int $projectId = null, array $params = [], string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $analytics = app(ReportAnalytics::class);
@@ -61,7 +114,7 @@ class ReportingService
             $query->where('project_id', $projectId);
         }
         $query->chunk(500, fn ($chunk) => $sites->push(...$chunk));
-        $grouped = $sites->sortBy('municipality')->groupBy(fn ($s) => $s->municipality ?? 'Unknown');
+        $grouped = $sites->sortBy('municipality')->groupBy(fn (Site $s) => (string) ($s->municipality ?? 'Unknown'));
 
         // One statuses query for the period end, keyed by site — feeds both
         // the municipality rollup and the per-site daily-status column.
@@ -86,7 +139,11 @@ class ReportingService
         ) + ['bullets' => app(ReportNarrative::class)->forProvince($rollup)]);
     }
 
-    /** Site Type coverage (actual vs registered) — same data as /map/coverage. */
+    /**
+     * Site Type coverage (actual vs registered) — same data as /map/coverage.
+     *
+     * @param  ScopeParams  $filters
+     */
     public function generateSiteTypeCoverageReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $coverage = app(SiteCoverageService::class)->coverage($filters);
@@ -102,6 +159,9 @@ class ReportingService
     /**
      * Deployed-site appendix rows for the filters. Chunked and deliberately
      * uncapped — an earlier 200-row gate silently dropped rows past the cap.
+     *
+     * @param  ScopeParams  $filters
+     * @return Collection<int, Site>
      */
     public function siteTypeAppendix(array $filters): Collection
     {
@@ -127,7 +187,11 @@ class ReportingService
         return $sites;
     }
 
-    /** Barangay coverage (installed/existing vs total) — same data as /map/barangay-coverage. */
+    /**
+     * Barangay coverage (installed/existing vs total) — same data as /map/barangay-coverage.
+     *
+     * @param  ScopeParams  $filters
+     */
     public function generateBarangayCoverageReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $coverage = app(BarangayCoverageService::class)->coverage($filters);
@@ -144,7 +208,7 @@ class ReportingService
      * Regenerated live from the export params — no stored file to clean up.
      * Combined packs have no single table, so they get none.
      *
-     * @return array{name: string, headings: array<int, string>, rows: array<int, array<int, mixed>>}
+     * @return Csv
      */
     public function exportCsv(ReportExport $export): array
     {
@@ -177,8 +241,10 @@ class ReportingService
             'ops_period' => [
                 'name' => 'open-down-episodes.csv',
                 'headings' => ['Site', 'Where', 'Status', 'Since', 'Duration (h)'],
-                'rows' => $this->opsPeriodComparison($filters)['current']['down_episodes']
-                    ->map(fn ($e) => [$e['site'], $e['where'], $e['status'], $e['started_at'], $e['duration_h']])->all(),
+                'rows' => array_map(
+                    fn ($e) => [$e['site'], $e['where'], $e['status'], $e['started_at'], $e['duration_h']],
+                    $this->opsPeriodComparison($filters)['current']['down_episodes']
+                ),
             ],
             'fleet' => [
                 'name' => 'device-register.csv',
@@ -209,6 +275,16 @@ class ReportingService
                     $this->progressData($filters)['overdue']
                 ),
             ],
+            'satisfaction' => [
+                'name' => 'site-satisfaction.csv',
+                // $where is "municipality, province" - heading must say so, or
+                // every row reads as a province that contains a comma.
+                'headings' => ['Site', 'Location', 'Responses', 'Rating / 5'],
+                'rows' => array_map(
+                    fn ($r) => [$r['site'], $r['where'], $r['responses'], $r['overall'] ?? ''],
+                    $this->satisfactionData($filters)['low']
+                ),
+            ],
             default => throw new InvalidArgumentException("No CSV companion for '{$export->type}' reports."),
         };
 
@@ -232,6 +308,10 @@ class ReportingService
         return in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
     }
 
+    /**
+     * @param  array<string, mixed>  $params
+     * @return Csv
+     */
     private function projectRegisterCsv(Project $project, array $params): array
     {
         $to = app(ReportAnalytics::class)->period($params)[1];
@@ -254,6 +334,10 @@ class ReportingService
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $params
+     * @return Csv
+     */
     private function provinceRegisterCsv(string $province, ?int $projectId, array $params): array
     {
         $to = app(ReportAnalytics::class)->period($params)[1];
@@ -280,7 +364,11 @@ class ReportingService
         ];
     }
 
-    /** Chunked site register shared by the project PDF and its CSV. */
+    /**
+     * Chunked site register shared by the project PDF and its CSV.
+     *
+     * @return Collection<int, Site>
+     */
     private function projectRegister(Project $project): Collection
     {
         $register = collect();
@@ -290,6 +378,10 @@ class ReportingService
         return $register->sortBy('location_name')->values();
     }
 
+    /**
+     * @param  ScopeParams  $filters
+     * @return Comparison
+     */
     public function opsPeriodComparison(array $filters): array
     {
         $analytics = app(ReportAnalytics::class);
@@ -314,6 +406,7 @@ class ReportingService
         ];
     }
 
+    /** @param  ScopeParams  $filters  */
     public function generateOpsPeriodReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $comparison = $this->opsPeriodComparison($filters);
@@ -329,6 +422,9 @@ class ReportingService
      * Fleet inventory data: counts, firmware compliance vs APPROVED_FIRMWARE,
      * full device register. Fleet-wide except deployed scope, which follows
      * the project filter (stock has no geography).
+     *
+     * @param  ScopeParams  $filters
+     * @return Inventory
      */
     public function fleetInventory(array $filters): array
     {
@@ -372,6 +468,7 @@ class ReportingService
         ];
     }
 
+    /** @param  ScopeParams  $filters  */
     public function generateFleetReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $scope = app(ReportAnalytics::class)->describeScope($filters);
@@ -388,6 +485,9 @@ class ReportingService
     /**
      * Incident pack data: alert severity for the window, ticket backlog,
      * MTTA/MTTR in hours, open lists. Pure data (tested).
+     *
+     * @param  ScopeParams  $filters
+     * @return Incidents
      */
     public function incidentsData(array $filters): array
     {
@@ -466,6 +566,7 @@ class ReportingService
         ];
     }
 
+    /** @param  ScopeParams  $filters  */
     public function generateIncidentsReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $incidents = $this->incidentsData($filters);
@@ -480,6 +581,9 @@ class ReportingService
     /**
      * Progress pack data: weighted accomplishment % per project and overall,
      * per-milestone bars, overdue list. Pure data (tested).
+     *
+     * @param  ScopeParams  $filters
+     * @return Progress
      */
     public function progressData(array $filters): array
     {
@@ -551,6 +655,7 @@ class ReportingService
         ];
     }
 
+    /** @param  ScopeParams  $filters  */
     public function generateProgressReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $progress = $this->progressData($filters);
@@ -563,14 +668,127 @@ class ReportingService
     }
 
     /**
+     * Satisfaction pack data (Plan.md S6): what people connected actually said,
+     * scoped to the same period + geo filters as every other pack.
+     *
+     * The headline number is the mean over *every* rating in the window, not the
+     * mean of per-site means — averaging averages quietly over-weights the quiet
+     * sites, which are exactly the ones a manager least wants to flatter.
+     *
+     * @param  ScopeParams  $filters
+     * @return Satisfaction
+     */
+    public function satisfactionData(array $filters): array
+    {
+        $analytics = app(ReportAnalytics::class);
+        [$from, $to] = $analytics->period($filters);
+        $windowDays = (int) $from->diffInDays($to) + 1;
+        $since = now()->subDays($windowDays);
+        $surveys = app(SiteSurveyAnalytics::class);
+
+        $siteIds = $analytics->siteIds($filters)->pluck('id')->all();
+
+        $scope = $surveys->forScope($siteIds, $windowDays);
+        $perSite = $surveys->forSites($siteIds, $windowDays);
+
+        // Rated sites only, worst first: a manager opening this pack is looking
+        // for the sites to visit, not for the fleet average they already have.
+        $worst = collect($perSite)
+            ->filter(fn (array $summary) => $summary['meets_minimum'])
+            ->sortBy(fn (array $summary) => $summary['overall'])
+            ->take(25);
+
+        $names = $worst->isEmpty()
+            ? collect()
+            : Site::whereIn('id', $worst->keys())
+                ->get(['id', 'location_name', 'municipality', 'province'])
+                ->keyBy('id');
+
+        $low = $worst->map(fn (array $summary, $id) => [
+            'site_id' => $id,
+            'site' => data_get($names->get($id), 'location_name', '—'),
+            'where' => trim(implode(', ', array_filter([
+                data_get($names->get($id), 'municipality'),
+                data_get($names->get($id), 'province'),
+            ])), ', '),
+            'responses' => $summary['responses'],
+            'overall' => $summary['overall'],
+            'by_question' => $summary['by_question'],
+        ])->values()->all();
+
+        // Free text is the actionable part of a bad score, so the pack carries
+        // the most recent low-rated remarks verbatim (escaped by Blade,
+        // formula-guarded on CSV export).
+        $comments = SiteSurveyResponse::query()
+            ->whereIn('site_id', $siteIds ?: [0])
+            ->where('submitted_at', '>=', $since)
+            ->whereNotNull('comments')
+            ->where('comments', '!=', '')
+            ->with('site:id,location_name')
+            ->orderByDesc('submitted_at')
+            ->take(25)
+            ->get(['id', 'site_id', 'ratings', 'comments', 'submitted_at'])
+            ->map(fn (SiteSurveyResponse $r) => [
+                'site' => data_get($r->site, 'location_name', '—'),
+                'rating' => $this->primaryRating($r->ratings ?? []),
+                'comments' => (string) $r->comments,
+                'submitted_at' => $r->submitted_at->toDateString(),
+            ])->all();
+
+        return [
+            'scope' => $analytics->describeScope($filters),
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'window_days' => $windowDays,
+            'min_responses' => SiteSurveyAnalytics::MIN_RESPONSES,
+            'responses' => $scope['responses'],
+            'scope_mean' => $scope['overall'],
+            'by_question' => $scope['by_question'],
+            'distribution' => $scope['distribution'],
+            'rated_sites' => count($low),
+            'unrated_sites' => count(array_filter($perSite, fn (array $s) => ! $s['meets_minimum'] && $s['responses'] > 0)),
+            'low' => $low,
+            'comments' => $comments,
+            'providers' => $surveys->byProvider($windowDays, $siteIds ?: null),
+        ];
+    }
+
+    /**
+     * Mean of the numeric answers on one response, or null when it has none.
+     *
+     * @param  array<string, mixed>  $ratings
+     */
+    private function primaryRating(array $ratings): ?float
+    {
+        $values = array_filter($ratings, 'is_numeric');
+
+        return $values === [] ? null : round(array_sum($values) / count($values), 1);
+    }
+
+    /** @param  ScopeParams  $filters  */
+    public function generateSatisfactionReport(array $filters, string $userName = 'system'): \Barryvdh\DomPDF\PDF
+    {
+        $satisfaction = $this->satisfactionData($filters);
+
+        return Pdf::loadView('reports.satisfaction', [
+            'satisfaction' => $satisfaction,
+            'bullets' => app(ReportNarrative::class)->forSatisfaction($satisfaction),
+            'userName' => $userName,
+        ]);
+    }
+
+    /**
      * Combined operations pack: cover plus the selected analytic sections in
      * one PDF. Unknown sections are dropped; an empty set is a permanent
      * failure (it would retry identically forever).
+     *
+     * @param  ScopeParams  $filters
+     * @param  list<string>  $sections
      */
     public function generateCombinedReport(array $filters, array $sections, string $userName = 'system'): \Barryvdh\DomPDF\PDF
     {
         $sections = array_values(array_intersect(
-            $sections, ['ops_period', 'fleet', 'incidents', 'progress']
+            $sections, ['ops_period', 'fleet', 'incidents', 'progress', 'satisfaction']
         ));
         if ($sections === []) {
             throw new InvalidArgumentException('No report sections selected.');
@@ -598,12 +816,16 @@ class ReportingService
             } elseif ($section === 'progress') {
                 $data['progress'] = $this->progressData($filters);
                 $data['bullets']['progress'] = app(ReportNarrative::class)->forProgress($data['progress']);
+            } elseif ($section === 'satisfaction') {
+                $data['satisfaction'] = $this->satisfactionData($filters);
+                $data['bullets']['satisfaction'] = app(ReportNarrative::class)->forSatisfaction($data['satisfaction']);
             }
         }
 
         return Pdf::loadView('reports.combined', $data);
     }
 
+    /** @return array<string, mixed> */
     public function getDashboardStats(): array
     {
         $activeSites = Site::where('status', 'active')->count();
@@ -696,6 +918,7 @@ class ReportingService
     }
 
     /** NOC wallboard payload — big numbers + who's down right now. */
+    /** @return array<string, mixed> */
     public function getWallboardStats(): array
     {
         // DOWN_SERVER is a down site too — matching SiteController's "down"
@@ -743,6 +966,7 @@ class ReportingService
         ];
     }
 
+    /** @return list<TrendDay>  */
     private function dailyTrend(int $days): array
     {
         $start = today()->subDays($days - 1);

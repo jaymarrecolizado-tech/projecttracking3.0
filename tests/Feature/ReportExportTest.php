@@ -7,6 +7,8 @@ use App\Models\Project;
 use App\Models\ReportExport;
 use App\Models\Site;
 use App\Models\SiteDailyStatus;
+use App\Models\SiteSurvey;
+use App\Models\SiteSurveyResponse;
 use App\Models\User;
 use App\Services\ReportingService;
 use Database\Seeders\RolePermissionSeeder;
@@ -169,6 +171,43 @@ class ReportExportTest extends TestCase
             ->assertSessionHasErrors('sections.0');
 
         $this->assertSame(0, ReportExport::where('type', 'combined')->count());
+    }
+
+    /** The satisfaction pack is a full member of the family, not a stub. */
+    public function test_satisfaction_report_queues_renders_and_has_a_csv_companion(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+        $project = $this->project();
+        $survey = SiteSurvey::create([
+            'code' => 'v1', 'title' => 'Survey', 'is_active' => true,
+            'questions' => [['key' => 'overall', 'label' => 'Overall?', 'type' => 'rating', 'required' => true]],
+        ]);
+        $site = Site::create([
+            'project_id' => $project->id, 'location_name' => 'Rated Site',
+            'province' => 'Cagayan', 'municipality' => 'Aparri',
+            'latitude' => 18.3, 'longitude' => 121.6, 'status' => 'active',
+        ]);
+        SiteSurveyResponse::factory()->count(5)->create([
+            'site_id' => $site->id, 'survey_id' => $survey->id,
+            'cms_provider' => 'DICT', 'last_mile_tech' => 'RADIO',
+            'ratings' => ['overall' => 2],
+        ]);
+
+        $this->actingAs($admin)->post(route('reports.satisfaction'), ['project_id' => $project->id])
+            ->assertRedirect()->assertSessionHas('success');
+
+        $export = ReportExport::where('type', 'satisfaction')->sole();
+        $this->assertSame('DONE', $export->status);
+        Storage::disk('local')->assertExists($export->filename);
+        $this->assertStringContainsString('%PDF', substr(
+            $this->actingAs($admin)->get(route('reports.download', $export))->streamedContent(), 0, 8
+        ));
+
+        $csv = $this->actingAs($admin)->get(route('reports.csv', $export))->streamedContent();
+        // The column holds "municipality, province", so it is a location, not a province.
+        $this->assertStringContainsString('Site,Location,Responses', $csv);
+        $this->assertStringContainsString('Rated Site', $csv);
     }
 
     public function test_done_export_has_csv_companion(): void
